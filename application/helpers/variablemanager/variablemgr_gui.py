@@ -82,6 +82,7 @@ class VarManager(HelperGUI):
     splitter.addWidget(self._updateButton)
     splitter.addWidget(self.tabs)
 
+# this is a comment
     self.tabs.addTab(self._props,"Properties")
     self.tabs.addTab(self._variablesList,"Variables")
 
