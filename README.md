@@ -1,6 +1,6 @@
 # QuantroLab
 
-This projects is a python IDE for controlling a physics laboratory.
+This projects is a python IDE for controlling a physics laboratory and previsualizing the acquired data.
 
 ### Features
   - IDE:
