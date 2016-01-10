@@ -535,9 +535,9 @@ class IDE(QMainWindow,ObserverWidget):
       "exit"                :'exit.png',
       "workingPath"         :'gohome.png',
       "killThread"          :'stop.png',
-      "executeAllCode"      :'run.png',
-      "executeCodeBlock"    :'kde1.png',
-      "executeCodeSelection":'kde4.png',
+      "executeAllCode"      :'runfile.png',
+      "executeCodeBlock"    :'runblock.png',
+      "executeCodeSelection":'runselection.png',
       "logo"                :'penguin.png',
     }
 
