@@ -45,7 +45,6 @@ def startHelperGuiInGui(exitWhenClosed = False,parent=None,globals={}):# 2) Star
 if __name__ == '__main__':                                             # 1) starts here in the module if file is main
     startHelperGuiInGui(True)
 
-
 #********************************************
 #  DataManager GUI  class                   *
 #********************************************
@@ -77,7 +76,7 @@ class DataManager(HelperGUI):
 
         self.setStyleSheet("""QTreeWidget:Item {padding:6;} QTreeView:Item {padding:6;}""")
 
-        title=helperDic['name']+" version "+helperDic["version"]
+        title = helperDic['name'] + " version " + helperDic["version"]
         if self._helper is not None: title+=' in tandem with '+self._helper.__class__.__name__
         self.setWindowTitle(title)
         self.setWindowIcon(QIcon(iconPath+'/penguin.png'))

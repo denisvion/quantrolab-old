@@ -25,9 +25,9 @@ from application.ide.project import Project,ProjectModel,ProjectView  # project 
 from application.ide.coderun.coderunner import MultiProcessCodeRunner # Code runner of the IDE
 #from application.ide.coderun.coderunner_gui import execInGui           # Utility function to run a Qt helper in the coderunner process
 from application.ide.widgets.observerwidget import ObserverWidget     # QtWidget being notified in its Qt event queue
-from application.config.parameters import params                      # module containing directory parameters
 
 # important directories
+from application.config.parameters import params                      # module containing directory parameters
 _applicationDir=params['basePath']
 _configDefaultDir=params['configPath']
 _helpersDefaultDir=os.path.join(_applicationDir,'helpers')

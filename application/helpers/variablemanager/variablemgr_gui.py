@@ -16,10 +16,8 @@ from application.lib.base_classes1 import *             # SUBJECT, OBSERVER, DIS
 from application.lib.com_classes import *               # SINGLETON, RELOADABLE
 from application.ide.widgets.observerwidget import ObserverWidget
 from application.helpers.userPromptDialogs import *
-from application.config.parameters import params
 
 import numpy
-
 
 #*******************************************
 #  Helper initialization                   *
@@ -58,7 +56,7 @@ class VarManager(HelperGUI):
 
     self.setStyleSheet("""QTreeWidget:Item {padding:6;} QTreeView:Item {padding:6;}""")
 
-    title=helperDic['name']+" version "+helperDic["version"]
+    title = helperDic['name'] + " version  + helperDic["version"]
     if self._helper is not None: title+=' in tandem with '+self._helper.__class__.__name__
     self.setWindowTitle(title)
     self.setWindowIcon(QIcon(iconPath+'/penguin.png'))
@@ -88,6 +86,7 @@ class VarManager(HelperGUI):
     self.tabs.addTab(self._variablesList,"Variables")
 
     self.setCentralWidget(splitter)
+    print 'reached end of gui definition'
 
   def updatedGui(self,subject,property = None,value = None):
     return
