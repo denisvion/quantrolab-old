@@ -6,8 +6,7 @@ This projects is a python IDE for controlling a physics laboratory.
   - IDE:
       - organize your scripts in a hyerarchical project
       - multi-script editor with syntax highlighting
-      - multiThread script runner
-      - killable tasks
+      - multiThread script runner with possibility to kill threads
   - Loop-manager:
       - Modify on the fly the loop parameters (stop, step, autoreverse,..) of all your scripts.
   - Data Manager:
@@ -18,7 +17,7 @@ This projects is a python IDE for controlling a physics laboratory.
       - manage a pool of local or remote instruments
       - example of instrument drivers included 
   - Instrument server:
-	Serve over the entwork instrumnts connected to your pc 
+	Serve instruments connected to your pc over the network  
 
 ### Technologies
   - Python 2.7
