@@ -665,7 +665,7 @@ class IDE(QMainWindow,ObserverWidget):
     if os.path.isfile(filename):
       dirpath,basename=os.path.split(filename)
       name,ext=os.path.splitext(basename)
-      pyFilename=os.path.join(dirpath,name+'.py') # builds or rebuilds fullname with .py extension
+      pyFilename=dirpath + '/' + name + '.py'    # builds or rebuilds fullname with .py extension (don't use join to avoid \x special characters )
     if not os.path.isfile(pyFilename):
       print "Error: could not find a file "+pyFilename+'.'
       return

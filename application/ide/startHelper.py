@@ -11,14 +11,14 @@ import imp
 import inspect
 import os.path
 from PyQt4.QtGui import QMainWindow
-from application.lib.helper_classes import *  
+from application.lib.helper_classes import *
 from ide.coderun.coderunner_gui import execInGui
 
 if rn in gv.__dict__: del gv.__dict__[rn]
 
 def startHelper(modulename,filename,classname,associateAttr,associateTypeName,reportName):
 	associatePath,associateName,helperType,associateType=None,None,None,None
-	try: 
+	try:
 		module=imp.load_source(modulename,filename)			  # import the module containing the helper
 	except:
 		print 'Error loading ' + filename+'.'
@@ -37,7 +37,7 @@ def startHelper(modulename,filename,classname,associateAttr,associateTypeName,re
 		raise
 	try:
 		if hasattr(helper,associateAttr):                     # Check if an associate exists (Helper for a HelperGUI or vice and versa)
-			associate=getattr(helper,associateAttr) 
+			associate=getattr(helper,associateAttr)
 			if isinstance(associate,eval(associateTypeName)): # and is loaded,
 				associatePath=inspect.getfile(associate.__class__) # get information about it
 				associateName=associate.__class__.__name__
@@ -50,9 +50,9 @@ def startHelper(modulename,filename,classname,associateAttr,associateTypeName,re
 		raise
 	# information about the loaded helpers is temporarily stored in a dictionary lastHelpers put in gv for the IDE
 	if associateType == 'helperGUI' and helperType == 'helper':
-		gv[rn]={'helper':associateName,'helperPath':associatePath,'helperType':associateType,'associate':classname,'associatePath':filename,'associateType':helperType} 	
+		gv[rn]={'helper':associateName,'helperPath':associatePath,'helperType':associateType,'associate':classname,'associatePath':filename,'associateType':helperType}
 	else:
 		gv[rn]={'helper':classname,'helperPath':filename,'helperType':helperType,'associate':associateName,'associatePath':associatePath,'associateType':associateType}
-	#print gv[rn]	
+	#print gv[rn]
 
 execInGui(lambda : startHelper(mn,fn,cn,aa,at,rn))

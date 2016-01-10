@@ -56,7 +56,7 @@ class VarManager(HelperGUI):
 
     self.setStyleSheet("""QTreeWidget:Item {padding:6;} QTreeView:Item {padding:6;}""")
 
-    title = helperDic['name'] + " version  + helperDic["version"]
+    title = helperDic['name'] + ' version '  + helperDic['version']
     if self._helper is not None: title+=' in tandem with '+self._helper.__class__.__name__
     self.setWindowTitle(title)
     self.setWindowIcon(QIcon(iconPath+'/penguin.png'))
@@ -82,6 +82,7 @@ class VarManager(HelperGUI):
     splitter.addWidget(self._updateButton)
     splitter.addWidget(self.tabs)
 
+# this is a comment
     self.tabs.addTab(self._props,"Properties")
     self.tabs.addTab(self._variablesList,"Variables")
 
