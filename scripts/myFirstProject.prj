@@ -1,0 +1,7 @@
+parameters: {}
+tree:
+- Folder
+- {name: '[project]'}
+- - - File
+    - {url: 'L:/lab_control/quantrolab/scripts/welcome.py'}
+    - []

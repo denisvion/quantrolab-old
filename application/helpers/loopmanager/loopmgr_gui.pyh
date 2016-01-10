@@ -1,0 +1,4 @@
+"""
+this .pyh file is an alias for the helper class file with the same filename but extension ".py". 
+It allows Quantrolab's "Load helper" menu command to filter only helpers.
+"""
