@@ -187,7 +187,7 @@ class IDE(QMainWindow,ObserverWidget):
       self.threadPanel = ThreadPanel(codeRunner = self._codeRunner,editorWindow = self.editorWindow)
 
       self.tabs.addTab(self.projectWindow,"Project")  # create the project and thread tabs to the empty tabs
-      self.tabs.addTab(self.threadPanel,"Processes")
+      self.tabs.addTab(self.threadPanel,"Threads")
       self.connect(self.projectTree,SIGNAL("openFile(PyQt_PyObject)"),lambda filename: self.editorWindow.openFile(filename))
 
       StatusBar = self.statusBar()
@@ -363,13 +363,17 @@ class IDE(QMainWindow,ObserverWidget):
       self._runningCodeSessions.append((code,identifier,filename,editor))
 
   def runCode(self,delimiter=""):
-    editor=self.editorWindow.currentEditor()
-    code=editor.getCurrentCodeBlock(delimiter)
+    """
+    This method runs a piece of textual python code.
+    It is called by runBlock, runSelection, or runFile.
+    """
+    editor=self.editorWindow.currentEditor()        # retrieve the current editor (i.e. script)
+    code=editor.getCurrentCodeBlock(delimiter)      # retrieve the relevant piece of code
     try:
       justName=editor.filename().split('\\')[-1]
     except:
       justName=False
-    filename = justName or "[unnamed buffer]"
+    filename = justName or "[unnamed buffer]"       # builds  and prints feedback message to the user
     shortFileName=filename[filename.rfind("\\")+1:]
     identifier = id(editor)
     if delimiter == "":
@@ -381,7 +385,7 @@ class IDE(QMainWindow,ObserverWidget):
     else:
       poc="???"
     print("Running "+poc+" in "+shortFileName+" (id="+str(identifier)+")")
-    self.executeCode(code,filename = filename,editor = editor,identifier = identifier)
+    self.executeCode(code,filename = filename,editor = editor,identifier = identifier) # execute the code
     return True
 
   def runBlock(self):
@@ -392,7 +396,7 @@ class IDE(QMainWindow,ObserverWidget):
 
   def runSelection(self):
     """
-    Runs all line having at least one char in selection.
+    Runs all lines having at least one char in the selection of the current script in the code editor.
     """
     return self.runCode(delimiter="\n")
 
@@ -416,7 +420,8 @@ class IDE(QMainWindow,ObserverWidget):
 
   def runFiles(self):
     """
-
+    Runs the current script file in the code editor if the later has the focus,
+    or all the files selected in the project view if the project view has the focus.
     """
     widgetWithFocus=self.focusWidget()
     if type(widgetWithFocus) == CodeEditor:
@@ -433,7 +438,7 @@ class IDE(QMainWindow,ObserverWidget):
 
   def eventFilter(self,object,event):
     """
-    Event filter of user typing entrer ctrl+enter or shif+enter for running a piece of code.
+    Event filter of user typing entrer, ctrl+enter or shif+enter for running a piece of code.
     """
     if event.type() == QEvent.KeyPress:
       if event.key() == Qt.Key_Enter and type(object) == CodeEditor:
@@ -451,14 +456,14 @@ class IDE(QMainWindow,ObserverWidget):
   def restartCodeProcess(self):
     print 'Restarting CodeProcess'
     self._codeRunner.restart()
-
     settings = QSettings()
-
     if settings.contains('ide.workingpath'):
       self.changeWorkingPath(str(settings.value('ide.workingpath').toString()))
 
   def changeWorkingPath(self,path = None):
-
+    """
+    Changes the working directory of the application
+    """
     settings = QSettings()
 
     if path is None:
@@ -485,10 +490,14 @@ class IDE(QMainWindow,ObserverWidget):
 
   def codeRunner(self):
     """
+    utility method returning the codeRunner object
     """
     return self._codeRunner
 
   def terminateCodeExecution(self):
+    """
+    Tries to stop the execution of the script selected in the editor if it is running
+    """
     currentEditor = self.editorWindow.currentEditor()
     for session in self._runningCodeSessions:
       (code,identifier,filename,editor) = session

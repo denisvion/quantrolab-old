@@ -1,2 +1,2 @@
-# Welcome to Qauntrolab
-print 'welcome to Quantrolab'
+# Welcome to Quantrolab
+print 'Welcome to Quantrolab'
