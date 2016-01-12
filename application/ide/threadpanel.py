@@ -1,6 +1,6 @@
 import sys,os,os.path,string,threading
 
-from PyQt4.QtGui import * 
+from PyQt4.QtGui import *
 from PyQt4.QtCore import *
 
 from application.config.parameters import *
@@ -10,7 +10,7 @@ class ThreadPanel(QWidget,ObserverWidget):
 
   def updatedGui(self,subject = None,property = None,value = None):
     pass
-    
+
   def _updateItemInfo(self,item,identifier,thread):
     if identifier in self._threads and self._threads[identifier] == thread:
       return
@@ -23,7 +23,7 @@ class ThreadPanel(QWidget,ObserverWidget):
       if editor != None:
         editor.setTabText(" [-]" if thread["isRunning"] else " [!]" if thread["failed"] else " [.]")
         self._editorWindow.updateTabText(editor)
-  
+
   def updateThreadList(self):
     threadDict = self._codeRunner.status()
     if threadDict is None or type(threadDict) != dict:
@@ -37,24 +37,25 @@ class ThreadPanel(QWidget,ObserverWidget):
       else:
         item = self._threadItems[identifier]
         self._updateItemInfo(item,identifier,threadDict[identifier])
-    
-    idsToDelete = []
+    idsToDelete = []                                                # make a list of items to be deleted from the thread list
+    editorIDs = map(id, self._editorWindow.editors)
     for identifier in self._threadItems:
-      if not identifier in threadDict:
+      tobedeleted = not identifier in threadDict
+      tobedeleted = tobedeleted or (not identifier in editorIDs and not threadDict[identifier]['isRunning'])
+      if tobedeleted:
         item = self._threadItems[identifier]
         self._threadView.takeTopLevelItem(self._threadView.indexOfTopLevelItem(item))
         idsToDelete.append(identifier)
-    
     for idToDelete in idsToDelete:
       del self._threadItems[idToDelete]
-      
+
   def killThread(self):
     selectedItems = self._threadView.selectedItems()
     for selectedItem in selectedItems:
       if selectedItem in self._threadItems.values():
         identifier = filter(lambda x: x[0] == selectedItem,zip(self._threadItems.values(),self._threadItems.keys()))[0][1]
         self._codeRunner.stopExecution(identifier)
-    
+
   def __init__(self,codeRunner = None,editorWindow = None,parent = None):
     QWidget.__init__(self,parent)
     ObserverWidget.__init__(self)
@@ -68,12 +69,12 @@ class ThreadPanel(QWidget,ObserverWidget):
     self._threadView = QTreeWidget()
     self._threadView.setSelectionMode(QAbstractItemView.ExtendedSelection)
     self._threadView.setHeaderLabels(["filename","status","identifier"])
-        
+
     setupLayout = QBoxLayout(QBoxLayout.LeftToRight)
-    
+
     killButton = QPushButton("Kill")
     self.connect(killButton,SIGNAL("clicked()"),self.killThread)
-    
+
     buttonsLayout = QBoxLayout(QBoxLayout.LeftToRight)
     buttonsLayout.addWidget(killButton)
     buttonsLayout.addStretch()
@@ -83,9 +84,8 @@ class ThreadPanel(QWidget,ObserverWidget):
 
     self.updateThreadList()
     self.setLayout(layout)
-    
+
     self.timer = QTimer(self)
     self.timer.setInterval(500)
     self.timer.start()
     self.connect(self.timer,SIGNAL("timeout()"),self.updateThreadList)
- 

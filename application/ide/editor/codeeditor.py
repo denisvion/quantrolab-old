@@ -1,6 +1,6 @@
 import os,traceback,math,sys,time,re
 
-from PyQt4.QtGui import * 
+from PyQt4.QtGui import *
 from PyQt4.QtCore import *
 
 from syntaxhighlighter import *
@@ -20,13 +20,13 @@ class ErrorConsole(QTreeWidget,ObserverWidget):
     self.setColumnCount(2)
     self.setColumnWidth(0,400)
     self.setHeaderLabels(["filename","line"])
-    
+
   def updatedGui(self,subject,property,value = None):
     if subject == self._codeRunner and property == "exceptions":
       for info in value:
         self.processErrorTraceback(info)
       self._codeRunner.clearExceptions()
-      
+
   def itemDoubleClicked(self,item,colum):
     if item.parent() != None:
       filename = unicode(item.text(0))
@@ -35,7 +35,7 @@ class ErrorConsole(QTreeWidget,ObserverWidget):
       if editor is None:
         return
       editor.highlightLine(line)
-    
+
   def processErrorTraceback(self,exceptionInfo):
 
     while self.topLevelItemCount() > 20:
@@ -44,27 +44,27 @@ class ErrorConsole(QTreeWidget,ObserverWidget):
     (exception_type,exception_value,tb) = exceptionInfo
 
     text = traceback.format_exception_only(exception_type,exception_value)[0]
-  
+
     text = text.replace("\n"," ")
-    
+
     tracebackEntries = traceback.extract_tb(tb)
     exceptionItem = QTreeWidgetItem()
-    
-    
+
+
     font = QFont()
     font.setPixelSize(14)
 
     exceptionItem.setFont(0,font)
-    
+
     self.insertTopLevelItem(0,exceptionItem)
 
     exceptionItem.setText(0,text)
     exceptionItem.setFirstColumnSpanned(True)
     exceptionItem.setFlags(Qt.ItemIsEnabled)
-    
+
     for entry in tracebackEntries[1:]:
       (filename, line_number, function_name, text) = entry
-      
+
       if os.path.exists(filename) and os.path.isfile(filename):
         item = QTreeWidgetItem()
         exceptionItem.addChild(item)
@@ -83,7 +83,7 @@ class EditorTabBar(QTabBar):
       self._tab = self.tabAt( e.pos())
       self.move=False
     QTabBar.mousePressEvent(self,e) # why not using ignore() ?
-    
+
   def mouseMoveEvent(self,e):
     # We try here to make compatible the movable tabs along x with a drag and drop triggered by a vertical drag.
     if (e.buttons() & Qt.LeftButton):
@@ -103,14 +103,14 @@ class EditorTabBar(QTabBar):
         QTabBar.mouseMoveEvent(self,e)
     else:
       QTabBar.mouseMoveEvent(self,e)
-          
+
 class CodeEditorWindow(QWidget):
 
     def workingDirectory(self):
-      if self._workingDirectory is None: 
+      if self._workingDirectory is None:
         return os.getcwd()
       return self._workingDirectory
-      
+
     def setWorkingDirectory(self,filename):
       if filename != None:
         directory = os.path.dirname(str(filename))
@@ -144,14 +144,14 @@ class CodeEditorWindow(QWidget):
         currentEditor.setFilename(filename)
         return self.saveCurrentFile()
       return False
-    
+
     def getEditorForFile(self,filename):
       for i in range(0,self.tab.count()):
         editor = self.tab.widget(i)
         if editor.filename() == filename:
           return editor
-      return None 
-      
+      return None
+
     def updateTabText(self,editor):
       index = self.tab.indexOf(editor)
       extraText = editor.tabText()
@@ -168,9 +168,9 @@ class CodeEditorWindow(QWidget):
         if currentTabText in [None,'']: currentTabText='untitled'
         self.tab.setTabText(index,currentTabText+extraText+changedText)
         self.tab.setTabToolTip(index,currentTabText)
-      
+
     def openFile(self,filename = None):
-          
+
       if filename is None:
         filename = str(QFileDialog.getOpenFileName(caption='Open file',filter = "Python(*.py *.pyw)",directory = self.workingDirectory()))
 
@@ -179,7 +179,7 @@ class CodeEditorWindow(QWidget):
 
       if self.checkForOpenFile(filename) != None:
         return self.checkForOpenFile(filename)
-      
+
       if os.path.isfile(str(filename)):
         self.setWorkingDirectory(filename)
         editor = self.newEditor()
@@ -187,10 +187,10 @@ class CodeEditorWindow(QWidget):
         self.saveTabState()
         return editor
       return None
-  
+
     def editorHasUnsavedModifications(self,editor,changed):
       self.updateTabText(editor)
-            
+
     def newEditor(self,editor = None):
       if editor is None:
         editor = CodeEditor()
@@ -214,18 +214,23 @@ class CodeEditorWindow(QWidget):
           openFiles.append(QString(widget.filename()))
       settings = QSettings()
       settings.setValue('Editor/OpenFiles',openFiles)
-      
+
     def restoreTabState(self):
       settings = QSettings()
       if settings.contains("Editor/OpenFiles"):
         openFiles = settings.value("Editor/OpenFiles").toList()
         if openFiles != None:
           for file in openFiles:
-            self.openFile(file.toString())  
+            self.openFile(file.toString())
       else:
         self.newEditor()
-        
-    def closeEditor(self,editor,askOnly = False):
+
+    def closeEditor(self,editor,askOnly = False, runCheck=True):
+      if runCheck and hasattr(editor,'hasBeenRun') and editor.hasBeenRun:
+          identifier=id(editor)
+          question='Closing this editor terminates the access to thread %i. Close anyway?' % identifier
+          if QMessageBox.question (self,'Warning', question, QMessageBox.Ok, QMessageBox.Cancel) == QMessageBox.Cancel:
+              return
       if editor.hasUnsavedModifications():
         self.tab.setCurrentWidget(editor)
         messageBox = QMessageBox()
@@ -247,30 +252,31 @@ class CodeEditorWindow(QWidget):
       if askOnly:
         return True
       if editor.close():
+        self.editors.remove(editor)
         editor.destroy()
         self.tab.removeTab(self.tab.indexOf(editor))
         if self.tab.count() == 0:
+          self.count = 1
           self.newEditor()
         self.saveTabState()
         return True
-
       return False
-              
+
     def closeEvent(self,e):
       for i in range(0,self.tab.count()):
-        if self.closeTab(i,askOnly = True) == False:
+        if self.closeTab(i,askOnly = True, runCheck=False) == False:
           e.ignore()
           return
       self.saveTabState()
-      
+
     def closeCurrentFile(self):
       index = self.tab.indexOf(self.currentEditor())
       return self.closeTab(index)
-        
-    def closeTab(self,index,askOnly = False):
+
+    def closeTab(self,index,askOnly = False, runCheck=True):
       editor = self.tab.widget(index)
-      return self.closeEditor(editor,askOnly)
-        
+      return self.closeEditor(editor,askOnly,runCheck)
+
     def currentEditor(self):
       return self.tab.currentWidget()
 
@@ -298,8 +304,8 @@ class CodeEditorWindow(QWidget):
           editor.updateFileModificationDate()
         elif choice == always:
           editor.setFileReloadPolicy(CodeEditor.FileReloadPolicy.Always)
-          editor.reloadFile()  
-    
+          editor.reloadFile()
+
     def onTimer(self):
       for i in range(0,self.tab.count()):
         editor = self.tab.widget(i)
@@ -310,31 +316,39 @@ class CodeEditorWindow(QWidget):
             self.askToReloadChangedFile(editor)
           finally:
             self.tab.setCurrentWidget(currentEditor)
-                      
+
+    def sendCloseEventToParent():
+        #under development
+        app = QtGui.QApplication.instance()
+        event = QEvent(1000)
+        target = self.parent()
+        print 'parent of code editor window is ', target
+        app.sendEvent(target, event)
+
     def __init__(self,parent=None,gv = dict(),lv = dict(),newEditorCallback = None):
         self.editors = []
         self.count = 1
         self._workingDirectory = None
         self._newEditorCallback = newEditorCallback
         QWidget.__init__(self,parent)
-        
+
         timer = QTimer(self)
         timer.setInterval(1000)
         self.connect(timer,SIGNAL("timeout()"),self.onTimer)
         timer.start()
 
         myLayout = QGridLayout()
-        
+
         self.tabBar = EditorTabBar()
         self.tab = QTabWidget()
         self.tab.setTabBar(self.tabBar)
         self.tab.setMovable(True) # does not work as is because of drag and drop on tabBar
-        
+
         self.tab.setTabsClosable(True)
         self.connect(self.tab,SIGNAL("tabCloseRequested(int)"),self.closeTab)
         myLayout.addWidget(self.tab,0,0)
         self.setLayout(myLayout)
-        
+
         self.restoreTabState()
 
 class LineNumbers(QPlainTextEdit):
@@ -343,44 +357,44 @@ class LineNumbers(QPlainTextEdit):
     QPlainTextEdit.__init__(self,parent)
     self.setFixedWidth(width)
     self.setReadOnly(True)
-    MyDocument = self.document() 
+    MyDocument = self.document()
     MyDocument.setDefaultFont(parent.document().defaultFont())
     self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
     self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
     self.setDisabled(True)
 
 class LineTextWidget(QPlainTextEdit):
- 
+
     #For QTextEdit
     #   def contentOffset(self):
     #     return QPointF(0,0)
 
-    #For QTextEdit:      
+    #For QTextEdit:
     #  def firstVisibleBlock(self):
     #   return self.document().begin()
-      
+
     def appendPlainText(self,string):
       QPlainTextEdit.appendPlainText(self,string)
-     
+
     #For QTextEdit:
     # def blockBoundingGeometry(self,block):
     #return self.document().documentLayout().blockBoundingRect(block)
-     
+
     def append(self,string):
         self.appendPlainText(string)
- 
-    class NumberBar(QWidget): 
-    
+
+    class NumberBar(QWidget):
+
         def __init__(self, *args):
             QWidget.__init__(self, *args)
             self.edit = None
             # This is used to update the width of the control.
             # It is the highest line that is currently visibile.
             self.highest_line = 0
-            
+
         def setTextEdit(self, edit):
             self.edit = edit
- 
+
         def update(self, *args):
             maxline = self.edit.document().lastBlock().blockNumber()+self.edit.document().lastBlock().lineCount()
             width = QFontMetrics(self.edit.document().defaultFont()).width(str(maxline)) + 10+10
@@ -390,7 +404,7 @@ class LineTextWidget(QPlainTextEdit):
                 self.edit.setViewportMargins(margins)
                 self.edit.viewport().setContentsMargins(margins)
             QWidget.update(self, *args)
-            
+
         def mousePressEvent(self,e):
           block = self.edit.firstVisibleBlock()
           contents_y = self.edit.verticalScrollBar().value()*0
@@ -418,7 +432,7 @@ class LineTextWidget(QPlainTextEdit):
 
             if bottomLeft.y() > self.edit.viewport().geometry().bottomLeft().y():
               break
-              
+
         def isBeginningOfBlock(self,block):
           if block.text()[:2] == "##":
             return True
@@ -440,7 +454,7 @@ class LineTextWidget(QPlainTextEdit):
               nextIndentation = matchNextBlock.group(1)
             if len(nextIndentation) > len(indentation):
               return True
-              
+
         def getEnclosingBlocks(self,block):
           if block.text()[:2] == "##":
             startBlock = block
@@ -468,51 +482,51 @@ class LineTextWidget(QPlainTextEdit):
               block = block.next()
               endBlock = block
             while endBlock.isValid() and re.match("(^\s*$)|(^\s*\#.*$)",endBlock.text()):
-              endBlock = endBlock.previous() 
-            return (startBlock,endBlock)  
-  
+              endBlock = endBlock.previous()
+            return (startBlock,endBlock)
+
         def paintEvent(self, event):
-            
+
             contents_y = self.edit.verticalScrollBar().value()*0
             page_bottom = self.edit.viewport().height()
             font_metrics = QFontMetrics(self.edit.document().defaultFont())
             current_block = self.edit.document().findBlock(self.edit.textCursor().position())
- 
+
             painter = QPainter(self)
- 
+
             # Iterate over all text blocks in the document.
             block = self.edit.firstVisibleBlock()
             viewport_offset = self.edit.contentOffset()-QPointF(0,contents_y)
             line_count = block.blockNumber()+1
             painter.setFont(self.edit.document().defaultFont())
-            
+
             while block.isValid():
-            
+
                 invisibleBlock = False
-                
+
                 while not block.isVisible() and block.isValid():
                   invisibleBlock = True
                   block = block.next()
                   if block == self.edit.document().lastBlock():
                     break
-  
-                
+
+
                 # The top left position of the block in the document
                 position = self.edit.blockBoundingGeometry(block).topLeft()+viewport_offset
                 position2 = self.edit.blockBoundingGeometry(block).bottomLeft()+viewport_offset
                 # Check if the position of the block is out side of the visible
                 # area.
-                                
+
                 line_count = block.blockNumber()+1
-                
+
                 additionalText = ""
-                
-                
+
+
                 if not block.next().isVisible():
                   additionalText = "+"
                 elif self.isBeginningOfBlock(block):
                   additionalText = "-"
-    
+
                 if position.y() > page_bottom:
                     break
                 # We want the line number for the selected line to be bold.
@@ -522,48 +536,48 @@ class LineTextWidget(QPlainTextEdit):
                     font = painter.font()
                     font.setBold(True)
                     painter.setFont(font)
- 
+
                 # Draw the line number right justified at the y position of the
                 # line. 3 is a magic padding number. drawText(x, y, text).
                 painter.drawText(self.width() - 10 - font_metrics.width(str(line_count)) - 3, round(position.y()) + font_metrics.ascent()+font_metrics.descent()-1, str(line_count)+additionalText)
- 
+
                 # Remove the bold style if it was set previously.
                 if bold:
                     font = painter.font()
                     font.setBold(False)
                     painter.setFont(font)
- 
- 
+
+
                 block = block.next()
-                
+
                 if block.isValid():
 
                   topLeft = self.edit.blockBoundingGeometry(block).topLeft()+viewport_offset
                   bottomLeft = self.edit.blockBoundingGeometry(block).bottomLeft()+viewport_offset
                   if bottomLeft.y() > self.edit.viewport().geometry().bottomLeft().y():
                     break
- 
+
             self.highest_line = line_count
             painter.end()
- 
+
             QWidget.paintEvent(self, event)
- 
- 
+
+
     def __init__(self, *args):
         QPlainTextEdit.__init__(self, *args)
-  
+
         self.number_bar = self.NumberBar(self)
         self.number_bar.setTextEdit(self)
- 
+
         self.viewport().installEventFilter(self)
-        
+
     def resizeEvent(self,e):
         self.number_bar.setFixedHeight(self.height())
         super(LineTextWidget,self).resizeEvent(e)
-        
+
     def setDefaultFont(self,font):
       self.document().setDefaultFont(font)
- 
+
     def eventFilter(self, object, event):
         # Update the line numbers for all events on the text edit and the viewport.
         # This is easier than connecting all necessary singals.
@@ -572,57 +586,57 @@ class LineTextWidget(QPlainTextEdit):
         return QPlainTextEdit.eventFilter(self,object, event)
 
     def paintEvent(self, event):
-    
+
       QPlainTextEdit.paintEvent(self, event)
-    
+
       """
       This functions paints a dash-dotted line before hidden blocks.
       """
       contents_y = self.verticalScrollBar().value()*0+1
 
       page_bottom = self.viewport().height()
-  
+
       painter = QPainter(self.viewport())
-  
+
       # Iterate over all text blocks in the document.
       block = self.firstVisibleBlock()
       viewport_offset = self.contentOffset()-QPointF(0,contents_y)
       line_count = block.blockNumber()+1
       painter.setFont(self.document().defaultFont())
-      
+
       pen = QPen()
       pen.setWidth(1)
       pen.setStyle(Qt.DotLine)
       pen.setColor(QColor(0,100,0))
       painter.setBrush(QBrush(QColor(255,0,0,122)))
-      
+
       painter.setPen(pen)
-      
+
       while block.isValid():
-  
+
           invisibleBlock = False
-          
+
           while not block.isVisible() and block.isValid():
             invisibleBlock = True
             block = block.next()
             if block == self.document().lastBlock():
               break
-  
+
           # The top left position of the block in the document
           topLeft = self.blockBoundingGeometry(block).topLeft()+viewport_offset
           bottomLeft = self.blockBoundingGeometry(block).bottomLeft()+viewport_offset
           # Check if the position of the block is out side of the visible
           # area.
-                          
+
           if not block.next().isVisible():
             rect = QRectF(bottomLeft.x(),bottomLeft.y(),self.viewport().width(),topLeft.y()-bottomLeft.y())
             # painter.drawRect(rect)
             painter.drawLine(bottomLeft.x(),bottomLeft.y(),self.viewport().width(),bottomLeft.y())
             # if bottomLeft.y() > page_bottom:
             # break
-          
-          block = block.next()  
-          
+
+          block = block.next()
+
 class SearchableEditor(QPlainTextEdit):
 
   def __init__(self,parent = None):
@@ -636,11 +650,11 @@ class SearchableEditor(QPlainTextEdit):
     self._backwardButton = QPushButton("Backward")
     self._caseSensitive = QCheckBox("Case Sensitive")
     self._useRegex = QCheckBox("Regex")
-    
+
     self._panel.setFocusPolicy(Qt.TabFocus)
     self._replaceText.setFocusPolicy(Qt.TabFocus)
     self._searchText.setFocusPolicy(Qt.TabFocus)
-    
+
     self._layout.addWidget(QLabel("Search")) # dv
     self._layout.addWidget(self._searchText)
     self._layout.addWidget(self._replaceButton)
@@ -656,7 +670,7 @@ class SearchableEditor(QPlainTextEdit):
     self.connect(self._searchText,SIGNAL("enterPressed()"),self.searchText)
     self.connect(self._forwardButton,SIGNAL("clicked()"),self.searchText)
     self.connect(self._backwardButton,SIGNAL("clicked()"),lambda: self.searchText(backward = True))
-    
+
   def resizeEvent(self,e):
     self._panel.setGeometry(0,self.viewport().height(),self.viewport().width(),40)
     self.adjustMargins()
@@ -701,23 +715,23 @@ class SearchableEditor(QPlainTextEdit):
       self._searchText.setStyleSheet("background:#F55;")
       if clip:
         self.searchText(backward,clip = False)
-    
+
 
   def replaceText(self):
     pass
-    
+
   def showSearchBar(self):
     self._panel.show()
     self._searchText.setFocus()
     self._searchText.selectAll()
     self._searchText.setStyleSheet("")
     self.adjustMargins()
-        
+
   def hideSearchBar(self):
     self._panel.hide()
     self.setFocus()
     self.adjustMargins()
-    
+
   def adjustMargins(self):
     if self._panel.isVisible():
       margins = self.viewport().contentsMargins()
@@ -727,7 +741,7 @@ class SearchableEditor(QPlainTextEdit):
       margins = self.viewport().contentsMargins()
       margins.setBottom(0)
       self.setViewportMargins(margins)
-          
+
   def keyPressEvent(self,e):
     if (e.key() == Qt.Key_F) and (e.modifiers() & Qt.ControlModifier):
       self.showSearchBar()
@@ -753,7 +767,7 @@ class SearchableEditor(QPlainTextEdit):
         e.accept()
       else:
         e.ignore()
-    
+
 class CodeEditor(SearchableEditor,LineTextWidget):
 
     class FileReloadPolicy:
@@ -763,7 +777,7 @@ class CodeEditor(SearchableEditor,LineTextWidget):
 
     def tabText(self):
       return self._tabText
-      
+
     def setTabText(self,text):
       self._tabText = text
 
@@ -771,10 +785,10 @@ class CodeEditor(SearchableEditor,LineTextWidget):
       if self.filename() is None or not (os.path.exists(self.filename()) and os.path.isfile(self.filename())):
         raise Exception("CodeEditor.reloadFile: Unable to perform reload since no filename has been defined!")
       self.openFile(self.filename())
-    
+
     def fileReloadPolicy(self):
       return self._fileReloadPolicy
-            
+
     def setFileReloadPolicy(self,policy):
       self._fileReloadPolicy = policy
 
@@ -790,7 +804,7 @@ class CodeEditor(SearchableEditor,LineTextWidget):
         self._blockHighlighting = True
         self._tabToolTip = '[untitled]'
         self.setAttribute(Qt.WA_DeleteOnClose,True)
-        
+
         self.setStyleSheet("""
         CodeEditor
         {
@@ -805,12 +819,11 @@ class CodeEditor(SearchableEditor,LineTextWidget):
         self.connect(self, SIGNAL("cursorPositionChanged()"),self.cursorPositionChanged)
         self.setLineWrap(lineWrap)
         self.setHasUnsavedModifications(False)
-        
-        
+
     def resizeEvent(self,e):
       LineTextWidget.resizeEvent(self,e)
       SearchableEditor.resizeEvent(self,e)
-      
+
     def checkForText(self):
      if self.fileOpenThread.textReady == False:
         self.timer = QTimer(self)
@@ -820,37 +833,37 @@ class CodeEditor(SearchableEditor,LineTextWidget):
         self.timer.start()
         return
      #self.setPlainText(self.fileOpenThread.text)
-          
+
     def highlightLine(self,line):
-    
+
       print "Highlighting line no %d" % line
 
       block = self.document().findBlockByLineNumber(line-1)
-  
+
       selection = QTextEdit.ExtraSelection()
-    
+
       cursor = self.textCursor()
       cursor.setPosition(block.position()+1)
-      cursor.movePosition(QTextCursor.StartOfLine,QTextCursor.KeepAnchor) 
-      cursor.movePosition(QTextCursor.EndOfLine,QTextCursor.KeepAnchor) 
+      cursor.movePosition(QTextCursor.StartOfLine,QTextCursor.KeepAnchor)
+      cursor.movePosition(QTextCursor.EndOfLine,QTextCursor.KeepAnchor)
       selection.cursor = cursor
       format = QTextCharFormat()
       format.setBackground(QBrush(QColor(255,255,0)))
       format.setProperty(QTextFormat.FullWidthSelection, True)
-  
+
       selection.format = format
-  
+
       cursor = self.textCursor()
       cursor.setPosition(block.position())
-      
+
       self.setTextCursor(cursor)
       self.setErrorSelections([selection])
       self.cursorPositionChanged()
       self.ensureCursorVisible()
-      
+
     def filename(self):
       return self._filename
-      
+
     def setFilename(self,filename):
       self._filename = os.path.normpath(str(filename))
       if re.search(".py$",self._filename) or re.search(".pyw$",self._filename):
@@ -868,43 +881,43 @@ class CodeEditor(SearchableEditor,LineTextWidget):
       else:
         if hasattr(self,"highlighter"):
           del self.highlighter
-  
+
     def hasUnsavedModifications(self):
       return self._hasUnsavedModifications
-            
+
     def setHasUnsavedModifications(self,hasUnsavedModifications = True):
       self._hasUnsavedModifications = hasUnsavedModifications
       self.emit(SIGNAL("hasUnsavedModifications(bool)"),hasUnsavedModifications)
       self.document().setModified(hasUnsavedModifications)
-        
+
     def autoIndentCurrentLine(self):
       cursor = self.textCursor()
-      
+
       start = cursor.position()
-      
+
       cursor.movePosition(QTextCursor.StartOfLine,QTextCursor.MoveAnchor)
       cursor.movePosition(QTextCursor.EndOfLine,QTextCursor.KeepAnchor)
-      
+
       text = cursor.selection().toPlainText()
-      
+
       lastLine = QTextCursor(cursor)
-      
+
       lastLine.movePosition(QTextCursor.PreviousBlock,QTextCursor.MoveAnchor)
       lastLine.movePosition(QTextCursor.StartOfLine,QTextCursor.MoveAnchor)
       lastLine.movePosition(QTextCursor.EndOfLine,QTextCursor.KeepAnchor)
 
       lastLineText = lastLine.selection().toPlainText()
-      
+
       blankLine = QRegExp("^[\t ]*$")
-      
+
       indents = QRegExp(r"^[ \t]*")
       index = indents.indexIn(lastLineText)
       cursor.insertText(lastLineText[:indents.matchedLength()]+text)
-      
+
       cursor.setPosition(start+indents.matchedLength())
-      
+
       self.setTextCursor(cursor)
-        
+
     def indentCurrentSelection(self):
       cursor = self.textCursor()
 
@@ -929,7 +942,7 @@ class CodeEditor(SearchableEditor,LineTextWidget):
       cursor.setPosition(start+len(text),QTextCursor.KeepAnchor)
 
       self.setTextCursor(cursor)
-              
+
     def unindentCurrentSelection(self):
       cursor = self.textCursor()
 
@@ -945,15 +958,15 @@ class CodeEditor(SearchableEditor,LineTextWidget):
       cursor.movePosition(QTextCursor.EndOfLine,QTextCursor.KeepAnchor)
 
       text = cursor.selection().toPlainText()
-      
+
       text.replace(QRegExp(r"(\n)[ \t]([^\n]+)"),"\\1\\2")
       text.replace(QRegExp(r"^[ \t]([^\n]+)"),"\\1")
-      
+
       cursor.insertText(text)
 
       cursor.setPosition(start)
       cursor.setPosition(start+len(text),QTextCursor.KeepAnchor)
-              
+
       self.setTextCursor(cursor)
 
     def gotoNextBlock(self):
@@ -963,7 +976,7 @@ class CodeEditor(SearchableEditor,LineTextWidget):
       if not cursor.atEnd():
         cursor.setPosition(block.cursor.selectionEnd()+1)
       self.setTextCursor(cursor)
-      
+
     def gotoPreviousBlock(self):
       block = self.getCurrentBlock()
       cursor = self.textCursor()
@@ -975,33 +988,33 @@ class CodeEditor(SearchableEditor,LineTextWidget):
       else:
         cursor.setPosition(block.cursor.selectionStart())
       self.setTextCursor(cursor)
-      
+
     def getCurrentBlock(self,delimiter="\n##"):
-    
+
       text = unicode(self.document().toPlainText())
       blockStart=0
       blockEnd=len(text)
       if delimiter != "":
-        cursorStart = self.textCursor().anchor() #dv 
+        cursorStart = self.textCursor().anchor() #dv
         cursorStop = self.textCursor().position()
-        blockStart = text.rfind(delimiter,0,max(0,cursorStart-1))+1 #dv 
+        blockStart = text.rfind(delimiter,0,max(0,cursorStart-1))+1 #dv
         blockEnd = text.find(delimiter,cursorStop)-1
-      
+
         if blockStart == -1:
           blockStart = 0
-                
+
         if blockStart == blockEnd:
           return None
-        
+
         if blockEnd != -1:
           blockEnd+=1
-        
+
       selection = QTextEdit.ExtraSelection()
-      
+
       cursor = self.textCursor()
 
       cursor.setPosition(blockStart,QTextCursor.MoveAnchor)
-      
+
       if blockEnd != -1:
         cursor.setPosition(blockEnd,QTextCursor.KeepAnchor)
       else:
@@ -1009,40 +1022,40 @@ class CodeEditor(SearchableEditor,LineTextWidget):
 
       selection.cursor = cursor
       return selection
-  
+
     def cursorPositionChanged(self):
       if self._blockHighlighting == False:
         return
-        
+
       selection = self.getCurrentBlock()
 
       if selection is None:
         return
 
       selections = []
-      
+
       selections.extend(self._errorSelections)
-      
+
       self._errorSelections = []
 
       selection = self.getCurrentBlock()
-      
+
       selection.format = QTextCharFormat()
       pen = QPen()
       #      selection.format.setProperty(QTextFormat.OutlinePen,pen)
       #      selection.format.setBackground(QBrush(QColor(240,240,240)))
       #      selection.format.setProperty(QTextFormat.FullWidthSelection, True)
-            
-      selections.append(selection)    
-      
+
+      selections.append(selection)
+
       self.setExtraSelections(selections)
 
     def setErrorSelections(self,selections):
       self._errorSelections = selections
-      
+
     def errorSelections(self):
       return self._errorSelections
-            
+
     def getCurrentCodeBlock(self,delimiter="\n##"):
         selection = self.getCurrentBlock(delimiter)
         block = self.document().findBlock(selection.cursor.selectionStart())
@@ -1064,7 +1077,7 @@ class CodeEditor(SearchableEditor,LineTextWidget):
       self.viewport().update()
 
     def hideCurrentBlock(self):
-      block = QTextBlock()  
+      block = QTextBlock()
       selection = self.getCurrentBlock()
       startBlock = self.document().findBlock(selection.cursor.selectionStart())
       endBlock = self.document().findBlock(selection.cursor.selectionEnd())
@@ -1081,10 +1094,10 @@ class CodeEditor(SearchableEditor,LineTextWidget):
         self.connect(lineWrap,SIGNAL("triggered()"),self.toggleLineWrap)
         self.connect(hideBlock,SIGNAL('triggered()'),self.hideCurrentBlock)
         MyMenu.exec_(self.cursor().pos())
-        
+
     def toggleLineWrap(self):
       self.setLineWrap(not self._lineWrap)
-    
+
     def save(self):
       if self.filename() != None:
         return self.saveAs(self.filename())
@@ -1101,7 +1114,7 @@ class CodeEditor(SearchableEditor,LineTextWidget):
         elif os.path.getmtime(self.filename()) > self._modifiedAt:
             return True
       return False
-        
+
     def saveAs(self,filename):
       if self.filename() is None:
         return False
@@ -1114,7 +1127,7 @@ class CodeEditor(SearchableEditor,LineTextWidget):
         self._modifiedAt = os.path.getmtime(self.filename())+1
         return True
       finally:
-        file.close()    
+        file.close()
 
     def openFile(self,filename):
       if os.path.isfile(filename):
@@ -1128,13 +1141,13 @@ class CodeEditor(SearchableEditor,LineTextWidget):
         self.setHasUnsavedModifications(False)
       else:
         raise IOError("Invalid path: %s" % filename)
-           
+
     def activateBlockHighlighting(self,activate = False):
       self._blockHighlighting = activate
-    
+
     def updateUndoStatus(self,status):
       self.setHasUnsavedModifications(status)
-        
+
     def keyPressEvent(self,e):
       SearchableEditor.keyPressEvent(self,e)
       if e.isAccepted():
@@ -1156,7 +1169,7 @@ class CodeEditor(SearchableEditor,LineTextWidget):
       LineTextWidget.keyPressEvent(self,e)
       if e.key() == Qt.Key_Return or e.key() == Qt.Key_Enter:
         self.autoIndentCurrentLine()
-              
+
     def setLineWrap(self,state):
       self._lineWrap = state
       if state:

@@ -361,11 +361,12 @@ class IDE(QMainWindow,ObserverWidget):
   def executeCode(self,code,filename = "none",editor = None,identifier = "main"):
     if self._codeRunner.executeCode(code,identifier,filename) != -1:        # this function returns when the code has started running in the coderunner
       self._runningCodeSessions.append((code,identifier,filename,editor))
+      editor.hasBeenRun = True # leave a trace in the editor that its code has been run at least once
 
   def runCode(self,delimiter=""):
     """
     This method runs a piece of textual python code.
-    It is called by runBlock, runSelection, or runFile.
+    It is called by runBlock, runSelection, or runFile, and calls executeCode.
     """
     editor=self.editorWindow.currentEditor()        # retrieve the current editor (i.e. script)
     code=editor.getCurrentCodeBlock(delimiter)      # retrieve the relevant piece of code
@@ -438,7 +439,7 @@ class IDE(QMainWindow,ObserverWidget):
 
   def eventFilter(self,object,event):
     """
-    Event filter of user typing entrer, ctrl+enter or shif+enter for running a piece of code.
+    Event filter of user typing enter, ctrl+enter or shif+enter for running a piece of code.
     """
     if event.type() == QEvent.KeyPress:
       if event.key() == Qt.Key_Enter and type(object) == CodeEditor:
