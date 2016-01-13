@@ -25,29 +25,40 @@ class ThreadPanel(QWidget,ObserverWidget):
         self._editorWindow.updateTabText(editor)
 
   def updateThreadList(self):
-    threadDict = self._codeRunner.status()
+    """
+    Update the list of threads by
+        - adding threads from the coderunner status that are not already listed
+        - removing non running threads created from editors that have been closed.
+            these threads have integer identifiers that are no longer identifier of an editor
+        - updating the status of other threads
+    and delete from the coderunner non running threads created from editors that have been closed.
+    """
+    threadDict = self._codeRunner.status()                          # list of the current threads in the coderunner
     if threadDict is None or type(threadDict) != dict:
       return
-    for identifier in threadDict:
-      if identifier not in self._threadItems:
+    editorIDs = map(id, self._editorWindow.editors)                 # list of identifiers of open editors
+    #print threadDict.keys() # for debugging
+    for idr in threadDict:                                          # add to list of threads
+      tobeadded = idr not in self._threadItems and (not isinstance(idr,int) or idr in editorIDs )
+      if tobeadded:
         item = QTreeWidgetItem()
-        self._updateItemInfo(item,identifier,threadDict[identifier])
+        self._updateItemInfo(item,idr,threadDict[idr])
         self._threadView.insertTopLevelItem(self._threadView.topLevelItemCount(),item)
-        self._threadItems[identifier] = item
+        self._threadItems[idr] = item
+    tbr=[]
+    for idr in self._threadItems:                                   # update in or remove from list of threads
+      orphean = idr in threadDict and isinstance(idr,int) and not idr in editorIDs and not threadDict[idr]['isRunning']
+      toberemoved = orphean or idr not in threadDict
+      if toberemoved:
+        tbr.append(idr)
+        if orphean : self._codeRunner.deleteThread(idr)
       else:
-        item = self._threadItems[identifier]
-        self._updateItemInfo(item,identifier,threadDict[identifier])
-    idsToDelete = []                                                # make a list of items to be deleted from the thread list
-    editorIDs = map(id, self._editorWindow.editors)
-    for identifier in self._threadItems:
-      tobedeleted = not identifier in threadDict
-      tobedeleted = tobedeleted or (not identifier in editorIDs and not threadDict[identifier]['isRunning'])
-      if tobedeleted:
-        item = self._threadItems[identifier]
-        self._threadView.takeTopLevelItem(self._threadView.indexOfTopLevelItem(item))
-        idsToDelete.append(identifier)
-    for idToDelete in idsToDelete:
-      del self._threadItems[idToDelete]
+        item = self._threadItems[idr]
+        self._updateItemInfo(item,idr,threadDict[idr])
+    for idr in tbr:
+      item = self._threadItems[idr]
+      self._threadView.takeTopLevelItem(self._threadView.indexOfTopLevelItem(item))
+      del self._threadItems[idr]
 
   def killThread(self):
     selectedItems = self._threadView.selectedItems()

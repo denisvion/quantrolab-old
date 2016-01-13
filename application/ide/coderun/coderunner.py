@@ -90,7 +90,7 @@ class CodeThread (KillableThread):
     """
     KillableThread.__init__(self)
     self._gv = gv
-    self._gv['from_CodeThread']=4 # test to be deleted
+    #self._gv['from_CodeThread']=4 # test to be deleted
     self._lv = lv
     self._filename = filename
     self._failed = False
@@ -401,7 +401,6 @@ class CodeRunner(Reloadable,Subject):
     if identifier in self._threads:
       ct = self._threads[identifier]
       del self._threads[identifier]
-      ct.exit()
       del ct
       return True
     return False

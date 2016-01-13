@@ -361,7 +361,8 @@ class IDE(QMainWindow,ObserverWidget):
   def executeCode(self,code,filename = "none",editor = None,identifier = "main"):
     if self._codeRunner.executeCode(code,identifier,filename) != -1:        # this function returns when the code has started running in the coderunner
       self._runningCodeSessions.append((code,identifier,filename,editor))
-      editor.hasBeenRun = True # leave a trace in the editor that its code has been run at least once
+      if editor is not None:
+        editor.hasBeenRun = True # leave a trace in the editor that its code has been run at least once
 
   def runCode(self,delimiter=""):
     """
