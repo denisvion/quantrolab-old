@@ -397,7 +397,7 @@ class PlotWidget(QWidget, ObserverWidget, Debugger):
                 ynames.append(plot.yname)
             if not plot.cube.name() in names:
                 names.append(plot.cube.name())
-            if plot.cube.filename() != None and not plot.cube.filename() in filenames:
+            if plot.cube.filename() is not None and not plot.cube.filename() in filenames:
                 legend.append(plot.yname + ":" + plot.cube.filename()[:-4])
                 filenames.append(plot.cube.filename())
                 if not self._threeD:
@@ -535,7 +535,7 @@ class PlotWidget(QWidget, ObserverWidget, Debugger):
         self.removePlot(plot, update=update)
 
     def lineSelectionChanged(self, selected, previous):
-        if selected != None:
+        if selected is not None:
             index = self.plotList.indexOfTopLevelItem(selected)
             self._currentIndex = index
 

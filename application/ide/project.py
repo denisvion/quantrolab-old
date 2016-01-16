@@ -199,7 +199,7 @@ class ProjectModel(QAbstractItemModel):
         # print data,action,row,column,parent,self.getNode(parent),data.formats
         if row == -1:
             row = 0
-        if data != None:
+        if data is not None:
             parentNode = self.getNode(parent)
             if parentNode is None:
                 return False

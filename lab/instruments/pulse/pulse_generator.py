@@ -659,7 +659,7 @@ class Instr(Instrument):
                 pulse += value[0]
 
         markers = None                            # section marker added by DV + KJ 09/2013
-        if markersName != None:
+        if markersName is not None:
             markers = numpy.zeros(self.numberOfPoints(), dtype=int8)
             if markersName != 'All':
                 for k in self.markersDict.keys():
@@ -711,7 +711,7 @@ class Instr(Instrument):
                 pulse += value[0]
 
         markers = None
-        if markersName != None:
+        if markersName is not None:
             markers = numpy.zeros(self.numberOfPoints(), dtype=int8)
             if markersName != 'All':
                 for k in self.markersDict.keys():

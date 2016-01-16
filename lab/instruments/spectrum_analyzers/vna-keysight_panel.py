@@ -225,7 +225,7 @@ class Panel(FrontPanel):
                 plots.append(map(lambda x: x / 1e9, self._traces[x]['freq']))
                 phaseplots.append(
                     map(lambda x: x / 1e9, self._traces[x]['freq']))
-                if self._reference != None and self._reference != self._traces[x]:
+                if self._reference is not None and self._reference != self._traces[x]:
                     plots.append(self._traces[x][
                                  'mag'] - self._reference['mag'])
                     phaseplots.append(

@@ -51,6 +51,7 @@ except:
 
 # splash screen
 splashFile = QString(_applicationDir + '\quantrolab.png')
+minSplashDuration = 1.5
 
 
 class Log(LineTextWidget):
@@ -139,9 +140,9 @@ class IDE(QMainWindow, ObserverWidget):
         print "defining IDE's GUI..."
         QMainWindow.__init__(self, parent)
         ObserverWidget.__init__(self)
-       # beginning of GUI definition  +
-       # MultiProcessCodeRunner,CodeEditorWindow, Log, and errorConsole
-       # instantiation
+        # beginning of GUI definition  +
+        # MultiProcessCodeRunner,CodeEditorWindow, Log, and errorConsole
+        # instantiation
         self._windowTitle = "QuantroLab python IDE\t"
         self.setWindowTitle(self._windowTitle)
         self.setDockOptions(QMainWindow.AllowTabbedDocks)
@@ -341,7 +342,7 @@ class IDE(QMainWindow, ObserverWidget):
 
         fileMenu.addSeparator()
 
-        #self.editMenu = menuBar.addMenu("Edit")
+        # self.editMenu = menuBar.addMenu("Edit")
         # self.viewMenu = menuBar.addMenu("View")
 
         self.helpersMenu = menuBar.addMenu("&Helpers")
@@ -349,10 +350,10 @@ class IDE(QMainWindow, ObserverWidget):
 
         self.codeMenu = menuBar.addMenu("&Code")
 
-        #self.settingsMenu = menuBar.addMenu("Settings")
-        #self.runStartupGroup = self.settingsMenu.addAction("Run startup group at startup")
+        # self.settingsMenu = menuBar.addMenu("Settings")
+        # self.runStartupGroup = self.settingsMenu.addAction("Run startup group at startup")
         # self.runStartupGroup.setCheckable(True)
-        #self.connect(self.runStartupGroup, SIGNAL('triggered()'), self.toggleRunStartupGroup)
+        # self.connect(self.runStartupGroup, SIGNAL('triggered()'), self.toggleRunStartupGroup)
         # if settings.contains('ide.runStartupGroup'):
         # self.runStartupGroup.setChecked(settings.value('ide.runStartupGroup').toBool())
 
@@ -445,7 +446,7 @@ class IDE(QMainWindow, ObserverWidget):
             return False
 
     def saveProject(self):
-        if self._project.filename() != None:
+        if self._project.filename() is not None:
             self._project.saveToFile(self._project.filename())
             self.updateWindowTitle()
             return True
@@ -458,7 +459,7 @@ class IDE(QMainWindow, ObserverWidget):
         return self._workingDirectory
 
     def setWorkingDirectory(self, filename):
-        if filename != None:
+        if filename is not None:
             directory = os.path.dirname(str(filename))
             self._workingDirectory = directory
         else:
@@ -484,7 +485,7 @@ class IDE(QMainWindow, ObserverWidget):
             filename = QFileDialog.getOpenFileName(
                 caption='Open project as', filter="Project (*.prj)", directory=self.workingDirectory())
         if os.path.isfile(filename):
-            if self.newProject() == False:
+            if not self.newProject():
                 return False
             project = Project()
             project.loadFromFile(filename)
@@ -512,11 +513,11 @@ class IDE(QMainWindow, ObserverWidget):
                 e.ignore()
                 return
             elif choice == yes:
-                if self.saveProject() == False:
+                if not self.saveProject():
                     e.ignore()
                     return
         settings = QSettings()
-        if self._project.filename() != None:
+        if self._project.filename() is not None:
             settings.setValue("ide.lastproject", self._project.filename())
         else:
             settings.remove("ide.lastproject")
@@ -722,8 +723,8 @@ class IDE(QMainWindow, ObserverWidget):
         self.updateWindowTitle()
 
     def updateWindowTitle(self):
-        if self._project.filename() != None:
-            #self.setWindowTitle(self._windowTitle+ " - " + self._project.filename())
+        if self._project.filename() is not None:
+            # self.setWindowTitle(self._windowTitle+ " - " + self._project.filename())
             self.setWindowTitle(
                 self._windowTitle + " - Project '" + self._project.filename() + "'")
         else:
@@ -835,7 +836,7 @@ class IDE(QMainWindow, ObserverWidget):
             self._icons["killThread"], "Kill thread")
 
         # obsolete
-        #self.connect(executeBlock,SIGNAL('triggered()'),lambda: self.executeCode(self.editorWindow.currentEditor().getCurrentCodeBlock(),filename = self.editorWindow.currentEditor().filename() or "[unnamed buffer]",editor = self.editorWindow.currentEditor(),identifier = id(self.editorWindow.currentEditor())))
+        # self.connect(executeBlock,SIGNAL('triggered()'),lambda: self.executeCode(self.editorWindow.currentEditor().getCurrentCodeBlock(),filename = self.editorWindow.currentEditor().filename() or "[unnamed buffer]",editor = self.editorWindow.currentEditor(),identifier = id(self.editorWindow.currentEditor())))
 
         self.connect(newFile, SIGNAL('triggered()'),
                      self.editorWindow.newEditor)
@@ -923,9 +924,9 @@ def startIDE(qApp=None):
     myIDE.showMaximized()
 
     t1 = time.time() - t0
-    if t1 < 3:
+    if t1 < minSplashDuration:
         # Ensure that the splash screen is displayed during at least 3 seconds
-        time.sleep(3 - t1)
+        time.sleep(minSplashDuration - t1)
     # and terminates the display when the IDE is fully displayed.
     splash.finish(myIDE)
     qApp.exec_()                        # Start the application main event loop

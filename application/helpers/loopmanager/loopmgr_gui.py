@@ -259,7 +259,7 @@ class LoopManager(HelperGUI):
             for box in [self.autoReverseBox, self.autoLoopBox, self.autoDeleteBox]:
                 box.blockSignals(False)
         # update loop item
-        if loop != None:
+        if loop is not None:
             # look in the loop dictionary for the passed loop to retrieve the
             # proper QTreeWidgetItem
             item = self._items[self.ref(loop)]

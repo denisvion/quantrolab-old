@@ -5,8 +5,8 @@ More precisely the IDE executes it in the coderunner child process rather than i
 Like this, helpers are run in the same code process and share the same global variables as the scripts
 (and are referenced in this global variable namespace).
 WARNING: This script is NOT stand-alone:
-	it will work only if module, file, class, associate attribute and associate type variables
-	(mn,fn,cn,aa,at) have been defined before running it.
+    it will work only if module, file, class, associate attribute and associate type variables
+    (mn,fn,cn,aa,at) have been defined before running it.
 """
 import imp
 import inspect

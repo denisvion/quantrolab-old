@@ -92,7 +92,7 @@ class CubeProperties(QWidget, ObserverWidget, Debugger):
     def setCube(self, cube):
         self.debugPrint(
             "in DatacubeProperties.setCube(cube) with cube = ", cube)
-        if self._cube != None:
+        if self._cube is not None:
             self.debugPrint('detaching ', self._cube, ' from ', self)
             self._cube.detach(self)
         self._cube = cube
@@ -144,7 +144,7 @@ class CubeProperties(QWidget, ObserverWidget, Debugger):
         filename = name = tags = description = ''
         self._parameters.clearContents()
         self._attributes.clearContents()
-        if self._cube != None:
+        if self._cube is not None:
             filename = str(self._cube.filename())
             name = str(self._cube.name())
             tags = str(self._cube.tags())

@@ -240,7 +240,7 @@ class DataManager(HelperGUI):
         return self._workingDirectory
 
     def setWorkingDirectory(self, filename):
-        if filename != None:
+        if filename is not None:
             directory = os.path.dirname(str(filename))
             self._workingDirectory = directory
         else:
@@ -291,7 +291,7 @@ class DataManager(HelperGUI):
 
     def removeCube(self, deleteCube=True):
         self.debugPrint("in DataManagerGUI.removeCube()")
-        if self._cube != None:
+        if self._cube is not None:
             self._helper.removeDatacube(self._cube, deleteCube=deleteCube)
 
     def removeAll(self, deleteCube=True):
@@ -307,7 +307,7 @@ class DataManager(HelperGUI):
 
     def addChild(self, new=False):
         self.debugPrint("in DataManagerGUI.addChild()")
-        if self._cube != None:
+        if self._cube is not None:
             cube = None
             if new:
                 name0 = 'child_'
@@ -382,7 +382,7 @@ class DataManager(HelperGUI):
             return
         if self._cube.filename() is None or self._cube.filename() == '' or saveAs:
             directory = self.workingDirectory()
-            if self._cube.name() != None:
+            if self._cube.name() is not None:
                 directory += '/' + self._cube.name() + '.par'
             if self.pref('header'):
                 filter1 = "Datacubes (*.txt)"

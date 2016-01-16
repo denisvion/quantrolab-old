@@ -217,7 +217,7 @@ class InstrumentManager(HelperGUI):
         """
         self.debugPrint(
             "in InstrumentManagerPanel.setWorkingDirectory(filename) with filename=", filename)
-        if filename != None:
+        if filename is not None:
             directory = os.path.dirname(str(filename))
             self._workingDirectory = directory
         else:

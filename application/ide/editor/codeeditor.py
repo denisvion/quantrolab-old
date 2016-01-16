@@ -49,7 +49,7 @@ class ErrorConsole(QTreeWidget, ObserverWidget):
             self._codeRunner.clearExceptions()
 
     def itemDoubleClicked(self, item, colum):
-        if item.parent() != None:
+        if item.parent() is not None:
             filename = unicode(item.text(0))
             line = int(item.text(1))
             editor = self._codeEditorWindow.openFile(filename)
@@ -139,7 +139,7 @@ class CodeEditorWindow(QWidget):
         return self._workingDirectory
 
     def setWorkingDirectory(self, filename):
-        if filename != None:
+        if filename is not None:
             directory = os.path.dirname(str(filename))
             self._workingDirectory = directory
         else:
@@ -187,7 +187,7 @@ class CodeEditorWindow(QWidget):
             changedText = "*"
         else:
             changedText = ""
-        if editor.filename() != None:
+        if editor.filename() is not None:
             (dir, file) = os.path.split(editor.filename())
             self.tab.setTabText(index, file + extraText + changedText)
             self.tab.setTabToolTip(index, str(editor.filename()))
@@ -209,7 +209,7 @@ class CodeEditorWindow(QWidget):
             return None
 
         check = self.checkForOpenFile(filename)
-        if check != None:
+        if check is not None:
             return check
 
         if os.path.isfile(str(filename)):
@@ -236,7 +236,7 @@ class CodeEditorWindow(QWidget):
                      editor=editor: self.editorHasUnsavedModifications(editor, changed))
         self.count = self.count + 1
         self.tab.setCurrentWidget(editor)
-        if self._newEditorCallback != None:
+        if self._newEditorCallback is not None:
             self._newEditorCallback(editor)
         return editor
 
@@ -244,7 +244,7 @@ class CodeEditorWindow(QWidget):
         openFiles = list()
         for i in range(0, self.tab.count()):
             widget = self.tab.widget(i)
-            if widget.filename() != None:
+            if widget.filename() is not None:
                 openFiles.append(QString(widget.filename()))
         settings = QSettings()
         settings.setValue('Editor/OpenFiles', openFiles)
@@ -253,7 +253,7 @@ class CodeEditorWindow(QWidget):
         settings = QSettings()
         if settings.contains("Editor/OpenFiles"):
             openFiles = settings.value("Editor/OpenFiles").toList()
-            if openFiles != None:
+            if openFiles is not None:
                 for file in openFiles:
                     self.openFile(file.toString())
         else:
@@ -272,7 +272,7 @@ class CodeEditorWindow(QWidget):
             self.tab.setCurrentWidget(editor)
             messageBox = QMessageBox()
             messageBox.setWindowTitle("Warning!")
-            if editor.filename() != None:
+            if editor.filename() is not None:
                 messageBox.setText(
                     "Save changes made to file \"%s\"?" % editor.filename())
             else:
@@ -284,7 +284,7 @@ class CodeEditorWindow(QWidget):
             messageBox.exec_()
             choice = messageBox.clickedButton()
             if choice == yes:
-                if self.saveCurrentFile() == False:
+                if not self.saveCurrentFile():
                     return False
             elif choice == cancel:
                 return False
@@ -303,7 +303,7 @@ class CodeEditorWindow(QWidget):
 
     def closeEvent(self, e):
         for i in range(0, self.tab.count()):
-            if self.closeTab(i, askOnly=True, runCheck=False) == False:
+            if not self.closeTab(i, askOnly=True, runCheck=False):
                 e.ignore()
                 return
         self.saveTabState()
@@ -892,7 +892,7 @@ class CodeEditor(SearchableEditor, LineTextWidget):
         SearchableEditor.resizeEvent(self, e)
 
     def checkForText(self):
-        if self.fileOpenThread.textReady == False:
+        if not self.fileOpenThread.textReady:
             self.timer = QTimer(self)
             self.timer.setSingleShot(True)
             self.timer.setInterval(1000)
@@ -1095,7 +1095,7 @@ class CodeEditor(SearchableEditor, LineTextWidget):
         return selection
 
     def cursorPositionChanged(self):
-        if self._blockHighlighting == False:
+        if not self._blockHighlighting:
             return
 
         selection = self.getCurrentBlock()
@@ -1171,7 +1171,7 @@ class CodeEditor(SearchableEditor, LineTextWidget):
         self.setLineWrap(not self._lineWrap)
 
     def save(self):
-        if self.filename() != None:
+        if self.filename() is not None:
             return self.saveAs(self.filename())
         else:
             return False
@@ -1180,8 +1180,8 @@ class CodeEditor(SearchableEditor, LineTextWidget):
         self._modifiedAt = os.path.getmtime(self.filename()) + 1
 
     def fileHasChangedOnDisk(self):
-        if self.filename() != None:
-            if os.path.exists(self.filename()) == False:
+        if self.filename() is not None:
+            if not os.path.exists(self.filename()):
                 return True
             elif os.path.getmtime(self.filename()) > self._modifiedAt:
                 return True

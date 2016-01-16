@@ -93,7 +93,7 @@ class Panel(FrontPanel):
         return self._workingDirectory
 
     def setWorkingDirectory(self, filename):
-        if filename != None:
+        if filename is not None:
             directory = os.path.dirname(str(filename))
             self._workingDirectory = directory
         else:

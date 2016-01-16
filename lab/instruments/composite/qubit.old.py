@@ -227,7 +227,7 @@ class Instr(Instrument):
 
         self._params["drive.frequency"] = float(f)
         self._mwg.setFrequency(f)
-        if self._optimizer != None:
+        if self._optimizer is not None:
             self._awg.setOffset(
                 self._awgChannels[0], self._optimizer.iOffset(f))
             self._awg.setOffset(
@@ -237,8 +237,8 @@ class Instr(Instrument):
         f = self._mwg.frequency()
         aI = None
         aQ = None
-        if I != None:
-            if self._optimizer != None:
+        if I is not None:
+            if self._optimizer is not None:
                 frequencies = self._optimizer.iqPowerCalibrationData().column("frequency")
                 coeffs = self._optimizer.iqPowerCalibrationData().column("coeffI")
                 iInt = scipy.interpolate.interp1d(frequencies, coeffs)
@@ -246,8 +246,8 @@ class Instr(Instrument):
                 aI = math.sqrt(math.pow(10.0, I / 10.0) / cI)
             else:
                 aI = I
-        if Q != None:
-            if self._optimizer != None:
+        if Q is not None:
+            if self._optimizer is not None:
                 frequencies = self._iqPowerCalibration.column("frequency")
                 coeffs = self._iqPowerCalibration.column("coeffQ")
                 qInt = scipy.interpolate.interp1d(frequencies, coeffs)
@@ -260,7 +260,7 @@ class Instr(Instrument):
     def setDriveAmplitude(self, **kwargs):
         channels = {"I": 0, "Q": 1}
         for arg in ["I", "Q"]:
-            if arg in kwargs and kwargs[arg] != None:
+            if arg in kwargs and kwargs[arg] is not None:
                 self._params["drive.amplitude.%s" % arg] = kwargs[arg]
                 offset = self._awg.offset(self._awgChannels[channels[arg]])
                 self._awg.setAmplitude(
@@ -286,10 +286,10 @@ class Instr(Instrument):
         """
         if height is None:
             height = 1.0
-        if (length is None and phase is None) or (length != None and phase != None):
+        if (length is None and phase is None) or (length is not None and phase is not None):
             raise QubitException(
                 "Error in generateZPulse: You must specify either the length or the phase of the pulse!")
-        if phase != None:
+        if phase is not None:
             if not "pulses.xy.t_pi" in self._params:
                 raise QubitException(
                     "Error: Length of pi pulse is not calibrated!")
@@ -319,10 +319,10 @@ class Instr(Instrument):
         seq = PulseSequence()
         if sidebandDelay is None:
             sidebandDelay = delay
-        if (length is None and phase is None) or (length != None and phase != None):
+        if (length is None and phase is None) or (length is not None and phase is not None):
             raise QubitException(
                 "Error: You must specify either the length or the phase of the pulse!")
-        if phase != None:
+        if phase is not None:
             if phase < 0:
                 phase = -phase
                 angle += math.pi
@@ -341,7 +341,7 @@ class Instr(Instrument):
                                 dtype=numpy.complex128)
             pulse[delay:delay + length] = height
         pulse *= numpy.exp(1.0j * (angle + self._params["driveRotation"]))
-        if "pulses.xy.useDrag" in self.parameters() and self.parameters()["pulses.xy.useDrag"] and ("frequencies.f12" in self.parameters() and self.parameters()['frequencies.f12'] != None) and ("frequencies.f01" in self.parameters() and self.parameters()['frequencies.f01'] != None):
+        if "pulses.xy.useDrag" in self.parameters() and self.parameters()["pulses.xy.useDrag"] and ("frequencies.f12" in self.parameters() and self.parameters()['frequencies.f12'] is not None) and ("frequencies.f01" in self.parameters() and self.parameters()['frequencies.f01'] is not None):
             print "Using DRAG to correct pulse shape..."
             #deriv = numpy.zeros(len(pulse),dtype = numpy.complex128)
             #deriv[1:-1] = (pulse[2:]-pulse[:-2])/2.0
@@ -363,7 +363,7 @@ class Instr(Instrument):
         if f_sb != 0:
             if f_c is None:
                 f_c = self.driveFrequency()
-            if self._optimizer != None:
+            if self._optimizer is not None:
                 sidebandPulse = self._optimizer.generateCalibratedSidebandWaveform(
                     f_c=f_c, f_sb=f_sb, length=len(pulse) - delay, delay=sidebandDelay)
             else:

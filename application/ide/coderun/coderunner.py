@@ -142,7 +142,7 @@ class CodeThread (KillableThread):
         """
         Returns the exception type and value thrown by the code thread, or None if the thread exited normally.
         """
-        if self.failed() == False:
+        if not self.failed():
             return None
         return (self._exception_type, self._exception_value)
 
@@ -150,7 +150,7 @@ class CodeThread (KillableThread):
         """
         Returns the traceback thrown by the code thread, or None if the thread exited normally.
         """
-        if self.failed() == False:
+        if not self.failed():
             return None
         return self._traceback
 
@@ -180,7 +180,7 @@ class CodeThread (KillableThread):
                 finally:
                     self._restart = False
                     self._isBusy = False
-                    if not self._callback is None:
+                    if self._callback is not None:
                         self._callback(self)
             else:
                 time.sleep(0.5)
@@ -297,7 +297,7 @@ class CodeRunner(Reloadable, Subject):
             self._exceptions[thread._id] = thread.exceptionInfo()
             self._tracebacks[thread._id] = thread.tracebackInfo()
         lock.release()
-        #identifier=next(i for i in self._threads if self._threads[i].name == thread.name)
+        # identifier=next(i for i in self._threads if self._threads[i].name == thread.name)
 
     def hasFailed(self, identifier):
         """
@@ -317,7 +317,7 @@ class CodeRunner(Reloadable, Subject):
                 if thread.isRunning():
                     return True
             return False
-        if not identifier in self._threads:
+        if identifier not in self._threads:
             return False
         if self._threads[identifier] is None:
             return False
@@ -329,7 +329,7 @@ class CodeRunner(Reloadable, Subject):
         """
         if not self.isExecutingCode(identifier):
             return
-        if not identifier in self._threads:
+        if identifier not in self._threads:
             return
         self._threads[identifier].terminate()
 
@@ -357,7 +357,7 @@ class CodeRunner(Reloadable, Subject):
         if self.isExecutingCode(identifier):
             raise Exception("Code thread %s is busy!" % identifier)
         if lv is None:                          # creates the local variable dictionary for the thread if not passed
-            if not identifier in self._lv:
+            if identifier not in self._lv:
                 self._lv[identifier] = dict()
             lv = self._lv[identifier]
         if gv is None:                          # sets the global variable dictionary for the thread to the one known by the CodeRunner

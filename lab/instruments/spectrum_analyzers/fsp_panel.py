@@ -224,7 +224,7 @@ class Panel(FrontPanel):
         for x in range(0, len(self._traces)):
             if self.visibility(x):
                 mag = self._traces[x]['mag']
-                if self._reference != None and self._reference != self._traces[x]:
+                if self._reference is not None and self._reference != self._traces[x]:
                     mag -= self._reference['mag']
                 if 'freq' in self._traces[x].names():
                     freq = map(lambda x: x / 1e9, self._traces[x]['freq'])

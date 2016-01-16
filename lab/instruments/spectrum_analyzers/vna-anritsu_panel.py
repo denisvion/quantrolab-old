@@ -328,7 +328,7 @@ class Panel(FrontPanel):
                 else:
                     mag = trace['mag']
                     phase = trace['phase']
-                if self._reference != None and self._reference != trace:
+                if self._reference is not None and self._reference != trace:
                     mag = mag - self._reference['mag']
                     phase = phase - self._reference['phase']
                 plots.append(mag)

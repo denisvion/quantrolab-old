@@ -24,9 +24,9 @@ class ThreadPanel(QWidget, ObserverWidget):
         item.setText(1, "running" if thread["isRunning"] else "failed" if thread[
                      "failed"] else "finished")
         item.setText(2, str(identifier))
-        if self._editorWindow != None:
+        if self._editorWindow is not None:
             editor = self._editorWindow.getEditorForFile(thread["filename"])
-            if editor != None:
+            if editor is not None:
                 editor.setTabText(" [-]" if thread["isRunning"]
                                   else " [!]" if thread["failed"] else " [.]")
                 self._editorWindow.updateTabText(editor)
@@ -59,7 +59,7 @@ class ThreadPanel(QWidget, ObserverWidget):
         tbr = []
         for idr in self._threadItems:                                   # update in or remove from list of threads
             orphean = idr in threadDict and isinstance(
-                idr, int) and not idr in editorIDs and not threadDict[idr]['isRunning']
+                idr, int) and idr not in editorIDs and not threadDict[idr]['isRunning']
             toberemoved = orphean or idr not in threadDict
             if toberemoved:
                 tbr.append(idr)

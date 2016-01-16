@@ -36,11 +36,11 @@ class DatacubeViewModel(QAbstractItemModel, ObserverWidget):
         self.setDatacube(cube)
 
     def setDatacube(self, cube):
-        if hasattr(self, '_cube') and self._cube != None:
+        if hasattr(self, '_cube') and self._cube is not None:
             self._cube.detach(self)
         self._cube = cube
         self.emit(SIGNAL("modelReset()"))
-        if cube != None:
+        if cube is not None:
             self._cube.attach(self)
 
     def updated(self, cube, property=None, value=None):
@@ -102,9 +102,9 @@ class DatacubeViewModel(QAbstractItemModel, ObserverWidget):
     def headerData(self, section, orientation, role=Qt.DisplayRole):
         if role == Qt.DisplayRole and orientation == Qt.Vertical:
             return QString(str(section))
-        if role == Qt.DisplayRole and orientation == Qt.Horizontal and self._cube != None:
+        if role == Qt.DisplayRole and orientation == Qt.Horizontal and self._cube is not None:
             name = self._cube.columnName(section)
-            if name != None:
+            if name is not None:
                 return QString(name)
         return QAbstractItemModel.headerData(self, section, orientation, role)
 
