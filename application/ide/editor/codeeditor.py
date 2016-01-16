@@ -2,13 +2,13 @@
 This module defines several classes for code edition:
 - CodeEditor: a simple Qt code editor with syntax highlighting, search and replace, open, save and close,
     line wrapping and text block management;
-- ErrorConsole: a GUI text box receiving messages from a server (a code runner);
+- ErrorConsole: a GUI text box receiving messages from a code runner;
 - CodeEditorWindow: A multi editor GUI interface  based on a Qtab widget, with a default directory,
     open, save and close functions, as well as tracking of modifications;
-- several other utility classes used in the main 3 classes introduced above.
+- several other utility classes used in the 3 classes introduced above.
 
 The CodeEditor(s) as well as the CodeEditorWindow are for edition only and do not know the concept of running
-the code that they contain. Nevertheless the CodeEditorWindow may have a parent and interogate its boolean method
+the code that they contain. Nevertheless the CodeEditorWindow may have a parent and can interrogate its boolean method
 closingOK(editor) - if it exists -, to get authorization for closing the editor or not.
 """
 
