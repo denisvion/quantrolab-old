@@ -9,4 +9,5 @@ It includes at least:
 	2) an 'intruments' sub-directory that contains
 		- all the files that define your instruments.
 		- some generic frontpanels provided with Quantrolab.
-	
+
+	test
