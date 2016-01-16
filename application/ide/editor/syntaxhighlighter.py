@@ -5,6 +5,7 @@ import sys
 from PyQt4.QtCore import QRegExp
 from PyQt4.QtGui import QColor, QTextCharFormat, QFont, QSyntaxHighlighter
 
+
 def format(color, style=''):
     """Return a QTextCharFormat with the given attributes.
     """
@@ -25,12 +26,12 @@ def format(color, style=''):
 
 # Syntax styles that can be shared by all languages
 STYLES = {
-    'keyword': format('red','bold'),
-    'operator': format('darkred','bold'),
-    'brace': format('darkGray','bold'),
+    'keyword': format('red', 'bold'),
+    'operator': format('darkred', 'bold'),
+    'brace': format('darkGray', 'bold'),
     'defclass': format('blue', 'bold'),
-    'string': format('#3344AA','bold'),
-    'string2': format('#3344AA','bold'),
+    'string': format('#3344AA', 'bold'),
+    'string2': format('#3344AA', 'bold'),
     'comment': format('grey', 'italic'),
 }
 
@@ -65,6 +66,7 @@ class Python (QSyntaxHighlighter):
     braces = [
         '\{', '\}', '\(', '\)', '\[', '\]',
     ]
+
     def __init__(self, document):
         QSyntaxHighlighter.__init__(self, document)
 
@@ -76,11 +78,11 @@ class Python (QSyntaxHighlighter):
 
         rules = []
         rules += [(r'\b%s\b' % w, 0, STYLES['keyword'])
-            for w in Python.keywords]
+                  for w in Python.keywords]
         rules += [(r'%s' % o, 0, STYLES['operator'])
-            for o in Python.operators]
+                  for o in Python.operators]
         rules += [(r'%s' % b, 0, STYLES['brace'])
-            for b in Python.braces]
+                  for b in Python.braces]
         rules += [
             # Double-quoted string, possibly containing escape sequences
             (r'"[^"\\]*(\\.[^"\\]*)*"', 0, STYLES['string']),
@@ -96,8 +98,7 @@ class Python (QSyntaxHighlighter):
 
         # Build a QRegExp for each pattern
         self.rules = [(QRegExp(pat), index, fmt)
-            for (pat, index, fmt) in rules]
-
+                      for (pat, index, fmt) in rules]
 
     def highlightBlock(self, text):
         """Apply syntax highlighting to the given block of text.
@@ -119,7 +120,6 @@ class Python (QSyntaxHighlighter):
         in_multiline = self.match_multiline(text, *self.tri_single)
         if not in_multiline:
             in_multiline = self.match_multiline(text, *self.tri_double)
-
 
     def match_multiline(self, text, delimiter, in_state, style):
         """Do highlighting of multi-line strings. ``delimiter`` should be a

@@ -26,78 +26,85 @@ Example:  The DataMgr and DataManager form a couple of associated Helper-HelperG
 import sys
 from PyQt4.QtCore import Qt
 from PyQt4.QtGui import *
-from application.lib.base_classes1 import Debugger,Reloadable
+from application.lib.base_classes1 import Debugger, Reloadable
 from application.lib.com_classes import Subject, Observer
 from application.ide.widgets.observerwidget import ObserverWidget
 
-class Helper(Debugger,Reloadable,Subject,Observer,object):
-  """
-  Class for a Quantrolab's non-gui helper.
-  """      
-  def __init__(self,parent=None,globals={}):
-    Reloadable.__init__(self)
-    Subject.__init__(self)
-    Observer.__init__(self)
-    Debugger.__init__(self)
-    self._parent=parent
-    self._globals=globals
-    self._gui=None
 
-  def __del__(self):
-    self.notify('deleted')
+class Helper(Debugger, Reloadable, Subject, Observer, object):
+    """
+    Class for a Quantrolab's non-gui helper.
+    """
+
+    def __init__(self, parent=None, globals={}):
+        Reloadable.__init__(self)
+        Subject.__init__(self)
+        Observer.__init__(self)
+        Debugger.__init__(self)
+        self._parent = parent
+        self._globals = globals
+        self._gui = None
+
+    def __del__(self):
+        self.notify('deleted')
 
 
-class HelperGUI(Debugger,Reloadable,Subject,ObserverWidget,QMainWindow,object):
-  """
-  Class for a helper with a graphical interface.
-  """
-  def __init__(self,parent=None,globals={},helper=None):
-    Reloadable.__init__(self)
-    Subject.__init__(self)
-    ObserverWidget.__init__(self)
-    Debugger.__init__(self)
-    QMainWindow.__init__(self,parent)
-    self._parent=parent
-    self._globals=globals
-    self._helper=helper
-    if self._helper:
-      self.debugPrint('attaching',self._helper,'to',self)
-      self._helper.attach(self)               # and attach the gui to the helper
-    menubar = self.menuBar()
-    helperMenu = menubar.addMenu('Helper')
-    reloadHelperGUI = helperMenu.addAction(QAction('Reload this helper...',self,triggered=self.reloadHelperGUI))
-    if self._helper:
-      reloadHelper = helperMenu.addAction(QAction('Reload '+self._helper.__class__.__name__+'...',self,triggered=self.reloadHelper))
-    close = helperMenu.addAction(QAction('Close GUI helper',self,triggered=self.close))
+class HelperGUI(Debugger, Reloadable, Subject, ObserverWidget, QMainWindow, object):
+    """
+    Class for a helper with a graphical interface.
+    """
 
-  def reloadHelperGUI(self):
-    reply = QMessageBox.question(self,
-      'Confirm reload ...',
-      'This GUI helper will be reloaded. Are you sure?',
-      QMessageBox.Ok| QMessageBox.Cancel)
-    if reply == QMessageBox.Ok:
-      self.reloadClass()
+    def __init__(self, parent=None, globals={}, helper=None):
+        Reloadable.__init__(self)
+        Subject.__init__(self)
+        ObserverWidget.__init__(self)
+        Debugger.__init__(self)
+        QMainWindow.__init__(self, parent)
+        self._parent = parent
+        self._globals = globals
+        self._helper = helper
+        if self._helper:
+            self.debugPrint('attaching', self._helper, 'to', self)
+            # and attach the gui to the helper
+            self._helper.attach(self)
+        menubar = self.menuBar()
+        helperMenu = menubar.addMenu('Helper')
+        reloadHelperGUI = helperMenu.addAction(
+            QAction('Reload this helper...', self, triggered=self.reloadHelperGUI))
+        if self._helper:
+            reloadHelper = helperMenu.addAction(QAction(
+                'Reload ' + self._helper.__class__.__name__ + '...', self, triggered=self.reloadHelper))
+        close = helperMenu.addAction(
+            QAction('Close GUI helper', self, triggered=self.close))
 
-  def reloadHelper(self):
-    reply = QMessageBox.question(self,
-      'Confirm reload ...',
-      'The associate helper '+self._helper.__class__.__name__+' will be reloaded. Are you sure?',
-      QMessageBox.Ok| QMessageBox.Cancel)
-    if reply == QMessageBox.Ok:
-      self._helper.reloadClass()
+    def reloadHelperGUI(self):
+        reply = QMessageBox.question(self,
+                                     'Confirm reload ...',
+                                     'This GUI helper will be reloaded. Are you sure?',
+                                     QMessageBox.Ok | QMessageBox.Cancel)
+        if reply == QMessageBox.Ok:
+            self.reloadClass()
 
-  def window2Front(self):
-    self.showNormal()
-    self.activateWindow()
+    def reloadHelper(self):
+        reply = QMessageBox.question(self,
+                                     'Confirm reload ...',
+                                     'The associate helper ' + self._helper.__class__.__name__ +
+                                     ' will be reloaded. Are you sure?',
+                                     QMessageBox.Ok | QMessageBox.Cancel)
+        if reply == QMessageBox.Ok:
+            self._helper.reloadClass()
 
-  def closeEvent(self,event):
-      reply = QMessageBox.question(self,
-            "Confirm Helper Panel Exit...",
-            "Helper Panel will be closed and deleted. Are you sure?",
-            QMessageBox.Ok| QMessageBox.Cancel)
-      if reply == QMessageBox.Ok:
-          event.accept()
-          self.notify('deleted')
-      else:
-          event.ignore()
-    
+    def window2Front(self):
+        self.showNormal()
+        self.activateWindow()
+
+    def closeEvent(self, event):
+        reply = QMessageBox.question(self,
+                                     "Confirm Helper Panel Exit...",
+                                     "Helper Panel will be closed and deleted. Are you sure?",
+                                     QMessageBox.Ok | QMessageBox.Cancel)
+        if reply == QMessageBox.Ok:
+            event.accept()
+            self.notify('deleted')
+        else:
+            event.ignore()

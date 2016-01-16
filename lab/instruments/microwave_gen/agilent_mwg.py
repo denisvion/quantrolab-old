@@ -4,129 +4,130 @@ import math
 
 from application.lib.instrum_classes import *
 
+
 class Instr(VisaInstrument):
-  
-  def saveState(self,name):
-    """
-    Save the instrument state. Just returns a dictionary with all relevant parameters.
-    """
-    return self.parameters()
-    
-  def restoreState(self,state):
-    """
-    Restores a previously saved state.
-    """
-    print state
-    self.setFrequency(state["frequency"])
-    self.setPower(state["power"])
-    if state["output"] == True:
-      self.turnOn()
-    elif state["output"] == False:
-      self.turnOff()
-  
-  def frequency(self):
-    """
-    Returns the current microwave frequency.
-    """    
-    freq = float(self.ask("FREQ:FIXED?"))/1e9
-    self.notify("frequency",freq)
-    return freq
-  
-  def power(self):
-    """
-    Returns the current microwave power.
-    """
-    power = float(self.ask("POW?"))
-    self.notify("power",power)
-    return power
-  
-  def setFrequency(self,freq):
-    """
-    Sets the microwave frequency.
-    "freq" is given in GHz.
-    """
-    self.write("FREQ:FIXED %f" % (freq*1e9))
-    return self.frequency()
-    
-  def setPower(self,power):
-    """
-    Sets the output power in dBm
-    """
-    self.write("POW %f" % power)
-    return self.power()
 
-  def phase(self):
-    """
-    Returns the current microwave phase.
-    """
-    phase = float(self.ask("PHAS?"))/math.pi*180
-    self.notify("phase",phase)
-    return phase
-  
-  def setPhase(self,phase):
-    """
-    Sets the output phase in degre
-    """
-    self.write("PHAS %f" % (math.pi*phase/180))
-    return self.phase()
-    
-  def setPhaseRef(self):
-    """
-    Turn on the microwave.
-    """
-    self.write("PHAS:REF")
-    return self.output()
-      
-  def parameters(self):
-    """
-    Returns all relevant parameters of the instrument.
-    """
-    params = dict()
-    params['frequency'] = self.frequency()
-    params['power'] = self.power()
-    params['output'] = self.output()
-    return params
-  
-  def turnOn(self):
-    """
-    Turn on the microwave.
-    """
-    self.write("OUTP ON")
-    return self.output()
-    
-  def turnOff(self):
-    """
-    Turn off the microwave.
-    """
-    self.write("OUTP OFF")
-    return self.output()
-    
-  def setOutput(self,output):
-    """
-    set output to On(True) or Off(False)
-    """
-    if output:
-      return self.turnOn()
-    else:
-      return self.turnOff()
+    def saveState(self, name):
+        """
+        Save the instrument state. Just returns a dictionary with all relevant parameters.
+        """
+        return self.parameters()
 
-  def output(self):
-    """
-    Return the current state of the microwave output.
-    """
-    state = int(self.ask("OUTP?"))
-    if state != 0:
-      state = True
-    else:
-      state = False
-    self.notify("output",state)
-    return state
+    def restoreState(self, state):
+        """
+        Restores a previously saved state.
+        """
+        print state
+        self.setFrequency(state["frequency"])
+        self.setPower(state["power"])
+        if state["output"] == True:
+            self.turnOn()
+        elif state["output"] == False:
+            self.turnOff()
 
-    
-  def initialize(self, visaAddress = "TCPIP0::192.168.0.13::inst0",alias = None):
-    try:
-      if DEBUG:
-        print "Initializing an Agilent MWG with address %s" % visaAddress
-      self._visaAddress = visaAddress
-    except:
-      self.statusStr("An error has occured. Cannot initialize Anritsu MWG.")        
+    def frequency(self):
+        """
+        Returns the current microwave frequency.
+        """
+        freq = float(self.ask("FREQ:FIXED?")) / 1e9
+        self.notify("frequency", freq)
+        return freq
+
+    def power(self):
+        """
+        Returns the current microwave power.
+        """
+        power = float(self.ask("POW?"))
+        self.notify("power", power)
+        return power
+
+    def setFrequency(self, freq):
+        """
+        Sets the microwave frequency.
+        "freq" is given in GHz.
+        """
+        self.write("FREQ:FIXED %f" % (freq * 1e9))
+        return self.frequency()
+
+    def setPower(self, power):
+        """
+        Sets the output power in dBm
+        """
+        self.write("POW %f" % power)
+        return self.power()
+
+    def phase(self):
+        """
+        Returns the current microwave phase.
+        """
+        phase = float(self.ask("PHAS?")) / math.pi * 180
+        self.notify("phase", phase)
+        return phase
+
+    def setPhase(self, phase):
+        """
+        Sets the output phase in degre
+        """
+        self.write("PHAS %f" % (math.pi * phase / 180))
+        return self.phase()
+
+    def setPhaseRef(self):
+        """
+        Turn on the microwave.
+        """
+        self.write("PHAS:REF")
+        return self.output()
+
+    def parameters(self):
+        """
+        Returns all relevant parameters of the instrument.
+        """
+        params = dict()
+        params['frequency'] = self.frequency()
+        params['power'] = self.power()
+        params['output'] = self.output()
+        return params
+
+    def turnOn(self):
+        """
+        Turn on the microwave.
+        """
+        self.write("OUTP ON")
+        return self.output()
+
+    def turnOff(self):
+        """
+        Turn off the microwave.
+        """
+        self.write("OUTP OFF")
+        return self.output()
+
+    def setOutput(self, output):
+        """
+        set output to On(True) or Off(False)
+        """
+        if output:
+            return self.turnOn()
+        else:
+            return self.turnOff()
+
+    def output(self):
+        """
+        Return the current state of the microwave output.
+        """
+        state = int(self.ask("OUTP?"))
+        if state != 0:
+            state = True
+        else:
+            state = False
+        self.notify("output", state)
+        return state
+
+    def initialize(self, visaAddress="TCPIP0::192.168.0.13::inst0", alias=None):
+        try:
+            if DEBUG:
+                print "Initializing an Agilent MWG with address %s" % visaAddress
+            self._visaAddress = visaAddress
+        except:
+            self.statusStr(
+                "An error has occured. Cannot initialize Anritsu MWG.")

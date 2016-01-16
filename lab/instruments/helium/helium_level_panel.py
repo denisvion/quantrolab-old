@@ -7,47 +7,47 @@ sys.path.append('../')
 from application.lib.instrum_classes import *
 from application.lib.instrum_panel import FrontPanel
 from application.ide.mpl.canvas import MyMplCanvas as Canvas
-from application.ide.widgets.numericedit import * 
+from application.ide.widgets.numericedit import *
 import pylab
 import matplotlib.ticker as ticker
 import datetime
 
 import instruments
 
+
 class Panel(FrontPanel):
 
-    def formatDate(self,x,pos = None):
-      date = datetime.datetime.fromtimestamp(x)
-      return date.strftime('%H:%M:%S')
+    def formatDate(self, x, pos=None):
+        date = datetime.datetime.fromtimestamp(x)
+        return date.strftime('%H:%M:%S')
 
-    def updatedGui(self,subject,property,value):
-      if property == "heliumLevel": 
-        self.updateHeliumLevel(value)
+    def updatedGui(self, subject, property, value):
+        if property == "heliumLevel":
+            self.updateHeliumLevel(value)
 
-    def updateHeliumLevel(self,l):
-      if l is None:
-        return
-      newTime = time.time()
-      self.heliumLevels.append(l)
-      self.times.append(newTime)
-      while len(self.heliumLevels) > 200:
-        self.heliumLevels.pop(0)
-        self.times.pop(0)
-      self.canvas.axes.clear()
-      self.canvas.axes.plot(self.times,self.heliumLevels)
-      self.canvas.axes.set_xticks((self.times[0],self.times[-1]))
-      xAxis = self.canvas.axes.xaxis
-      xAxis.set_major_formatter(ticker.FuncFormatter(self.formatDate))
-      self.canvas.draw()
-      if l < 30:
-        warning = "<br><font size=\"10\"color=\"red\"><blink><b>Refill Helium!</b></blink></font>"
-      else:
-        warning = ""
-      self.heliumLevel.setText("%g mm%s" % (l,warning))
-    
-          
-    def __init__(self,instrument,parent=None):
-        super(Panel,self).__init__(instrument,parent)
+    def updateHeliumLevel(self, l):
+        if l is None:
+            return
+        newTime = time.time()
+        self.heliumLevels.append(l)
+        self.times.append(newTime)
+        while len(self.heliumLevels) > 200:
+            self.heliumLevels.pop(0)
+            self.times.pop(0)
+        self.canvas.axes.clear()
+        self.canvas.axes.plot(self.times, self.heliumLevels)
+        self.canvas.axes.set_xticks((self.times[0], self.times[-1]))
+        xAxis = self.canvas.axes.xaxis
+        xAxis.set_major_formatter(ticker.FuncFormatter(self.formatDate))
+        self.canvas.draw()
+        if l < 30:
+            warning = "<br><font size=\"10\"color=\"red\"><blink><b>Refill Helium!</b></blink></font>"
+        else:
+            warning = ""
+        self.heliumLevel.setText("%g mm%s" % (l, warning))
+
+    def __init__(self, instrument, parent=None):
+        super(Panel, self).__init__(instrument, parent)
 
         self.title = QLabel(instrument.name())
         self.title.setAlignment(Qt.AlignCenter)
@@ -59,23 +59,23 @@ class Panel(FrontPanel):
         self.heliumLevel = QLabel("Please wait, fetching helium level...")
         self.heliumLevel.setAlignment(Qt.AlignCenter)
         self.heliumLevel.setStyleSheet("QLabel {font:14px;}")
-        self.canvas = Canvas(dpi = 100)
+        self.canvas = Canvas(dpi=100)
         self.canvas.setFixedHeight(150)
 
         self.grid = QGridLayout(self)
         self.interval = 10000
-        
-        self.grid.addWidget(self.title,0,0)
-        self.grid.addWidget(self.heliumLevel,1,0)
+
+        self.grid.addWidget(self.title, 0, 0)
+        self.grid.addWidget(self.heliumLevel, 1, 0)
         self.grid.addWidget(self.canvas)
-        
+
         self.timer = QTimer(self)
         self.timer.setInterval(self.interval)
         self.timer.start()
-        
-        self.connect(self.timer,SIGNAL("timeout()"),lambda :self.instrument.dispatch("heliumLevel"))
-        
+
+        self.connect(self.timer, SIGNAL("timeout()"),
+                     lambda: self.instrument.dispatch("heliumLevel"))
+
         self.qw.setLayout(self.grid)
 
         instrument.attach(self)
-          
