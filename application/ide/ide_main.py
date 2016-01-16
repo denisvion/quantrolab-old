@@ -25,6 +25,7 @@ from application.ide.project import Project,ProjectModel,ProjectView  # project 
 from application.ide.coderun.coderunner import MultiProcessCodeRunner # Code runner of the IDE
 #from application.ide.coderun.coderunner_gui import execInGui           # Utility function to run a Qt helper in the coderunner process
 from application.ide.widgets.observerwidget import ObserverWidget     # QtWidget being notified in its Qt event queue
+from application.ide.helpermanager import HelperManager               # helper management
 
 # important directories
 from application.config.parameters import params                      # module containing directory parameters
@@ -119,6 +120,9 @@ class IDE(QMainWindow,ObserverWidget):
   """
 
   def __init__(self,parent=None):
+      """
+      IDE's GUI definition and call of initialize
+      """
       print "defining IDE's GUI..."
       QMainWindow.__init__(self,parent)
       ObserverWidget.__init__(self)
@@ -141,13 +145,15 @@ class IDE(QMainWindow,ObserverWidget):
 
       self._gv = dict() # this is the global variable dictionary of the Quantrolab application, to be shared with its helpers and scripts.
       self._gv['from_main']=1   # test to be deleted
-      print 'starting code runner...'
+      print 'starting code runner...',
       self._codeRunner = MultiProcessCodeRunner(gv = self._gv,lv = self._gv) # The Process will have only a copy of self._gv
-      print 'starting editor...'
+      print 'OK'
+      print 'starting editor...',
       self.editorWindow = CodeEditorWindow(parent=self,newEditorCallback = self.newEditorCallback)   # tab editor window
-      print 'starting error console...'
+      print 'OK'
+      print 'starting error console...',
       self.errorConsole = ErrorConsole(codeEditorWindow = self.editorWindow,codeRunner = self._codeRunner)
-
+      print 'OK'
       self.logTabs = QTabWidget()
       stdoutLog = Log(self._codeRunner.stdoutQueue(),ide=self,tabID=0)
       self.logTabs.addTab(stdoutLog,"&Log")
@@ -202,17 +208,16 @@ class IDE(QMainWindow,ObserverWidget):
       self.initializeMenus()
       self.initializeToolbars()
 
+      # end of GUI definition
       self._workingDirectory = None
 
-      # end of GUI definition
-      print 'End of GUI definition.'
       print 'Future messages will be routed to GUI'
 
-      sys.stdout=self._codeRunner._stdoutProxy
-      sys.stderr=self._codeRunner._stderrProxy
+      sys.stdout = self._codeRunner._stdoutProxy
+      sys.stderr = self._codeRunner._stderrProxy
       try:
-        sys.sdtout=self._codeRunner.stdoutQueue()
-        sys.sdterr=self._codeRunner.stderrQueue()
+        sys.sdtout = self._codeRunner.stdoutQueue()
+        sys.sdterr = self._codeRunner.stderrQueue()
       except:
         raise
       finally:
@@ -221,37 +226,145 @@ class IDE(QMainWindow,ObserverWidget):
       self.showMaximized()
       self.initialize()
 
+  def initializeIcons(self):
+    self._icons = dict()
+
+    iconFilenames = {
+      "newFile"             :'filenew.png',
+      "openFile"            :'fileopen.png',
+      "saveFile"            :'filesave.png',
+      "saveFileAs"          :'filesaveas.png',
+      "closeFile"           :'fileclose.png',
+      "exit"                :'exit.png',
+      "workingPath"         :'gohome.png',
+      "killThread"          :'stop.png',
+      "executeAllCode"      :'runfile.png',
+      "executeCodeBlock"    :'runblock.png',
+      "executeCodeSelection":'runselection.png',
+      "logo"                :'penguin.png',
+    }
+
+    iconPath = params['basePath'] + params['directories.icons']
+
+    for key in iconFilenames:
+      self._icons[key] = QIcon(iconPath + '/' + iconFilenames[key])
+
+  def initializeMenus(self):
+
+    settings=QSettings()
+    menuBar = self.menuBar()
+
+    fileMenu = menuBar.addMenu("&File")
+    projectNew = fileMenu.addAction(self._icons["newFile"],"New project")
+    projectNew.setShortcut(QKeySequence("Ctrl+Shift+N"))
+    projectOpen = fileMenu.addAction(self._icons["openFile"],"Open project...")
+    projectOpen.setShortcut(QKeySequence("Ctrl+Shift+O"))
+    projectSave = fileMenu.addAction(self._icons["saveFile"],"Save &project")
+    projectSave.setShortcut(QKeySequence("Ctrl+Shift+S"))
+    projectSaveAs = fileMenu.addAction(self._icons["saveFileAs"],"Save project as...")
+    projectSaveAs.setShortcut(QKeySequence("CTRL+Shift+F12"))
+
+    fileMenu.addSeparator()
+
+    fileNew = fileMenu.addAction(self._icons["newFile"],"&New file")
+    fileNew.setShortcut(QKeySequence("Ctrl+n"))
+    fileOpen = fileMenu.addAction(self._icons["openFile"],"&Open file...")
+    fileOpen.setShortcut(QKeySequence("Ctrl+o"))
+    fileClose = fileMenu.addAction(self._icons["closeFile"],"&Close file")
+    fileClose.setShortcut(QKeySequence("Ctrl+F4"))
+    fileSave = fileMenu.addAction(self._icons["saveFile"],"&Save file")
+    fileSave.setShortcut(QKeySequence("Ctrl+s"))
+    fileSaveAs = fileMenu.addAction(self._icons["saveFileAs"],"Save file &as...")
+    fileSaveAs.setShortcut(QKeySequence("Ctrl+F12"))
+
+    fileMenu.addSeparator()
+    filePrefs = fileMenu.addAction("&Preferences...")
+
+    fileMenu.addSeparator()
+
+    fileExit = fileMenu.addAction(self._icons["exit"],"Quitter")
+    fileExit.setShortcut(QKeySequence("ALT+F4"))
+
+    self.connect(fileNew, SIGNAL('triggered()'), self.editorWindow.newEditor)
+    self.connect(fileOpen, SIGNAL('triggered()'), self.editorWindow.openFile)
+    self.connect(fileClose, SIGNAL('triggered()'), self.editorWindow.closeCurrentFile)
+    self.connect(fileSave, SIGNAL('triggered()'), self.editorWindow.saveCurrentFile)
+    self.connect(fileSaveAs, SIGNAL('triggered()'), self.editorWindow.saveCurrentFileAs)
+    self.connect(fileExit, SIGNAL('triggered()'), self.close)
+
+    self.connect(projectNew, SIGNAL('triggered()'), self.newProject)
+    self.connect(projectOpen, SIGNAL('triggered()'), self.openProject)
+    self.connect(projectSave, SIGNAL('triggered()'), self.saveProject)
+    self.connect(projectSaveAs, SIGNAL('triggered()'), self.saveProjectAs)
+
+    fileMenu.addSeparator()
+
+    #self.editMenu = menuBar.addMenu("Edit")
+    # self.viewMenu = menuBar.addMenu("View")
+
+    self.helpersMenu = menuBar.addMenu("&Helpers")
+    self.buildHelperMenu()
+
+    self.codeMenu = menuBar.addMenu("&Code")
+
+    #self.settingsMenu = menuBar.addMenu("Settings")
+    #self.runStartupGroup = self.settingsMenu.addAction("Run startup group at startup")
+    #self.runStartupGroup.setCheckable(True)
+    #self.connect(self.runStartupGroup, SIGNAL('triggered()'), self.toggleRunStartupGroup)
+    #if settings.contains('ide.runStartupGroup'):
+    #self.runStartupGroup.setChecked(settings.value('ide.runStartupGroup').toBool())
+
+    self.windowMenu = menuBar.addMenu("&Window")
+    self.connect(self.windowMenu,SIGNAL('aboutToShow()'),self.buildWindowMenu)
+    self.connect(self.windowMenu,SIGNAL('triggered(QAction*)'),self.selectTab)      # Only menu is connected and will pass the action to selectTab.
+    self.helpMenu = menuBar.addMenu("Help")
+    about = self.helpMenu.addAction('&About')
+    self.connect(about, SIGNAL('triggered()'), self.showAbout)
+    debug = self.helpMenu.addAction('&Debug')
+    self.connect(debug, SIGNAL('triggered()'), self.debug)
+
+    restartCodeRunner = self.codeMenu.addAction("&Restart Code Process")
+    self.connect(restartCodeRunner,SIGNAL("triggered()"),self.restartCodeProcess)
+    self.codeMenu.addSeparator()
+    runFiles=self.codeMenu.addAction(self._icons["executeAllCode"],"Run &File(s)")
+    runFiles.setShortcut(QKeySequence("CTRL+Enter"))
+    runBlock=self.codeMenu.addAction(self._icons["executeCodeBlock"],"Run &Block")
+    runSelection=self.codeMenu.addAction(self._icons["executeCodeSelection"],"Run &Selection")
+    self.connect(runFiles, SIGNAL('triggered()'), self.runFiles)
+    self.connect(runBlock, SIGNAL('triggered()'), self.runBlock)
+    self.connect(runSelection, SIGNAL('triggered()'), self.runSelection)
+
   def initialize (self):
     """
-    application initialization after having defined the GUI.
+    IDE initialization (after having defined the GUI).
     """
-    #self.prepareForHelpers()
     self.queuedText = ""
 
-    print "Loading settings..."
+    print "Loading settings...",
     settings = QSettings()
-
     if settings.contains('ide.workingpath'):
       self.changeWorkingPath(settings.value('ide.workingpath').toString())
-
+    print 'done.'
     #self.logTabs.show()
 
+    print "Loading project...",
     self.setProject(Project())
     lastProjectOpened=False
     if settings.contains("ide.lastproject"):
       try:
         self.openProject(str(settings.value("ide.lastproject").toString()))
         lastProjectOpened=True
+        print 'done.'
       except:
-        print("Cannot open last project: %s " % str(settings.value("ide.lastproject").toString()))
+        print('Cannot open last project: %s.' % str(settings.value("ide.lastproject").toString()))
 
-    self._helpers={}    # private dictionary of the available gui or non-gui helpers. Structure is
-    # {classname: {'helper':classname,'helperPath':filename,'helperType':helperType,
-    #              'associate':associateName,'associatePath':associatePath,'associateType':associateType},...}
+    self._helpersRootDir =_helpersDefaultDir
     if settings.contains('ide.helpersRootDir'):
-      self._helpersRootDir=settings.value('ide.helpersRootDir').toString()
-    else:
-      self._helpersRootDir=_helpersDefaultDir
+      self._helpersRootDir = settings.value('ide.helpersRootDir').toString()
+
+    self._helperManager = HelperManager(self,self._helpersRootDir,self.executeCode)
+    self.buildHelperMenu() # rebuild menu because 'load helper' is added to the menu only if a _helperManager exists.
+    self._helpers={}
 
   def fileBrowser(self):
     """
@@ -372,8 +485,8 @@ class IDE(QMainWindow,ObserverWidget):
   def executeCode(self,code,filename = "none",editor = None,identifier = "main"):
     if self._codeRunner.executeCode(code,identifier,filename) != -1:        # this function returns when the code has started running in the coderunner
       self._runningCodeSessions.append((code,identifier,filename,editor))   # why does main memorize codesessions rather than relying on coderunner?
-      if editor is not None:
-        editor.hasBeenRun = True # leave a trace in the editor that its code has been run at least once. Why not relying on the coderunner?
+      #if editor is not None:
+        #editor.hasBeenRun = True # leave a trace in the editor that its code has been run at least once. Why not relying on the coderunner?
 
   def runCode(self,delimiter=""):
     """
@@ -546,210 +659,8 @@ class IDE(QMainWindow,ObserverWidget):
     """
     self.runStartupGroup.setChecked(self.runStartupGroup.isChecked())
 
-  def initializeIcons(self):
-    self._icons = dict()
-
-    iconFilenames = {
-      "newFile"             :'filenew.png',
-      "openFile"            :'fileopen.png',
-      "saveFile"            :'filesave.png',
-      "saveFileAs"          :'filesaveas.png',
-      "closeFile"           :'fileclose.png',
-      "exit"                :'exit.png',
-      "workingPath"         :'gohome.png',
-      "killThread"          :'stop.png',
-      "executeAllCode"      :'runfile.png',
-      "executeCodeBlock"    :'runblock.png',
-      "executeCodeSelection":'runselection.png',
-      "logo"                :'penguin.png',
-    }
-
-    iconPath = params['basePath'] + params['directories.icons']
-
-    for key in iconFilenames:
-      self._icons[key] = QIcon(iconPath + '/' + iconFilenames[key])
-
-  def initializeMenus(self):
-
-    settings=QSettings()
-    menuBar = self.menuBar()
-
-    fileMenu = menuBar.addMenu("&File")
-    projectNew = fileMenu.addAction(self._icons["newFile"],"New project")
-    projectNew.setShortcut(QKeySequence("Ctrl+Shift+N"))
-    projectOpen = fileMenu.addAction(self._icons["openFile"],"Open project...")
-    projectOpen.setShortcut(QKeySequence("Ctrl+Shift+O"))
-    projectSave = fileMenu.addAction(self._icons["saveFile"],"Save &project")
-    projectSave.setShortcut(QKeySequence("Ctrl+Shift+S"))
-    projectSaveAs = fileMenu.addAction(self._icons["saveFileAs"],"Save project as...")
-    projectSaveAs.setShortcut(QKeySequence("CTRL+Shift+F12"))
-
-    fileMenu.addSeparator()
-
-    fileNew = fileMenu.addAction(self._icons["newFile"],"&New file")
-    fileNew.setShortcut(QKeySequence("Ctrl+n"))
-    fileOpen = fileMenu.addAction(self._icons["openFile"],"&Open file...")
-    fileOpen.setShortcut(QKeySequence("Ctrl+o"))
-    fileClose = fileMenu.addAction(self._icons["closeFile"],"&Close file")
-    fileClose.setShortcut(QKeySequence("Ctrl+F4"))
-    fileSave = fileMenu.addAction(self._icons["saveFile"],"&Save file")
-    fileSave.setShortcut(QKeySequence("Ctrl+s"))
-    fileSaveAs = fileMenu.addAction(self._icons["saveFileAs"],"Save file &as...")
-    fileSaveAs.setShortcut(QKeySequence("Ctrl+F12"))
-
-    fileMenu.addSeparator()
-    filePrefs = fileMenu.addAction("&Preferences...")
-
-    fileMenu.addSeparator()
-
-    fileExit = fileMenu.addAction(self._icons["exit"],"Quitter")
-    fileExit.setShortcut(QKeySequence("ALT+F4"))
-
-    self.connect(fileNew, SIGNAL('triggered()'), self.editorWindow.newEditor)
-    self.connect(fileOpen, SIGNAL('triggered()'), self.editorWindow.openFile)
-    self.connect(fileClose, SIGNAL('triggered()'), self.editorWindow.closeCurrentFile)
-    self.connect(fileSave, SIGNAL('triggered()'), self.editorWindow.saveCurrentFile)
-    self.connect(fileSaveAs, SIGNAL('triggered()'), self.editorWindow.saveCurrentFileAs)
-    self.connect(fileExit, SIGNAL('triggered()'), self.close)
-
-    self.connect(projectNew, SIGNAL('triggered()'), self.newProject)
-    self.connect(projectOpen, SIGNAL('triggered()'), self.openProject)
-    self.connect(projectSave, SIGNAL('triggered()'), self.saveProject)
-    self.connect(projectSaveAs, SIGNAL('triggered()'), self.saveProjectAs)
-
-    fileMenu.addSeparator()
-
-    #self.editMenu = menuBar.addMenu("Edit")
-    # self.viewMenu = menuBar.addMenu("View")
-
-    self.helpersMenu = menuBar.addMenu("&Helpers")
-    self.buildHelperMenu()
-
-    self.codeMenu = menuBar.addMenu("&Code")
-
-    #self.settingsMenu = menuBar.addMenu("Settings")
-    #self.runStartupGroup = self.settingsMenu.addAction("Run startup group at startup")
-    #self.runStartupGroup.setCheckable(True)
-    #self.connect(self.runStartupGroup, SIGNAL('triggered()'), self.toggleRunStartupGroup)
-    #if settings.contains('ide.runStartupGroup'):
-    #self.runStartupGroup.setChecked(settings.value('ide.runStartupGroup').toBool())
-
-    self.windowMenu = menuBar.addMenu("&Window")
-    self.connect(self.windowMenu,SIGNAL('aboutToShow()'),self.buildWindowMenu)
-    self.connect(self.windowMenu,SIGNAL('triggered(QAction*)'),self.selectTab)      # Only menu is connected and will pass the action to selectTab.
-    self.helpMenu = menuBar.addMenu("Help")
-    about = self.helpMenu.addAction('&About')
-    self.connect(about, SIGNAL('triggered()'), self.showAbout)
-    debug = self.helpMenu.addAction('&Debug')
-    self.connect(debug, SIGNAL('triggered()'), self.debug)
-
-    restartCodeRunner = self.codeMenu.addAction("&Restart Code Process")
-    self.connect(restartCodeRunner,SIGNAL("triggered()"),self.restartCodeProcess)
-    self.codeMenu.addSeparator()
-    runFiles=self.codeMenu.addAction(self._icons["executeAllCode"],"Run &File(s)")
-    runFiles.setShortcut(QKeySequence("CTRL+Enter"))
-    runBlock=self.codeMenu.addAction(self._icons["executeCodeBlock"],"Run &Block")
-    runSelection=self.codeMenu.addAction(self._icons["executeCodeSelection"],"Run &Selection")
-    self.connect(runFiles, SIGNAL('triggered()'), self.runFiles)
-    self.connect(runBlock, SIGNAL('triggered()'), self.runBlock)
-    self.connect(runSelection, SIGNAL('triggered()'), self.runSelection)
-
   def debug(self):
     print self.processVar('lastHelper')
-
-  def loadHelpers (self,filename=None):
-    """
-    The loadHelpers method tries to load all HelperGUI(s) and Helper(s) defined in a single python module specified by
-    - either filename if it is not None;
-    - or from an open file dialog box if filename is None.
-        Note that the open file dialog box will propose only files with extension '.pyh' (python helper);
-        => always have an empty .pyh file with the same name as the .py module containing the helper(s).
-
-    A specified filename can have either extension .py or a .pyh.
-
-    If a valid .py file is found:
-      1) all classes inheriting from HelperGUI or Helper are found in the file;
-      Each HelperGui and then each Helper found is treated:
-      2) If no helper with the same class name is already loaded, it is loaded;
-      3) If an error occurs at loading, the helper is not added.
-      4) If loading is sucessful, the helper is added to the helper dictionary _helpers if not already present;
-      5) a global variable is created for the helper.
-      6) if the helper has an associate, it is indicated in the helper dictionnary.
-      7) If the associate is non-gui it is removed from the dictionary keys and appears only as an associate of the gui helper
-      8) a global variable with the name of the associate is created;
-      9) the _helpers dictionary is saved in the QSettings, for automatic reloading of helpers at IDE starting.
-      10) Finally, the helperMenu is rebuild from the _helpers dictionary.
-    """
-
-    # Build the .py filename of the helper module and read the module
-    if filename is None:
-      filename = str(QFileDialog.getOpenFileName(caption='Open Quantrolab helper',filter = "helper (*.pyh)",directory = self._helpersRootDir))
-      if not filename: return
-    if os.path.isfile(filename):
-      dirpath,basename=os.path.split(filename)
-      name,ext=os.path.splitext(basename)
-      pyFilename=dirpath + '/' + name + '.py'    # builds or rebuilds fullname with .py extension (don't use join to avoid \x special characters )
-    if not os.path.isfile(pyFilename):
-      print "Error: could not find a file "+pyFilename+'.'
-      return
-    try:
-      dic=pyclbr.readmodule(name,[dirpath])       # dic will contain all classes AND subclasses in the module
-    except:
-      print 'Error:', sys.exc_info()[0]
-      raise
-    newHelpers=[[],[]]
-    # Find all helpers and helperGUIs in the helper module and put their class names in temporary list newHelpers
-    for targetBaseclass,helperList in zip(['HelperGUI','Helper'],newHelpers):
-      if targetBaseclass in dic:
-        for key in dic:
-          classes=dic[key].super
-          for cl in classes:
-            if (isinstance(cl,str) and cl==targetBaseclass) or (isinstance(cl, pyclbr.Class) and cl.name==targetBaseclass):
-              helperList.append(key)
-    if newHelpers==[[],[]]:
-      print "Error: could not find a Helper or HelperGUI class in file "+pyFilename+'.'
-    # Treat each HelperGUI and then each Helper
-    for helpers,associateAttr,associateTypeName in zip(newHelpers,['_helper','_gui'],['Helper','HelperGUI']):
-      for key in helpers:
-        # if a helper with the same name is not already present in the helper dictionary
-        load = (key not in self._helpers)and key not in [dic['associate'] for k,dic in self._helpers.items()]
-        if load:
-          self.loadHelperInCodeProcess(name,pyFilename,key,associateAttr,associateTypeName,'lastHelper')
-        else:
-          print 'Helper '+key+' already loaded. Close before reloading if necessary.'
-    # Rebuild Helpers menu
-    self.buildHelperMenu()
-
-  def loadHelperInCodeProcess(self,modulename,filename,classname,associateAttr,associateTypeName,reportName):
-    """
-    This method loads a Helper in the CodeProcess memory shared by the scripts.
-    """
-    code='mn="%s"\nfn="%s"\ncn="%s"\naa="%s"\nat="%s"\nrn="%s"\n' % (modulename,filename,classname,associateAttr,associateTypeName,reportName)
-    startFilename = os.path.join(os.path.abspath(os.path.dirname(__file__)),'startHelper.py')
-    file = open(startFilename, 'r')
-    code+=file.read()
-    file.close()
-    print 'Loading ',classname,' in coderunner...'
-    self.executeCode(code,identifier = classname,filename = "IDE",editor = None) # Note that we use classname as the thread id
-    timeout=10
-    start = time.time()
-    while True:                                                                  # wait for the thread to finish
-      running = self._codeRunner.isExecutingCode(identifier = classname)
-      if not running or time.time() - start > timeout: break
-    start=time.time()
-    lastHelper=None
-    while True:                                                                  # wait for gv.lastHelper to appear
-      lastHelper=self.processVar('lastHelper')
-      if lastHelper!=None or time.time() - start > timeout: break
-    if lastHelper:
-      helperName=lastHelper.pop('helper')
-      self._helpers[helperName]=lastHelper
-      associateName=lastHelper['associate']
-      if associateName in self._helpers:
-          self._helpers.pop(associateName)
-    # self._helpers. structure is
-    # {classname: {'helperPath':filename,'helperType':helperType,
-    #              'associate':associateName,'associatePath':associatePath,'associateType':associateType},...}
 
   def buildHelperMenu(self):
     """
@@ -762,13 +673,14 @@ class IDE(QMainWindow,ObserverWidget):
     Only HelperGUIs are enabled so that user can bring HelperGUI window to the front. Helpers are dimmed.
     """
     self.helpersMenu.clear()
-    loadHelpers = self.helpersMenu.addAction('Load helper...')
-    loadHelpers.setShortcut(QKeySequence("Ctrl+h"))
-    self.connect(loadHelpers, SIGNAL('triggered()'), self.loadHelpers)
-    self.helpersMenu.addSeparator()
-    if hasattr(self,'_helpers'):
+    if hasattr(self,'_helperManager'):
+      loadHelpers = self.helpersMenu.addAction('Load helper...')
+      loadHelpers.setShortcut(QKeySequence("Ctrl+h"))
+      self.connect(loadHelpers, SIGNAL('triggered()'), self._helperManager.loadHelpers)
+      self.helpersMenu.addSeparator()
+      helpers = self._helperManager.helpers()
       ag1,ag2 = QActionGroup(self,exclusive=False,triggered=self.showHelper),QActionGroup(self,exclusive=False)
-      for key,dic in  self._helpers.items():
+      for key,dic in  helpers.items():
         helperType,associate,associateType=dic['helperType'],dic['associate'],dic['associateType']
         if helperType=='HelperGUI':
           ag1.addAction(QAction(key, self, checkable=False))
@@ -867,7 +779,7 @@ class IDE(QMainWindow,ObserverWidget):
     Denis Vion</p>"
     QMessageBox.about (self, 'About QuantroLab python IDE', QString(text))
 
-  def updatedGui(self,subject = None,property = None,value = None):
+  def updatedGui(self, subject = None, property = None, value = None):
     if property =='deleted':
       key=subject.__class__.__name__
       if key in self._helpers and isinstance(self._helpers[key]['helper'],(Helper,HelperGUI)):

@@ -14,7 +14,8 @@ https://docs.python.org/2.7/library/multiprocessing.html
 #  IMPORTS                           #
 ######################################
 
-import os,os.path
+import os
+import os.path
 import sys
 import time
 import traceback
@@ -23,7 +24,7 @@ import traceback
 import threading
 from multiprocessing import *        # Process and Queue will be used
 
-from application.lib.base_classes1 import KillableThread,Reloadable,StopThread
+from application.lib.base_classes1 import KillableThread, Reloadable, StopThread
 from application.lib.com_classes import Subject
 from threading import RLock
 
@@ -36,12 +37,13 @@ import __builtin__
 _importFunction = __builtin__.__import__
 _moduleDates = dict()
 
-def _autoReloadImport(name,*a,**ka):
+
+def _autoReloadImport(name, *a, **ka):
   global _importFunction
   global _moduleDates
   if name in sys.modules:
     m = sys.modules[name]
-    if hasattr(m,'__file__'):
+    if hasattr(m, '__file__'):
       filename = m.__file__
       if filename[-4:] == ".pyc":
         filename = filename[:-1]
@@ -51,7 +53,8 @@ def _autoReloadImport(name,*a,**ka):
           if mtime > _moduleDates[filename]:
             reload(m)
         _moduleDates[filename] = mtime
-  return _importFunction(name,*a,**ka)
+  return _importFunction(name, *a, **ka)
+
 
 def enableModuleAutoReload():
   """
@@ -61,13 +64,14 @@ def enableModuleAutoReload():
   """
   __builtin__.__import__ = _autoReloadImport
 
+
 def disableModuleAutoReload():
   """
   Disables the automatic reloading of modules when issuing an "import" statement.
   """
   __builtin__.__import__ = _importFunction
 
-#def _ide():
+# def _ide():
 #  return IDE # ??? does not seem to mean anything ???
 
 #############################################################################
@@ -82,7 +86,7 @@ class CodeThread (KillableThread):
   Instances of this class are created by the CodeRunner class.
   """
 
-  def __init__(self,code,gv = dict(),lv = dict(),callback = None,filename = "<my string>"):
+  def __init__(self, code, gv=dict(), lv=dict(), callback=None, filename="<my string>"):
     """
     Initializes the class with a given code string, a global and local variables dictionary,
     an optional callback function which is called when the code execution finishes and a filename
@@ -90,7 +94,7 @@ class CodeThread (KillableThread):
     """
     KillableThread.__init__(self)
     self._gv = gv
-    #self._gv['from_CodeThread']=4 # test to be deleted
+    # self._gv['from_CodeThread']=4 # test to be deleted
     self._lv = lv
     self._filename = filename
     self._failed = False
@@ -124,7 +128,7 @@ class CodeThread (KillableThread):
     """
     return self._failed
 
-  def executeCode(self,code,filename = "<my string>"):
+  def executeCode(self, code, filename="<my string>"):
     """
     Executes a code string with a given filename.
     """
@@ -140,14 +144,14 @@ class CodeThread (KillableThread):
     """
     if self.failed() == False:
       return None
-    return (self._exception_type,self._exception_value)
+    return (self._exception_type, self._exception_value)
 
   def tracebackInfo(self):
     """
     Returns the traceback thrown by the code thread, or None if the thread exited normally.
     """
     if self.failed() == False:
-        return None
+      return None
     return self._traceback
 
   def stop(self):
@@ -162,8 +166,8 @@ class CodeThread (KillableThread):
         try:
           self._isBusy = True
           self._failed = False
-          code = compile(self._code,self._filename,'exec')
-          exec(code,self._gv,self._lv)
+          code = compile(self._code, self._filename, 'exec')
+          exec(code, self._gv, self._lv)
         except StopThread:
           break
         except:
@@ -181,7 +185,8 @@ class CodeThread (KillableThread):
       else:
         time.sleep(0.5)
 
-class CodeRunner(Reloadable,Subject):
+
+class CodeRunner(Reloadable, Subject):
 
   """
   A class that manages the execution of different pieces of code in different threads (of type CodeThread),
@@ -194,17 +199,17 @@ class CodeRunner(Reloadable,Subject):
     Returns a new unique ID which can be used to identify a code thread.
     """
     print "in getId"
-    CodeRunner._id+=1
+    CodeRunner._id += 1
     return CodeRunner._id
 
-  def __init__(self,gv = dict(),lv = dict()):
-    #print 'in  CodeRunner._init with self = ',self
+  def __init__(self, gv=dict(), lv=dict()):
+    # print 'in  CodeRunner._init with self = ',self
     Reloadable.__init__(self)
     Subject.__init__(self)
     self._threadID = 0
-    self.clear(gv,lv)
+    self.clear(gv, lv)
 
-  def clear(self,gv = dict(),lv = dict()):
+  def clear(self, gv=dict(), lv=dict()):
     """
     Reinitializes the class by
       - deleting all running threads,
@@ -223,7 +228,7 @@ class CodeRunner(Reloadable,Subject):
     """
     return self._gv
 
-  def processVar(self,varname):
+  def processVar(self, varname):
     """
     Returns a variable from the global variable dictionary, provided it can be pickled (otherwise return None).
     """
@@ -244,7 +249,7 @@ class CodeRunner(Reloadable,Subject):
     """
     return os.getcwd()
 
-  def setCurrentWorkingDirectory(self,directory):
+  def setCurrentWorkingDirectory(self, directory):
     """
     Changes the current working directoy.
     """
@@ -256,7 +261,7 @@ class CodeRunner(Reloadable,Subject):
     """
     self._exceptions = {}
 
-  def getException(self,identifier):
+  def getException(self, identifier):
     """
     Returns the exception thrown by the code thread with the given identifier, or None if no exception is present.
     """
@@ -264,7 +269,7 @@ class CodeRunner(Reloadable,Subject):
       return self._exceptions[identifier]
     return None
 
-  def getTraceback(self,identifier):
+  def getTraceback(self, identifier):
     """
     Returns the traceback thrown by the code thread with the given identifier, or None if no traceback is present.
     """
@@ -272,7 +277,7 @@ class CodeRunner(Reloadable,Subject):
       return traceback.extract_tb(self._tracebacks[identifier])
     return None
 
-  def formatException(self,identifier):
+  def formatException(self, identifier):
     """
     Returns a formatted exception string for the given identifier, or an empty string if no exception is available.
     """
@@ -280,9 +285,9 @@ class CodeRunner(Reloadable,Subject):
     tb = self.traceback(identifier)
     if exc is None:
       return ""
-    return traceback.format_exception(exc[0],exc[1],tb)
+    return traceback.format_exception(exc[0], exc[1], tb)
 
-  def _threadCallback(self,thread):
+  def _threadCallback(self, thread):
     """
     A callback function which gets called when a code thread finishes the execution of a piece of code.
     """
@@ -294,7 +299,7 @@ class CodeRunner(Reloadable,Subject):
     lock.release()
     #identifier=next(i for i in self._threads if self._threads[i].name == thread.name)
 
-  def hasFailed(self,identifier):
+  def hasFailed(self, identifier):
     """
     Returns True if the thread with the given identifier has terminated abnormally.
     """
@@ -302,7 +307,7 @@ class CodeRunner(Reloadable,Subject):
       return self._threads[identifier].failed()
     return False
 
-  def isExecutingCode(self,identifier = None):
+  def isExecutingCode(self, identifier=None):
     """
     Returns True if the thread with the given identifier exists and is currently executing code,
     or if any thread is running if identifier is None.
@@ -318,7 +323,7 @@ class CodeRunner(Reloadable,Subject):
       return False
     return self._threads[identifier].isRunning()
 
-  def stopExecution(self,identifier):
+  def stopExecution(self, identifier):
     """
     Stops the execution of code in the thread with the given identifier by asynchronously raising a special exception in the thread.
     """
@@ -340,13 +345,15 @@ class CodeRunner(Reloadable,Subject):
       status[identifier]["failed"] = self._threads[identifier].failed()
     return status
 
-  def executeCode(self,code,identifier,filename = None, lv = None,gv = None):
+  def executeCode(self, code, identifier, filename=None, lv=None, gv=None):
     """
     Executes a code string in an existing or new thread,
     with a given identifier, filename and local and global variable dictionaries.
     """
-    #print 'in CodeRunner.executeCode with codeRunner = ',self
-    if self.isExecutingCode(identifier):    # Raises exception if trying to run an existing thread that is executing code
+    # print 'in CodeRunner.executeCode with codeRunner = ',self
+    # Raises exception if trying to run an existing thread that is executing
+    # code
+    if self.isExecutingCode(identifier):
       raise Exception("Code thread %s is busy!" % identifier)
     if lv is None:                          # creates the local variable dictionary for the thread if not passed
       if not identifier in self._lv:
@@ -355,13 +362,16 @@ class CodeRunner(Reloadable,Subject):
     if gv is None:                          # sets the global variable dictionary for the thread to the one known by the CodeRunner
       gv = self._gv
     if identifier in self._threads and self._threads[identifier].isAlive():
-      ct = self._threads[identifier]        # if a thread with that identifier exists and is alive
-      ct.executeCode(code,filename)         #   use it to execute the passed piece of code
+      # if a thread with that identifier exists and is alive
+      ct = self._threads[identifier]
+      # use it to execute the passed piece of code
+      ct.executeCode(code, filename)
     else:                                   # otherwise initiate a new thread
-      ct = self.createThread(code,identifier,filename,gv,lv)
-    return ct._id                           #  returns the thread ID.
+      ct = self.createThread(code, identifier, filename, gv, lv)
+    return ct._id  # returns the thread ID.
 
-  def createThread(self,code,identifier,filename,gv,lv): # separated from execute code by dv in Jan 2016
+  # separated from execute code by dv in Jan 2016
+  def createThread(self, code, identifier, filename, gv, lv):
     """
     Creates and starts a codeThead with a given identifer and returns it.
     Use with care !!!
@@ -371,29 +381,37 @@ class CodeRunner(Reloadable,Subject):
       The GlobalVariable class encapsulates a global variable dictionnary and a reference to the __coderunner__.
       It allows users to get or set a variable a with syntax gv.a instead of gv['a'].
       """
-      def __init__(self,gv,__coderunner__=None):
+
+      def __init__(self, gv, __coderunner__=None):
         self.__dict__ = gv
-        self.__coderunner__=__coderunner__
+        self.__coderunner__ = __coderunner__
 
-      def __setitem__(self,key,value):
-        setattr(self,key,value)
+      def __setitem__(self, key, value):
+        setattr(self, key, value)
 
-      def __getitem__(self,key):
-        return getattr(self,key)
+      def __getitem__(self, key):
+        return getattr(self, key)
 
-    gv1 = GlobalVariables(gv,self)        #   - creating a GlobalVariables instance encapsulating the global variable dictionary gv
-    lv["gv"] = gv1                        #   - making this GlobalVariables accessible by gv in the local variable namespace
-    lv["__file__"] = filename             #   - making the filename the code is originating from, available as a local variable _filename
+    # - creating a GlobalVariables instance encapsulating the global variable dictionary gv
+    gv1 = GlobalVariables(gv, self)
+    # - making this GlobalVariables accessible by gv in the local variable namespace
+    lv["gv"] = gv1
+    # - making the filename the code is originating from, available as a local variable _filename
+    lv["__file__"] = filename
 
-    ct = CodeThread(code,filename = filename,lv = lv,gv = lv,callback = self._threadCallback)
-    ct._id = self._threadID               #   - instantiating a CodeThread with the passed or prepared variables
-    self._threadID+=1                     #   - setting the thread ID
-    self._threads[identifier] = ct        #   - adding the thread to the thread dictionary self._threads
+    ct = CodeThread(code, filename=filename, lv=lv,
+                    gv=lv, callback=self._threadCallback)
+    # - instantiating a CodeThread with the passed or prepared variables
+    ct._id = self._threadID
+    self._threadID += 1  # - setting the thread ID
+    # - adding the thread to the thread dictionary self._threads
+    self._threads[identifier] = ct
     ct.setDaemon(True)
-    ct.start()                            #   - calling the start method of threading.Thread to run the piece of code in its thread.
+    # - calling the start method of threading.Thread to run the piece of code in its thread.
+    ct.start()
     return ct
 
-  def deleteThread(self,identifier):
+  def deleteThread(self, identifier):
     """
     Exit and deletes a codeThead with a given identifer and returns True if deletion could be done.
     Use with care !!!
@@ -404,6 +422,7 @@ class CodeRunner(Reloadable,Subject):
       del ct
       return True
     return False
+
 
 class CodeProcess(Process):
   """
@@ -417,42 +436,45 @@ class CodeProcess(Process):
 
   class StreamProxy(object):
 
-    def __getattr__(self,attr):
-      if hasattr(self._queue,attr):
-        return getattr(self._queue,attr)
+    def __getattr__(self, attr):
+      if hasattr(self._queue, attr):
+        return getattr(self._queue, attr)
       else:
-        raise KeyError("No such attribute: %s" %attr)
+        raise KeyError("No such attribute: %s" % attr)
 
-    def __init__(self,queue):
+    def __init__(self, queue):
       self._queue = queue
 
     def flush(self):
       pass
 
-    def write(self,output):
-      #while(self._reading):
+    def write(self, output):
+      # while(self._reading):
       #  time.sleep(0.05)
-      self._writing=True
+      self._writing = True
       self._queue.put(output)
-      self._writing=False
+      self._writing = False
 
-    def read(self,blocking = True):
+    def read(self, blocking=True):
       return self._queue.get(blocking)
 
-  def __init__(self,gv = dict(),lv = dict()): # gv and lv added by DV in May 2015
+  def __init__(self, gv=dict(), lv=dict()):  # gv and lv added by DV in May 2015
     Process.__init__(self)                    # instantiate the Process
-    #print 'in CodeProcess.__init__ calling self._codeRunner = CodeRunner(gv)'
-    self._gv,self._lv=gv,lv                   # (added by DV in May 2015)
-    self._gv['from_CodeProcess']=3  # test to be deleted
+    # print 'in CodeProcess.__init__ calling self._codeRunner = CodeRunner(gv)'
+    self._gv, self._lv = gv, lv                   # (added by DV in May 2015)
+    self._gv['from_CodeProcess'] = 3  # test to be deleted
     print self._gv
-    self.daemon = True                        # Daemon threads can be abruptly stopped at shutdown
-    self._commandQueue = Queue()              # Command queue (Queue is a class of the multiprocessing library)
+    # Daemon threads can be abruptly stopped at shutdown
+    self.daemon = True
+    # Command queue (Queue is a class of the multiprocessing library)
+    self._commandQueue = Queue()
     self._responseQueue = Queue()             # response queue
     self._stdoutQueue = Queue()               # output queue
     self._stderrQueue = Queue()               # error queue
     self._stdinQueue = Queue()                # input Queue
-    self._codeRunner = CodeRunner(self._gv)           # (Note that only a copy of the CodeRunner created here (i.e. in main application thread)
-                                              # will be available in the children threads of the Process )
+    # (Note that only a copy of the CodeRunner created here (i.e. in main application thread)
+    self._codeRunner = CodeRunner(self._gv)
+    # will be available in the children threads of the Process )
 
   def stdoutProxy(self):
     return self.StreamProxy(self._stdoutQueue)
@@ -461,7 +483,8 @@ class CodeProcess(Process):
     return self.StreamProxy(self._stderrQueue)
 
   def commandQueue(self):
-    #print 'in CodeProcess.commandQueue with self._codeRunner = ',self._codeRunner
+    # print 'in CodeProcess.commandQueue with self._codeRunner =
+    # ',self._codeRunner
     return self._commandQueue
 
   def responseQueue(self):
@@ -486,17 +509,18 @@ class CodeProcess(Process):
     sys.stdout = self.StreamProxy(self._stdoutQueue)
     sys.stdin = self.StreamProxy(self._stdinQueue)
     while True:                                         # infinite loop
-      time.sleep(0.1)                                   #   every 0.1s
-      try:                                              #   try to process the commandQueue while it is not empty
-        while not self.commandQueue().empty():          #   until a command is stop or an keybord interupt occurs
-          (command,args,kwargs) = self.commandQueue().get(False)
+      time.sleep(0.1)  # every 0.1s
+      try:  # try to process the commandQueue while it is not empty
+        while not self.commandQueue().empty():  # until a command is stop or an keybord interupt occurs
+          (command, args, kwargs) = self.commandQueue().get(False)
           if command == "stop":
             exit(0)
-          if hasattr(self._codeRunner,command):         # simply ignore commands unknown from coderunner
+          # simply ignore commands unknown from coderunner
+          if hasattr(self._codeRunner, command):
             try:
-              f = getattr(self._codeRunner,command)     #   build the command call
-              r = f(*args,**kwargs)                     #   run it and get a result
-              self.responseQueue().put(r,False)         #   and response got here
+              f = getattr(self._codeRunner, command)  # build the command call
+              r = f(*args, **kwargs)  # run it and get a result
+              self.responseQueue().put(r, False)  # and response got here
             except Exception as e:
               traceback.print_exc()
       except KeyboardInterrupt:
@@ -511,17 +535,22 @@ class MultiProcessCodeRunner():
   a possible response can be retrieved (if available before timeout) and returned.
   """
 
-  def __init__(self,gv = dict(),lv = dict(),logProxy=lambda x:False,errorProxy=lambda x:False):
-    self._gv,self._lv=gv,lv                  # added by DV in may 2015 to get a handle to global variables for a possible code process restart
-    self._gv['from_MultiProcessCodeRunner']=2 # test to be deleted
+  def __init__(self, gv=dict(), lv=dict(), logProxy=lambda x: False, errorProxy=lambda x: False):
+    # added by DV in may 2015 to get a handle to global variables for a
+    # possible code process restart
+    self._gv, self._lv = gv, lv
+    self._gv['from_MultiProcessCodeRunner'] = 2  # test to be deleted
     print self._gv
-    self._codeProcess = CodeProcess(gv=gv)   # Process exists but is not started yet (gv added by DV in May 2015)
-    self._codeProcess.start()                # Start the Process that will call the Process.run() method
+    # Process exists but is not started yet (gv added by DV in May 2015)
+    self._codeProcess = CodeProcess(gv=gv)
+    # Start the Process that will call the Process.run() method
+    self._codeProcess.start()
     self._timeout = 2
-    self._stdoutQueue=self._codeProcess.stdoutQueue()  # make the Process' queues attributes of MultiProcessCodeRunner
-    self._stderrQueue=self._codeProcess.stderrQueue()
-    self._stdoutProxy=self._codeProcess.stdoutProxy()
-    self._stderrProxy=self._codeProcess.stderrProxy()
+    # make the Process' queues attributes of MultiProcessCodeRunner
+    self._stdoutQueue = self._codeProcess.stdoutQueue()
+    self._stderrQueue = self._codeProcess.stderrQueue()
+    self._stdoutProxy = self._codeProcess.stdoutProxy()
+    self._stderrProxy = self._codeProcess.stderrProxy()
 
   def __del__(self):
     """ Destructor"""
@@ -544,7 +573,7 @@ class MultiProcessCodeRunner():
     """
     return self._stdoutQueue
 
-  def setTimeout(self,timeout):
+  def setTimeout(self, timeout):
     """
     Sets the timeout duration.
     """
@@ -556,7 +585,7 @@ class MultiProcessCodeRunner():
     """
     return self._timeout
 
-  def _clearQueue(self,queue):
+  def _clearQueue(self, queue):
     """
     Clears any queue passed to the method.
     """
@@ -566,32 +595,32 @@ class MultiProcessCodeRunner():
       except:
         break
 
-  def stdin(self,input):
+  def stdin(self, input):
     """
     Puts any input in the input queue of the associated CodeProcess.
     """
-    self._codeProcess.stdinQueue().put(input,False)
+    self._codeProcess.stdinQueue().put(input, False)
 
   def hasStdout(self):
     return not self._codeProcess.stdoutQueue().empty()
 
-  def _readFromQueueWithTimeout(self,queue,timeout):
+  def _readFromQueueWithTimeout(self, queue, timeout):
     """
     Reads from any queue of the associated CodeProcess'.
     """
     string = ""
     start = time.clock()
     while not queue.empty():
-      string+=queue.get(False)
-      if time.clock()-start > timeout:
+      string += queue.get(False)
+      if time.clock() - start > timeout:
         break
     return string
 
-  def stdout(self,timeout = 0.5):
+  def stdout(self, timeout=0.5):
     """
     Reads any output from the output queue of the associated CodeProcess' output queue.
     """
-    return self._readFromQueueWithTimeout(self._codeProcess.stdoutQueue(),timeout)
+    return self._readFromQueueWithTimeout(self._codeProcess.stdoutQueue(), timeout)
 
   def hasStderr(self):
     """
@@ -599,8 +628,8 @@ class MultiProcessCodeRunner():
     """
     return not self._codeProcess.stderrQueue().empty()
 
-  def stderr(self,timeout = 0.5):
-    return self._readFromQueueWithTimeout(self._codeProcess.stderrQueue(),timeout)
+  def stderr(self, timeout=0.5):
+    return self._readFromQueueWithTimeout(self._codeProcess.stderrQueue(), timeout)
 
   def codeProcess(self):
     """
@@ -612,13 +641,13 @@ class MultiProcessCodeRunner():
     """
     Stops the associated CodeProcess.
     """
-    self._codeProcess.commandQueue().put(("stop",[],{}),False)
+    self._codeProcess.commandQueue().put(("stop", [], {}), False)
 
   def start(self):
     """
     Starts or restarts the associated CodeProcess.
     """
-    #print 'in  MultiProcessCodeRunner.start with self=',self
+    # print 'in  MultiProcessCodeRunner.start with self=',self
     if self._codeProcess.is_alive():
       self.restart()
     else:
@@ -633,24 +662,24 @@ class MultiProcessCodeRunner():
     self._codeProcess = CodeProcess(gv=self._gv)
     self._codeProcess.start()
 
-  def dispatch(self,command,*args,**kwargs):
+  def dispatch(self, command, *args, **kwargs):
     """
     This dispatch method is used to transform a command unknown by MultiProcessCodeRunner into a message
     put in the codeProcess' command queue.
     If a reponse from the responseQueue is returned before timeout, it is returned by dispatch.
     Like this a MultiProcessCodeRunner.command(*args,**kwargs) becomes self._codeProcess.commandQueue().put((command,args,kwargs),False).
     """
-    message = (command,args,kwargs)
+    message = (command, args, kwargs)
     if not self._codeProcess.is_alive():
       self.restart()
     self._clearQueue(self._codeProcess.commandQueue())
     self._clearQueue(self._codeProcess.responseQueue())
-    self._codeProcess.commandQueue().put(message,False)
+    self._codeProcess.commandQueue().put(message, False)
     try:
-      response = self._codeProcess.responseQueue().get(True,timeout = self.timeout())
+      response = self._codeProcess.responseQueue().get(True, timeout=self.timeout())
     except:
       response = None
     return response
 
-  def __getattr__(self,attr):
-    return lambda *args,**kwargs: self.dispatch(attr,*args,**kwargs)
+  def __getattr__(self, attr):
+    return lambda *args, **kwargs: self.dispatch(attr, *args, **kwargs)
