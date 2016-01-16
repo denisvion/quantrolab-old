@@ -31,8 +31,11 @@ import numpy
 
 # Global module dictionary defining the helper
 helperDic = {'name':'Data Manager','version':'0.4','authors':'A. Dewes-V. Schmitt - D. Vion','mail':'denis.vion@cea.fr','start':'startHelperGui','stop':None}
+# splash screen
+splashFile=QString(os.path.dirname(__file__)+'/resources/quantrolab.png')
 
 def startHelperGui(exitWhenClosed = False,parent=None,globals={}):    # 3) Start the dataManager
+    
     global dataManager                                                # define dataManager as a global variable
     dataManager = DataManager(parent,globals)                         # Instantiate the datamanager gui here
     dataManager.show()                                                # show its window

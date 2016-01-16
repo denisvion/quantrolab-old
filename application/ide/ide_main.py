@@ -144,7 +144,7 @@ class IDE(QMainWindow,ObserverWidget):
       print 'starting code runner...'
       self._codeRunner = MultiProcessCodeRunner(gv = self._gv,lv = self._gv) # The Process will have only a copy of self._gv
       print 'starting editor...'
-      self.editorWindow = CodeEditorWindow(self,newEditorCallback = self.newEditorCallback)   # tab editor window
+      self.editorWindow = CodeEditorWindow(parent=self,newEditorCallback = self.newEditorCallback)   # tab editor window
       print 'starting error console...'
       self.errorConsole = ErrorConsole(codeEditorWindow = self.editorWindow,codeRunner = self._codeRunner)
 
@@ -352,6 +352,17 @@ class IDE(QMainWindow,ObserverWidget):
     settings.sync()
     self._codeRunner.terminate()
 
+  def closing0k(self,editor):
+    """
+    This method is called by the codeEditorWindow to check that closing is allowed
+    """
+    iden=id(editor)
+    if iden in self._codeRunner.status():
+      question='Closing editor %s terminates the access to thread %i. Close anyway?' % (editor._shortname,iden)
+      if QMessageBox.question (self,'Warning', question, QMessageBox.Ok, QMessageBox.Cancel) == QMessageBox.Cancel:
+        return False
+    return True
+
   def processVar(self,varname):
     """
     Retrieve a global variable of the CodeProcess
@@ -360,9 +371,9 @@ class IDE(QMainWindow,ObserverWidget):
 
   def executeCode(self,code,filename = "none",editor = None,identifier = "main"):
     if self._codeRunner.executeCode(code,identifier,filename) != -1:        # this function returns when the code has started running in the coderunner
-      self._runningCodeSessions.append((code,identifier,filename,editor))
+      self._runningCodeSessions.append((code,identifier,filename,editor))   # why does main memorize codesessions rather than relying on coderunner?
       if editor is not None:
-        editor.hasBeenRun = True # leave a trace in the editor that its code has been run at least once
+        editor.hasBeenRun = True # leave a trace in the editor that its code has been run at least once. Why not relying on the coderunner?
 
   def runCode(self,delimiter=""):
     """
@@ -531,6 +542,7 @@ class IDE(QMainWindow,ObserverWidget):
 
   def toggleRunStartupGroup(self):
     """
+    obsolete
     """
     self.runStartupGroup.setChecked(self.runStartupGroup.isChecked())
 
@@ -720,9 +732,9 @@ class IDE(QMainWindow,ObserverWidget):
     print 'Loading ',classname,' in coderunner...'
     self.executeCode(code,identifier = classname,filename = "IDE",editor = None) # Note that we use classname as the thread id
     timeout=10
-    start=time.time()
+    start = time.time()
     while True:                                                                  # wait for the thread to finish
-      running=self._codeRunner.isExecutingCode(identifier = classname)
+      running = self._codeRunner.isExecutingCode(identifier = classname)
       if not running or time.time() - start > timeout: break
     start=time.time()
     lastHelper=None

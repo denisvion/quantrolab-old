@@ -1,3 +1,17 @@
+"""
+This module defines several classes for code edition:
+- CodeEditor: a simple Qt code editor with syntax highlighting, search and replace, open, save and close,
+    line wrapping and text block management;
+- ErrorConsole: a GUI text box receiving messages from a server (a code runner);
+- CodeEditorWindow: A multi editor GUI interface  based on a Qtab widget, with a default directory,
+    open, save and close functions, as well as tracking of modifications;
+- several other utility classes used in the main 3 classes introduced above.
+
+The CodeEditor(s) as well as the CodeEditorWindow are for edition only and do not know the concept of running
+the code that they contain. Nevertheless the CodeEditorWindow may have a parent and interogate its boolean method
+closingOK(editor) - if it exists -, to get authorization for closing the editor or not.
+"""
+
 import os,traceback,math,sys,time,re
 
 from PyQt4.QtGui import *
@@ -177,8 +191,8 @@ class CodeEditorWindow(QWidget):
       if filename == "":
         return None
 
-      if self.checkForOpenFile(filename) != None:
-        return self.checkForOpenFile(filename)
+      check = self.checkForOpenFile(filename)
+      if  check != None:    return check
 
       if os.path.isfile(str(filename)):
         self.setWorkingDirectory(filename)
@@ -225,12 +239,15 @@ class CodeEditorWindow(QWidget):
       else:
         self.newEditor()
 
-    def closeEditor(self,editor,askOnly = False, runCheck=True):
-      if runCheck and hasattr(editor,'hasBeenRun') and editor.hasBeenRun:
-          identifier=id(editor)
-          question='Closing this editor terminates the access to thread %i. Close anyway?' % identifier
-          if QMessageBox.question (self,'Warning', question, QMessageBox.Ok, QMessageBox.Cancel) == QMessageBox.Cancel:
-              return
+    def closeEditor(self, editor, askOnly = False, checkWithParent = False):
+      """
+      Try to close a particular editor:
+      - If checkWithParent is true, call self._parent.closing0k(editor) to confirm or cancel the closing;
+      - if askOnly is False, removes the editor both from list of editors and from the tab widget.
+      """
+      if checkWithParent and self._parent is not None and hasattr(self._parent,'closing0k'):
+        if not self._parent.closing0k(editor):
+          return
       if editor.hasUnsavedModifications():
         self.tab.setCurrentWidget(editor)
         messageBox = QMessageBox()
@@ -238,7 +255,7 @@ class CodeEditorWindow(QWidget):
         if editor.filename() != None:
           messageBox.setText("Save changes made to file \"%s\"?" % editor.filename())
         else:
-          messageBox.setText("Save changes made to this unsaved buffer?")
+          messageBox.setText('Save changes made to unsaved buffer %s?' % editor._shortname)
         yes = messageBox.addButton("Yes",QMessageBox.YesRole)
         no = messageBox.addButton("No",QMessageBox.NoRole)
         cancel = messageBox.addButton("Cancel",QMessageBox.RejectRole)
@@ -326,6 +343,7 @@ class CodeEditorWindow(QWidget):
         app.sendEvent(target, event)
 
     def __init__(self,parent=None,gv = dict(),lv = dict(),newEditorCallback = None):
+        self._parent = parent
         self.editors = []
         self.count = 1
         self._workingDirectory = None
@@ -792,17 +810,18 @@ class CodeEditor(SearchableEditor,LineTextWidget):
     def setFileReloadPolicy(self,policy):
       self._fileReloadPolicy = policy
 
-    def __init__(self,parent = None,lineWrap = True):
+    def __init__(self, parent = None, lineWrap = True):
         LineTextWidget.__init__(self,parent)
         SearchableEditor.__init__(self,parent)
         self._filename = None
+        self._shortname = '[untitled]'
+        self._tabToolTip = self._shortname
         self.setTabStopWidth(30)
         self._modifiedAt = None
         self._tabText = ""
         self._fileReloadPolicy = CodeEditor.FileReloadPolicy.Ask
         self._errorSelections = []
         self._blockHighlighting = True
-        self._tabToolTip = '[untitled]'
         self.setAttribute(Qt.WA_DeleteOnClose,True)
 
         self.setStyleSheet("""
@@ -866,6 +885,7 @@ class CodeEditor(SearchableEditor,LineTextWidget):
 
     def setFilename(self,filename):
       self._filename = os.path.normpath(str(filename))
+      (di, self._shortname) = os.path.split(self._filename)
       if re.search(".py$",self._filename) or re.search(".pyw$",self._filename):
         self.activateHighlighter(True)
       else:
