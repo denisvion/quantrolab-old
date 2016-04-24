@@ -20,8 +20,10 @@ The possible strategies of interaction with Helpers and HelperGUIs are the follo
         After both type of interaction, the HelperGUI receives messages from the Helper and update its GUI
         This strategy is powerful but difficult to program.
 
-Example:  The DataMgr and DataManager form a couple of associated Helper-HelperGUI implementing strategy 3b to help
+Example 1:  The DataMgr and DataManager form a couple of associated Helper-HelperGUI implementing strategy 3b to help
           users managing datacubes (the base data structure of Quantrolab)
+Example 2:  The LoopMgr and LoopManager form a couple of associated Helper-HelperGUI implementing strategy 3b to help
+          users managing Smartloops.
 """
 import sys
 from PyQt4.QtCore import Qt
@@ -51,7 +53,7 @@ class Helper(Debugger, Reloadable, Subject, Observer, object):
 
 class HelperGUI(Debugger, Reloadable, Subject, ObserverWidget, QMainWindow, object):
     """
-    Class for a helper with a graphical interface.
+    Class for a helper with a Qt graphical interface.
     """
 
     def __init__(self, parent=None, globals={}, helper=None):

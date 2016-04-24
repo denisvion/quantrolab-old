@@ -71,8 +71,6 @@ def disableModuleAutoReload():
     """
     __builtin__.__import__ = _importFunction
 
-# def _ide():
-#  return IDE # ??? does not seem to mean anything ???
 
 #############################################################################
 #  Classes CodeThread, CodeRunner, CodeProces, and MultiProcessCodeRunner   #

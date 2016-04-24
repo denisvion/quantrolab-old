@@ -57,7 +57,7 @@ def _ensureGuiThreadIsRunning():
         while thread.is_alive() and (app is None or app.startingUp()):
             # and wait until it is started
             time.sleep(0.01)
-        print done
+        print 'done'
     else:                                           # there is already a QApplication
         # if we have not memorized in signalConnected that a conection to
         # _runGuiCodeSignal exists
