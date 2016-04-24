@@ -71,14 +71,14 @@ def _ensureGuiThreadIsRunning():
 
 def _createApplication():
     """
-    This private function creates a QApplication and connects the handler _runGuiCodeSignal
-    to signal "runGuiCode(PyQt_PyObject)" in unique connection mode (multiple identical signals treated only once).
-    The PyQt_PyObject argument type means arbitrary type and works for a function f (with no arguments)
+    This private function creates a QApplication thread and connects the signal "runGuiCode(PyQt_PyObject)"
+    to the handler _runGuiCodeSignal in unique connection mode (multiple identical signals treated only once).
+    The PyQt_PyObject argument means arbitrary type and works in particular for a function with no arguments like f.
     """
     global app, signalConnected, _runGuiCode
     app = QApplication(sys.argv)          # The Qt application is created here
     app.setQuitOnLastWindowClosed(False)
-    app.connect(app, SIGNAL("runGuiCode(PyQt_PyObject)"),
+    app.connect(app, SIGNAL('runGuiCode(PyQt_PyObject)'),
                 _runGuiCode, Qt.QueuedConnection | Qt.UniqueConnection)
     signalConnected = True
     if app.thread() != QThread.currentThread():
