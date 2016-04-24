@@ -13,30 +13,37 @@ from ctypes import *
 from numpy import *
 from scipy import *
 
-from pyview.helpers.loopsmanager import LoopManager
-from pyview.lib.patterns import Subject, Observer, Reloadable
-from pyview.lib.classes import Debugger            # DEBUGGER
-
+# Smartloops are debuggable and reloadable
+from application.lib.base_classes1 import Debugger, Reloadable
+# and can send and receive notifications
+from application.lib.com_classes import Subject, Observer
+try:
+    # try to load the LoopMgr class in order to be able
+    from application.helpers.loopmanager.loopmgr import LoopMgr
+# to push a smartloop to the loop manager automatically
+except:
+    pass
 ########################################
 # To Do:
-# - setNSteps2Go
 # - lock modifications during next ?
 ########################################
 
-# Epsilon for numeric comparisons
+epsilon = 1e-10  # for numerical comparisons
 # Rounding is made at each increment to avoid accumulation of numerical errors.
-epsilon = 1e-10
+# used to calculate the incremented value
+# round(val+step,digits-int(log10(abs(step))))
 digits = 6
 
 
 class SmartLoop(Debugger, Subject, Observer, Reloadable):
     """
     The SmartLoop class implements a loop with the following (smart) features:
-      The SmartLoop has 
+      The SmartLoop can look for a LoopManager in memory and adds itself to it.
+      The SmartLoop has
         - a name set at creation or with method 'setName', which can be read with method 'getName',
         - an optional parent loop set at creation or with method 'setParent', which can be read with method 'parent',
         - a list of children loops fed with method 'addChild', which can be read using method 'children'.
-      The SmartLoop has also 
+      The SmartLoop has also
             - one output value accessed with the method 'getValue',
             - an index that counts the number of iterations, which is read with method 'getIndex',
             - and a history of all its past values, which is accessed with method 'history'.
@@ -44,16 +51,16 @@ class SmartLoop(Debugger, Subject, Observer, Reloadable):
         They can be read or redefined at any time using methods 'getStart', 'getStop', 'getStep', 'setStart', 'setStop', 'setStep';
         Consequently, there is no fixed number of steps, although an initial number of steps can be specified at creation for conveniency.
       The SmartLoop is automatically terminated if its next value falls outside the start-stop range;
-      Stop (and start after the loop has started) can be set to None to make the loop infinite;
+      Stop (and start after the loop has been started) can be set to None to make the loop infinite;
       The SmartLoop can jump to any value along the loop at the next increment using the method 'jumpToValue';
       The SmartLoop can be paused, played, reversed or terminated at the next increment using methods 'pause', 'play', 'reverse', 'stopAtNext'.
       Autoreverse or circular looping  when crossing start or stop can be set on and off, or read,
         using methods 'setAutoreverse', 'getAutoreverse', 'setAutoLoop', 'getAutoLoop'.
       Duration of an iteration averaged over all previous iterations with no pause can be obtained using 'iterationDuration()'.
-      A dictionary including all loop parameters as well as an estimate of the remaining time before termination is obtained with method 'getParams' 
+      A dictionary including all loop parameters as well as an estimate of the remaining time before termination is obtained with method 'getParams'
 
     Iteration mechanism:
-      As any other iterator in python, the loop increments itself by its next() method, which 
+      As any other iterator in python, the smartloop increments itself by its next() method, which
       1) pauses or terminates the loop if requested by pause() or stopAtNext();
       2) calls an empty preIncrement function (to be overriden in subclasses if needed) ;
       3) updates the base parameters in case they were redefined with setStart, setStop, setStep;
@@ -62,20 +69,19 @@ class SmartLoop(Debugger, Subject, Observer, Reloadable):
       6) increments the index and output value, or terminates;
       7) updates history.
 
-    In case of a terminate, the loop is either
-      - deleted if deleteWhenFinished is true;
-      - reinitialized if deleteWhenFinished is false and the loop was not stopped;
-      - stopped by raising an error without deletion or reinitialization otherwise.
+    In case of a terminate, the loop is
+      - reinitialized if the loop was not stopped;
+      - stopped by raising an error without reinitialization otherwise.
+      - removed from its loop manager if it has one and if autoremove is true;
 
     The SmartLoop subclasses Subject and Observer classes and can send and receive notifications.
     It is designed to be subclassed by other types of loops with more specific (even smarter ;-) behaviors.
 
-    Finally, the SmartLoop can look for a LoopManager in memory and adds itself to it.
     """
 
-    def __init__(self, start=0, step=1, stop=None, linnsteps=None, name='unamed', parent=None, toLoopManager=True, autoreverse=False, autoloop=False, deleteWhenFinished=True):
+    def __init__(self, start=0, step=1, stop=None, linnsteps=None, name='unamed', parent=None, toLoopManager=True, autoreverse=False, autoloop=False, autoremove=True):
         """
-        Initializes the smartloop and adds it to the LoopManager
+        Initializes the smartloop and adds it to the LoopManager if toLoopManager is true.
         """
         Debugger.__init__(self)
         Subject.__init__(self)
@@ -91,15 +97,15 @@ class SmartLoop(Debugger, Subject, Observer, Reloadable):
         self._start0 = start
         self._stop = stop
         self._step = step
-        self._deleteWhenFinished = deleteWhenFinished
         self._autoreverse = autoreverse  # has priority over autoLoop
         self._autoloop = autoloop
+        self._autoremove = autoremove
         self.reinit()
 
         # specifies a number of equidistant steps up to stop or start +
         # linnsteps steps.
-        if linnsteps != None:
-            if stop != None:
+        if linnsteps is not None:
+            if stop is not None:
                 self._step = (stop - start) / linnsteps
             else:
                 self._stop = start + linnsteps * self._step
@@ -129,24 +135,14 @@ class SmartLoop(Debugger, Subject, Observer, Reloadable):
         self._time = None               # time of the last iteration
         # indicates whether pause was activated during last iteration
         self._pauseInLast = False
-        self._indexNoPause = 0          # number of iteration free of pause
+        # number of iteration free of pause (used to estimate durations)
+        self._indexNoPause = 0
         self._duration = 0              # total duration of iterations with no pause
         self._averageDuration = None    # average duration of an iteration with no pause
 
         # Will be set to False if a stop is requested so that the loop can be
         # resumed
         self._reinitAtTerminate = True
-
-    def __del__(self):
-        """"""
-        return True
-
-    def delete(self):
-        """
-        Removes the loop from loop manager
-        """
-        if self._lm is not None:
-            self._lm.removeLoop(self)
 
     # Parent and children methods
     # A loop can have only one parent but many children.
@@ -235,7 +231,7 @@ class SmartLoop(Debugger, Subject, Observer, Reloadable):
         return flatten(self.tree()[1:])
 
     # Methods for incrementing the loop, determining if it is finished, and
-    # for terminating.
+    # terminating.
 
     def __iter__(self):
         """ possibility to overide the python iteration method"""
@@ -253,7 +249,7 @@ class SmartLoop(Debugger, Subject, Observer, Reloadable):
         Overriden function next() for python iterators.
         Increments the loop in the following way:
         1) pauses or terminates the loop if requested
-        2) calls a preIncrement function (empty if not overriden)  
+        2) calls a preIncrement function (empty if not overriden)
         3) determines the next output value or if the loop is finished with the finishedOrNext method.
         4) updates time information
         5) increments the index and sets the new output value, or terminates
@@ -262,7 +258,7 @@ class SmartLoop(Debugger, Subject, Observer, Reloadable):
         if self._paused:
             while self._paused:
                 time.sleep(0.1)
-        if self._finished:                 # terminates if it was requested
+        if self._finished:                 # terminates if _finished has been set to true by a manual stop of the loop
             self.terminate()
             raise StopIteration
         self.preIncrement()                # run empty or overriden preIncrement function
@@ -271,9 +267,12 @@ class SmartLoop(Debugger, Subject, Observer, Reloadable):
         self.increment()
         self.timeUpdate()                  # update timing information
         if self._finished:
+            # terminates if _finished has been set to true by increment()
             self.terminate()
             raise StopIteration
-        self.updateLoopManager()
+        # self.updateLoopManager()
+        # tells the observers that the loop parameters have been updated
+        self.notify('updateLoop')
         # append  (index,output value,time) to the history
         self._history.append((self._index, self._value, self._time))
         return self._value
@@ -289,9 +288,6 @@ class SmartLoop(Debugger, Subject, Observer, Reloadable):
                 self._value = self._start
             else:
                 self._value = self._start0
-        # elif self._imposedValue is not None:                # modified DV september 2015
-        #  self.incrementIndexValue(self._imposedValue)      # imposed next value is now treated in finishedOrNext
-        #  self._imposedValue=None
         else:
             # gets the next value to be applied or None if loop is finished
             nextVal = self.finishedOrNext()
@@ -420,16 +416,20 @@ class SmartLoop(Debugger, Subject, Observer, Reloadable):
 
     def terminate(self):
         """
-        Deletes the loop if _deleteWhenFinished is True, or reinitializes it if reinit is True.
+        Reinitializes the loop if reinit is true and removes it from its manager if _autoremove is true.
+        (this function is called if self._finished is true: end of ramp or manual stop)
         """
         self.debugPrint('in terminate')
-        if self._deleteWhenFinished:
-            self.delete()
-        elif self._reinitAtTerminate:  # the loop has finished
+        # the loop has finished naturally (not because of a manual stop)
+        if self._reinitAtTerminate:
             self.reinit()
-            self.updateLoopManager()
-        else:                         # the loop is not finished but has been stopped
-            self._finished = False        # prepare for a possible resume
+            # tells the listener that the loop parameters have been updated
+            self.notify("updateLoop")
+            if self._autoremove:
+                self.removeFromManager()
+        else:                         # the loop has been stopped manually
+            # do not remove from manager and prepare for a possible resume
+            self._finished = False
             self._reinitAtTerminate = True
 
     # Control of the loop and its parameters
@@ -466,12 +466,12 @@ class SmartLoop(Debugger, Subject, Observer, Reloadable):
     def getParams(self):
         """
         Returns a dictionary with following parameters
-        name,start,stop,step,index,value,mode,nextValue,autodelete
+        name,start,stop,step,index,value,mode,nextValue,autoRemove
         """
         self.debugPrint('in getParams')
         mode = self.getMode()
         dic1 = {'name': self._name, 'start': self._start, 'stop': self._stop, 'step': self._step,
-                'index': self._index, 'value': self._value, 'mode': mode, 'autoDel': self._deleteWhenFinished}
+                'index': self._index, 'value': self._value, 'mode': mode, 'autoRemove': self._autoremove}
         nextVal = self.finishedOrNext()
         dic1['nextValue'] = nextVal           # None if finished
         dic1['steps2Go'] = self.getSteps2Go(nextVal, mode)
@@ -547,6 +547,7 @@ class SmartLoop(Debugger, Subject, Observer, Reloadable):
         Immediately redefines the name of the loop.
         """
         self._name = newName
+        self.notify('updateLoop')
         return self._name
 
     def setStart(self, newStart):
@@ -559,31 +560,34 @@ class SmartLoop(Debugger, Subject, Observer, Reloadable):
             # memorize the last start different from None to be able to restart
             # a loop
             self._start0 = newStart
+        self.notify('updateLoop')
 
     def setStop(self, newStop):
         """
         Stores in _nextParams dictionary the new stop and corresponding new nsteps, leaving other parameters unchanged.
         """
-        # self._nextParams={'stop':newStop}
         self._stop = newStop
+        self.notify('updateLoop')
 
     def setStep(self, newStep):
         """
         Stores in _nextParams dictionary the new step and corresponding new nsteps and index , leaving other parameters unchanged.
         """
         self.debugPrint('in setStep with newStep = %s' % newStep)
-        # self._nextParams={'step':newStep}
         self._step = newStep
+        self.notify('updateLoop')
 
     def reverse(self):
         """ Reverse the ramp direction by reversing the sign of step immediately"""
         self.debugPrint('reversing step')
         self._step *= -1
+        self.notify('updateLoop')
 
     def jumpToValue(self, value):
         """ Stores in _nextParams dictionary the value to which the loop will jump at next iteration."""
         self.debugPrint('in jumpToValue with value = ', value)
         self._imposedValue = value
+        self.notify('updateLoop')
 
     def jumpToFirst(self):
         """ Stores in _nextParams dictionary the start value (to which the loop will jump at next iteration)."""
@@ -593,13 +597,52 @@ class SmartLoop(Debugger, Subject, Observer, Reloadable):
         """ Stores in _nextParams dictionary the stop value (to which the loop will jump at next iteration)."""
         self.jumpToValue(self._stop)
 
-    def setNSteps2Go(self, nSteps, adaptStep=True):
+    def setNSteps2Go(self, nSteps=10, adaptStep=True):
         """
-        Sets either step if adaptStep is True, or stop in the opposite case,
-        to have nSteps values (other than the current one) before termination.
+        Sets
+          - either step if step is None or adaptStep is True and ramp is going towards an existing end (start or stop)
+          - or the end (start or stop) the current ramp is going to otherwise,
+        in order to have nSteps values from now before the next expected termination.
         TO BE DONE
         """
-        print 'setNSteps2Go not implemented yet'
+        start, stop, prev, val, step = self._start, self._stop, self._previousValue, self._value, self._step
+        if val is not None:
+            v = val
+        else:
+            v = start
+        if v is None:
+            return              # we don't know where we are, we stop
+        if stop is None and start is None:  # no start no stop => set stop if step > 0 or start if step < 0
+            if step is None or step == 0:
+                return   # no valid step => break
+            elif step > 0:
+                s = v + step * nSteps
+            else:
+                s = v - step * nSteps
+            self.setStart(s)
+        else:                               # there is either a start, a stop, or both
+            if step is None or step == 0:
+                if stop is not None:
+                    s = (stop - v) / nSteps
+                else:
+                    s = (stop - v) / nSteps
+                self.setStep(s)
+            else:                             # step OK => determine whether ramping towards start or stop
+                toStop = (stop is not None and (stop - v) * step >
+                          0) or (start is not None and (start - v) * step < 0)
+                toStart = (start is not None and (start - v) * step >
+                           0) or (stop is not None and (stop - v) * step < 0)
+                end = v + step * nSteps
+                if toStop and (not adaptStep or stop is None):
+                    self.setStop(end)
+                elif toStart and (not adaptStep or start is None):
+                    self.setStart(end)
+                else:
+                    if toStop:
+                        s = (stop - v) / nSteps
+                    else:
+                        s = (start - v) / nStep
+                    self.setStep(s)
 
     def getAutoreverse(self):
         """ Returns the autoreverse flag"""
@@ -608,6 +651,7 @@ class SmartLoop(Debugger, Subject, Observer, Reloadable):
     def setAutoreverse(self, ONorOFF):
         """ Set the autoreverse flag to True or False"""
         self._autoreverse = ONorOFF
+        self.notify('updateLoop')
         return self._autoreverse
 
     def getAutoloop(self):
@@ -617,16 +661,28 @@ class SmartLoop(Debugger, Subject, Observer, Reloadable):
     def setAutoloop(self, ONorOFF):
         """ Set the autoloop flag to True or False"""
         self._autoloop = ONorOFF
+        self.notify('updateLoop')
         return self._autoloop
 
-    def getAutodelete():
-        """ Returns the autodelete flag"""
-        return self._deleteWhenFinished
+    def getAutoremove(self):
+        """ Returns the autoremove flag"""
+        return self._autoremove
 
-    def setAutodelete(ONorOFF):
-        """ Set the autodelete flag to True or False"""
-        self._deleteWhenFinished = ONorOFF
-        return self._deleteWhenFinished
+    def setAutoremove(self, ONorOFF):
+        """ Set the autoremove flag to True or False"""
+        self._autoremove = ONorOFF
+        self.notify('updateLoop')
+        return self._autoremove
+
+    # Stopping the loop and all its descendants
+
+    def stopAllAtNext(self):
+        """
+        Stops the smartloop and all its descendants
+        """
+        self.stopAtNext()
+        for child in self.children():
+            child.stopAtNext()
 
     # Interaction with loopManager
 
@@ -634,9 +690,12 @@ class SmartLoop(Debugger, Subject, Observer, Reloadable):
         """
         Returns the first LoopManager instance found in the global variables namespace (but does not load it).
         """
-        # self.lm=LoopManager()         # retrieves singleton loop manager THIS IS BAD PROGRAMMING. RETRIEVE IN MEMORY IF LOADED ONLY
-        # self.lm.addLoop(self)         # adds the loop to it
-        return LoopManager._instance
+        lm = None
+        try:
+            lm = LoopMgr._instance
+        except:
+            pass
+        return lm
 
     def toLoopManager(self):
         """
@@ -644,13 +703,19 @@ class SmartLoop(Debugger, Subject, Observer, Reloadable):
         """
         self._lm = self.loopManager()
         if self._lm is not None:
+            # loop directly added to the manager
             self._lm.addLoop(self)
             return 1
         return 0
 
-    def updateLoopManager(self):
-        if self._lm is not None:           # tells the loop manager to update
-            self._lm.updateLoop(self)
+    def removeFromManager(self):
+        """
+        Removes the loop from its loop manager if it exists
+
+        """
+        if self._lm is not None:
+            # loop directly removed to the manager
+            self._lm.removeLoop(self)
 
 
 class PredefinedLoop(SmartLoop):
@@ -683,7 +748,7 @@ class AdaptiveLoop(SmartLoop):
     Typical feedback consists in calling newFeedbackValue(value) once per loop iteration.
     All feedback values are stored in _feedBackValues.
     The adaptive function is an external function adaptiveFunc(adaptiveLoop) with the loop as its single parameter.
-    It has consequently access to all methods of a adaptiveLoop including getParams, feedBackValues, and all methods filling _nextParams   
+    It has consequently access to all methods of a adaptiveLoop including getParams, feedBackValues, and all methods filling _nextParams
     It is passed to the adaptive loop at its creation or later using the setAdaptFunc(function) method
 
     Example:
@@ -722,5 +787,5 @@ class AdaptiveLoop(SmartLoop):
     def preIncrement(self):  # overidden method of the SmartLoop parent class
         self.debugPrint(
             'in preincrement calling self._adaptFunc with feedBackValues=', self._feedBackValues)
-        if self._adaptFunc != None:
+        if self._adaptFunc is not None:
             self._adaptFunc(self)

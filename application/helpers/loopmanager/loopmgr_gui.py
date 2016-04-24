@@ -19,9 +19,9 @@ from application.helpers.loopmanager.loopmgr import LoopMgr
 
 iconPath = os.path.dirname(__file__) + '/resources/icons'
 
-#*******************************************
-#  Helper initialization                   *
-#*******************************************
+# *******************************************
+#  Helper initialization                    *
+# *******************************************
 
 # Global module dictionary defining the helper
 helperDic = {'name': 'Loop Manager', 'version': '1.1', 'authors': 'A. Dewes-V. Schmitt - D. Vion',
@@ -49,9 +49,9 @@ def startHelperGuiInGui(exitWhenClosed=False, parent=None, globals={}):
 if __name__ == '__main__':
     startHelperGuiInGui(True)
 
-#********************************************
+# ********************************************
 #  LoopsManager GUI  class                  *
-#********************************************
+# ********************************************
 
 
 class LoopManager(HelperGUI):
@@ -73,7 +73,7 @@ class LoopManager(HelperGUI):
         self.debugPrint("in loopManagerGUI frontpanel creator")
 
         # Build GUI below
-        #self.setStyleSheet("""QTreeWidget:Item {padding:6;} QTreeView:Item {padding:6;}""")
+        # self.setStyleSheet("""QTreeWidget:Item {padding:6;} QTreeView:Item {padding:6;}""")
         self.initializeIcons()
         title = helperDic['name'] + " version " + helperDic['version']
         if self._helper is not None:
@@ -85,8 +85,8 @@ class LoopManager(HelperGUI):
 
         layout = QGridLayout()
 
-        #iconsBarW = QWidget()
-        #self._iconsBar = QGridLayout(iconsBarW)
+        # iconsBarW = QWidget()
+        # self._iconsBar = QGridLayout(iconsBarW)
         # layout.addWidget(iconsBarW)
         self.setWindowIcon(self._icons['loop'])
         self._iconsBar = QGridLayout()
@@ -115,7 +115,7 @@ class LoopManager(HelperGUI):
 
         # self.changeStepButton=QPushButton()
         # self.changeStepButton.setIcon(self._icons['ask'])
-        #self.connect(self.changeStepButton,SIGNAL("clicked()"), self.changeStep)
+        # self.connect(self.changeStepButton,SIGNAL("clicked()"), self.changeStep)
         # self._iconsBar.addWidget(self.changeStepButton,0,3)
 
         self.doubleStepCoeffButton = QPushButton('x2')
@@ -146,11 +146,11 @@ class LoopManager(HelperGUI):
             "stateChanged(int)"), self.autoLoop)
         self._iconsBar.addWidget(self.autoLoopBox, 0, 8)
 
-        self.autoDeleteBox = QCheckBox('Auto-delete')
+        self.autoRemoveBox = QCheckBox('Auto-delete')
         # self.autoReverseButton.setIcon(self._icons['autoReverseButton'])
-        self.connect(self.autoDeleteBox, SIGNAL(
-            "stateChanged(int)"), self.autoDelete)
-        self._iconsBar.addWidget(self.autoDeleteBox, 0, 9)
+        self.connect(self.autoRemoveBox, SIGNAL(
+            "stateChanged(int)"), self.autoRemove)
+        self._iconsBar.addWidget(self.autoRemoveBox, 0, 9)
 
         self.deleteButton = QPushButton('Delete')
         # self.deleteButton.setIcon(self._icons['trash'])
@@ -159,13 +159,13 @@ class LoopManager(HelperGUI):
 
         layout.addLayout(self._iconsBar, 0, 0)
 
-        self._looplist = LoopList()
-        self.connect(self._looplist, SIGNAL(
+        self._loopsTree = LoopsTreeWidget()
+        self.connect(self._loopsTree, SIGNAL(
             "currentItemChanged(QTreeWidgetItem *,QTreeWidgetItem *)"), self.selectLoop)
-        self.connect(self._looplist, SIGNAL(
+        self.connect(self._loopsTree, SIGNAL(
             "itemDoubleClicked(QTreeWidgetItem *,int)"), self.editVariable)
 
-        layout.addWidget(self._looplist, 1, 0)
+        layout.addWidget(self._loopsTree, 1, 0)
         centralWidget = QWidget()
         centralWidget.setLayout(layout)
         self.setCentralWidget(centralWidget)
@@ -202,8 +202,8 @@ class LoopManager(HelperGUI):
         """
         Private method called when a notification is received.
         """
-        # print 'in updatedGui with subject = ',subject,', property =
-        # ',property,', value = ',value
+        # print 'in loopsPanel updatedGui with subject = ',subject,', property
+        # = ',property,', value = ',value
         if property == 'addLoop':
             # loop will be added at the correct level if not already present
             self.addLoop(value)
@@ -216,21 +216,21 @@ class LoopManager(HelperGUI):
             # child will be moved at top level if present
             self.childAtTop(value)
         elif property == "updateLoop":
-            self.updateLoop(value)
+            self.updateLoop(subject)
 
     def ref(self, loop):
         """
-        returns a weak refeence to the loop object to allow garbage collection when the loop won't be referenced any longer.
+        returns a weak reference to the loop object to allow garbage collection when the loop won't be referenced any longer.
         """
         return weakref.ref(loop)
 
-    def selectLoop(self, current, last):
+    def selectLoop(self, currentItem, lastItem):
         """
         Private method called when the a new QTreeWidgetItem is selected in the QTreeWidget list of loops.
         current and last are the new and old QTreeWidgetItems.
         """
-        if current is not None:
-            self._selectedLoop = current._loop()
+        if currentItem is not None:
+            self._selectedLoop = currentItem._loopRef()  # ._loopRef is the true loop
             self.updateLoop(self._selectedLoop)
 
     def updateLoop(self, loop=None):
@@ -241,28 +241,28 @@ class LoopManager(HelperGUI):
         # get all parameters of the loop
         if loop is not None:
             fp = loop.getParams()
-            autoRev, autoLoop, autoDel = fp['mode'] == 'autoRev', fp[
-                'mode'] == 'autoLoop', fp['autoDel']
+            autoRev, autoLoop, autoRemove = fp['mode'] == 'autoRev', fp[
+                'mode'] == 'autoLoop', fp['autoRemove']
         # update button bar
         if self._selectedLoop is None:
             self.onOffBar(False)
         elif self._selectedLoop == loop:
             self.onOffBar(True)
-            for box in [self.autoReverseBox, self.autoLoopBox, self.autoDeleteBox]:
+            for box in [self.autoReverseBox, self.autoLoopBox, self.autoRemoveBox]:
                 box.blockSignals(True)
             self.autoReverseBox.setEnabled(True)
             self.autoReverseBox.setChecked(autoRev)
             self.autoLoopBox.setEnabled(not autoRev)
             self.autoLoopBox.setChecked(autoLoop)
-            self.autoDeleteBox.setEnabled(True)
-            self.autoDeleteBox.setChecked(autoDel)
-            for box in [self.autoReverseBox, self.autoLoopBox, self.autoDeleteBox]:
+            self.autoRemoveBox.setEnabled(True)
+            self.autoRemoveBox.setChecked(autoRemove)
+            for box in [self.autoReverseBox, self.autoLoopBox, self.autoRemoveBox]:
                 box.blockSignals(False)
         # update loop item
         if loop is not None:
             # look in the loop dictionary for the passed loop to retrieve the
             # proper QTreeWidgetItem
-            item = self._items[self.ref(loop)]
+            item = self._loopsTree.loopRefItemDict()[self.ref(loop)]
             # item is the QTreeWidgetItem corresponding to the loop
             item.setText(0, fp['name'])
             item.setText(1, loop.__class__.__name__)
@@ -285,18 +285,18 @@ class LoopManager(HelperGUI):
             else:
                 # self.playPauseButton.setIcon(self._icons['pause'])
                 self.playPauseButton.setText('Pause')
-        for i in range(0, self._looplist.columnCount()):
-            self._looplist.resizeColumnToContents(i)
+        for i in range(0, self._loopsTree.columnCount()):
+            self._loopsTree.resizeColumnToContents(i)
         return
 
     def onOffBar(self, setToOn):
         for button in [self.playPauseButton, self.stopButton, self.reverseButton, self.divideStepCoeffButton, self.doubleStepCoeffButton, self.firstButton, self.lastButton, self.deleteButton]:
             button.setEnabled(setToOn)
-        for box in [self.autoReverseBox, self.autoLoopBox, self.autoDeleteBox]:
+        for box in [self.autoReverseBox, self.autoLoopBox, self.autoRemoveBox]:
             box.setEnabled(setToOn)
         if not setToOn:
             self.playPauseButton.setText('Play/Pause')
-            for box in [self.autoReverseBox, self.autoLoopBox, self.autoDeleteBox]:
+            for box in [self.autoReverseBox, self.autoLoopBox, self.autoRemoveBox]:
                 box.setChecked(False)
                 box.setEnabled(False)
 
@@ -306,30 +306,30 @@ class LoopManager(HelperGUI):
         Called at initialization, in response to notifications 'addLoop', or from addChild()
         """
         # print 'in addLoop with loop =', loop.getName()
+        loopRefItemDict = self._loopsTree.loopRefItemDict()
         # do nothing if the loop is already present at any level
-        if self.ref(loop) in self._items:
+        if self.ref(loop) in loopRefItemDict:
             return
         item = QTreeWidgetItem()          # prepare the item
         item.setFlags(Qt.ItemIsSelectable |
                       Qt.ItemIsEnabled | Qt.ItemIsEditable)
-        item._loop = self.ref(loop)
+        item._loopRef = self.ref(loop)      # save a weak reference to it
+        # define this gui as an observer of the loop
         loop.attach(self)
-        # add to dictionary whatever future level
-        self._items[self.ref(loop)] = item
         parent = loop.parent()
         # if the loop has no parent already present
-        if parent is None or self.ref(parent) not in self._items:
+        if parent is None or self.ref(parent) not in loopRefItemDict:
             # print 'inserting top level item for ',loop.getName()
-            self._looplist.insertTopLevelItem(
-                self._looplist.topLevelItemCount(), item)  # insert it at the top level
+            self._loopsTree.insertTopLevelItem(
+                self._loopsTree.topLevelItemCount(), item)  # insert it at the top level
         else:                                                     # else add it as a child item
             # print 'adding child item ', loop.getName(), ' to parent item ',
             # parent.getName()
             # (this is the Qt addChild method of QTreeWidget)
-            self._items[self.ref(parent)].addChild(item)
+            loopRefItemDict[self.ref(parent)].addChild(item)
             for child in loop.children():
                 self.addLoop(child)           # recursive call for children
-        self.updateLoop(loop)
+        self.updateLoop(loop)             # update once at the end
 
     def addChild(self, child):
         """
@@ -339,7 +339,7 @@ class LoopManager(HelperGUI):
         # print 'in addChild with loop =', child.getName()
         # if child already present (could be improved by testing also if it is
         # not at the right place)
-        if self.ref(child) in self._items:
+        if self.ref(child) in self._loopsTree.loopRefItemDict():
             self.removeLoop(child, update=False)  # remove it first
         self.addLoop(child)                       # simply call addLoop
 
@@ -349,24 +349,25 @@ class LoopManager(HelperGUI):
         Called in response to a notification 'removeLoop'
         """
         # print 'in removeLoop with loop =', loop.getName()
-        # call recursively removeLoop to remove the children first.
-        for child in loop.children():
-            # (easy way to remove them from the dictionary)
-            self.removeLoop(child, update=False)
-        item = self._items[self.ref(loop)]  # retrieve the QTreeWidgetItem
-        parent = item.parent()               # retrieve its possible parent item
-        if parent:                         # if parent exist
-            # print 'removing child item ', loop.getName()
-            parent.removeChild(item)  # remove child
-        else:                              # otherwise
-            # print 'removing top level item ', loop.getName()
-            # remove it from the QTreeWidget
-            self._looplist.takeTopLevelItem(
-                self._looplist.indexOfTopLevelItem(item))
-        del self._items[self.ref(loop)]    # and from the dictionary
-        # detach the loop so that it stops sending notifications directly to
-        # this loopspanel
-        loop.detach(self)
+        loopRefItemDict = self._loopsTree.loopRefItemDict()
+
+        if self.ref(loop) in loopRefItemDict:
+            def detachAll(loop):
+                """
+                Detaches the current GUI from the loop and all its children
+                """
+                for child in loop.children():
+                    child.detachAll(self)  # recursive call
+                loop.detach(self)
+
+            # retrieve the QTreeWidgetItem
+            item = loopRefItemDict[self.ref(loop)]
+            parent = item.parent()               # retrieve its possible parent item
+            if parent:                         # if parent exists
+                parent.removeChild(item)  # remove child
+            else:                              # otherwise remove it from the QTreeWidget
+                self._loopsTree.takeTopLevelItem(
+                    self._loopsTree.indexOfTopLevelItem(item))
         try:
             if self._selectedLoop == loop:
                 self._selectedLoop = None
@@ -381,15 +382,15 @@ class LoopManager(HelperGUI):
         Called in response to notification 'removeChild' => the loop still exists although it is no longer a child.
         """
         # print 'in childAtTop with loop =', loop.getName()
-        item = self._items[self.ref(loop)]
+        item = self._loopsTree.loopRefItemDict()[self.ref(loop)]
         parentItem = item.parent()               # retrieve its possible parent item
         if parentItem:                         # if parent exist
             # print 'removing child item ', loop.getName()
             parentItem.removeChild(item)  # remove child
-        if self._looplist.indexOfTopLevelItem(item) == -1:
+        if self._loopsTree.indexOfTopLevelItem(item) == -1:
             # print 'adding top level item ', loop.getName()
-            self._looplist.insertTopLevelItem(
-                self._looplist.topLevelItemCount(), item)
+            self._loopsTree.insertTopLevelItem(
+                self._loopsTree.topLevelItemCount(), item)
 
     def playPause(self):
         if self._selectedLoop is not None:
@@ -400,12 +401,13 @@ class LoopManager(HelperGUI):
             self.updateLoop(self._selectedLoop)
 
     def stop(self):
-        self._selectedLoop.setFinished()
+        if self._selectedLoop is not None:
+            self._selectedLoop.stopAtNext()
 
     def modifyStepCoeff(self, coeff):
         loop = self._selectedLoop
         if loop is not None:
-            item = self._items[self.ref(loop)]
+            item = self._loopsTree.loopRefItemDict()[self.ref(loop)]
             oldStep = float(item.text(4))
             newStep = coeff * oldStep
             loop.setStep(newStep)
@@ -421,7 +423,7 @@ class LoopManager(HelperGUI):
 
     def jumpToValue(self, loop, value='start'):
         if loop is not None:
-            l, item = self._items[self.ref(loop)]
+            item = self._loopsTree.loopRefItemDict()[self.ref(loop)]
             if value == 'start':
                 value = float(item.text(2))
             elif value == 'stop':
@@ -442,47 +444,55 @@ class LoopManager(HelperGUI):
             loop.setAutoloop(state == 2)
             self.updateLoop(loop)
 
-    def autoDelete(self):
+    def autoRemove(self, state):
         loop = self._selectedLoop
         if loop is not None:
-            loop.setAutodelete(state == 2)
+            loop.setAutoremove(state == 2)
             self.updateLoop(loop)
 
     def delete(self):
         """
-        Removes the loop from the loopmanager
+        Stops and removes the selected loop and its children from the loopmanager backend.
+        - The loop will be deleted from memory by garbage collection only if no other reference to it exists
+        - The loopmanager backend will then notify the removal, which will trigger the self.removeLoop method above
         """
-        self._loopsmanager.removeLoop(self._selectedLoop)
+        if self._selectedLoop is not None:
+            self._helper.removeLoop(self._selectedLoop)
 
     def editVariable(self, item, colIndex):
         """
         Prompts for a new value at the specified column index colIndex of QTreeWidgetItem item.
+        The data type is imposed to be the same as the current value.
         """
-        loop = item._loop()
+        loop = item._loopRef()
         if colIndex in [0, 2, 3, 4, 8, 9] or (colIndex == 9 and item.text(colIndex) not in ['inf', '?']):
             val, newVal, ok = [None] * 3
             textValue = str(item.text(colIndex))
-            columnName = self._looplist.headerItem().text(colIndex)
-            try:
+            columnName = self._loopsTree.headerItem().text(colIndex)
+            try:                        # try first integer type
                 val = int(textValue)
                 newVal, ok = QInputDialog().getInt(self, 'Get new integer value',
                                                    'New % s =' % columnName, value=val)
             except:
-                try:
+                try:                      # then try float type
                     val = float(textValue)
-                    if 1e-10 < val < 1e10:
+                    # check that the current value fits a double before reading
+                    # a double
+                    if 1e-10 < abs(val) < 1e10:
                         newVal, ok = QInputDialog().getDouble(self, 'Get new real value', 'New % s =' %
                                                               columnName, value=val, decimals=10)
-                    else:
+                    else:  # otherwise simulate a float reading with getText
                         while True:
-                            newVal, ok = QInputDialog().getText(self, 'Get real value', 'New % s =' %
-                                                                columnName, text=textValue)
+                            newVal, ok = QInputDialog().getText(self, 'Get new real value',
+                                                                'New % s =' % columnName, text=textValue)
+                            if not ok:
+                                break
                             try:
                                 newVal = float(newVal)
                                 break
                             except:
-                                print 'Please enter a valid number'
-                except:
+                                print 'Please enter a valid number or cancel'
+                except:                    # finally try getting text
                     val = QString(textValue)
                     newVal, ok = QInputDialog().getText(self, 'Get text', 'New % s =' %
                                                         columnName, text=val)
@@ -495,7 +505,7 @@ class LoopManager(HelperGUI):
                 self.updateLoop(loop)
 
 
-class LoopList(QTreeWidget):
+class LoopsTreeWidget(QTreeWidget):
 
     def __init__(self):
         QTreeWidget.__init__(self)
@@ -504,3 +514,26 @@ class LoopList(QTreeWidget):
                               "Value", "Mode", "Next", "Steps to go", "Time estim.", "Specific"])
         self.setSortingEnabled(False)
         self.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.setExpandsOnDoubleClick(False)
+
+    def get_subtree_nodes(self, tree_widget_item):
+        """Returns all QTreeWidgetItems in the subtree rooted at the given node."""
+        nodes = []
+        nodes.append(tree_widget_item)
+        for i in range(tree_widget_item.childCount()):
+            nodes.extend(self.get_subtree_nodes(tree_widget_item.child(i)))
+        return nodes
+
+    def get_all_items(self):
+        """Returns all QTreeWidgetItems in the given QTreeWidget."""
+        all_items = []
+        for i in range(self.topLevelItemCount()):
+            top_item = self.topLevelItem(i)
+            all_items.extend(self.get_subtree_nodes(top_item))
+        return all_items
+
+    def loopRefItemDict(self):
+        """
+        Builds the dictionnary {loopRef1: QTreeWidgetItem1, loopRef2: QTreeWidgetItem2}
+        """
+        return {item._loopRef: item for item in self.get_all_items()}

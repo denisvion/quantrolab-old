@@ -16,9 +16,10 @@ from application.lib.helper_classes import Helper
 class LoopMgr(Singleton, ThreadedDispatcher, Helper):
 
     """
-    The LoopMgr is a Singleton class loop manager, which can be used to manage loop objects of class SmartLoop (or derived from this class).
-    Call addLoop() or removeLoop() to add or remove a loop to/from the loop manager.
-    Control of loops is through loops' methods.
+    The Loop manager LoopMgr is a Singleton class which can be used to keep track of and manage loops.
+    It keeps a list of strong references to the managed loops.
+    loopmgr_gui.py provides a graphical frontend for this manager.
+    Just call addLoop() or removeLoop() to add or remove a loop to the loop manager.
     """
 
     def __init__(self, parent=None, globals={}):
@@ -27,34 +28,43 @@ class LoopMgr(Singleton, ThreadedDispatcher, Helper):
         Singleton.__init__(self)
         Helper.__init__(self, parent, globals)
         ThreadedDispatcher.__init__(self)
-        self._loops = []
+        self._loops = []                    # the list of managed loops
         self._initialized = True
-
-    def updated(self, subject=None, property=None, value=None):
-        self.notify("updated", subject)
-
-    def removeLoop(self, loop):
-        """
-        Adds a loop to the loop manager.
-        """
-        if loop in self._loops:
-            del self._loops[self._loops.index(loop)]
-            self.notify("removeLoop", loop)
-            return True
 
     def addLoop(self, loop):
         """
         Adds a loop to the loop manager.
         """
-        if not loop in self._loops:
+        if loop not in self._loops:
             self._loops.append(loop)
             self.notify("addLoop", loop)
             return True
 
-    def updateLoop(self, loop):
+    def removeLoop(self, loop, stop=True, removeChildren=True, notify=True):
         """
-        Update loop manager
+        Removes a loop from the loop manager (without necessarily deleting it),
+        after stopping it and its children if stop=True.
+        Removes also the children if removeChildren is true.
+        Notifies if notify = true
+          (which makes possible to notify only once for the parent loop in case of recursive calls for children)
         """
         if loop in self._loops:
-            self.notify("updateLoop", loop)
-            return True
+            if stop:
+                loop.stopAllAtNext()
+            if removeChildren:
+                for child in loop.children():
+                    self.removeLoop(child, stop=False, notify=False)
+            self._loops.remove(loop)
+            if notify:
+                self.notify("removeLoop", loop)
+
+    def loops(self):
+        """ Returns a copy of the list of loops"""
+        return list(self._loops)
+
+    def updated(self, subject=None, property=None, value=None):
+        """
+        Function called when receiving notification.
+        Unused for the moment because the loop managers does not observe its managed loops.
+        """
+        pass
