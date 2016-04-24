@@ -1,9 +1,9 @@
-#*************************************************************************
-# DataManager Singleton class which can be used to keep track of datacubes.    *
-# Just call addDatacube() to add a datacube to the DataManager.                *
-# gui.datamanager.DataManager                                                  *
-#   provides a graphical frontend of the DataManager class.                    *
-#*************************************************************************
+# *******************************************************************************
+# # DataManager Singleton class which can be used to keep track of datacubes.   *
+# # Just call addDatacube() to add a datacube to the DataManager.               *
+# # gui.datamanager.DataManager                                                 *
+# #  provides a graphical frontend of the DataManager class.                    *
+# *******************************************************************************
 
 # Imports
 
@@ -59,7 +59,7 @@ class DataMgr(Singleton, ThreadedDispatcher, Helper):
             for cube in cubes:
                 family.extend(cube.familyMembers())
         cubes.extend(family)
-        if not datacube in cubes:
+        if datacube not in cubes:
             self._datacubes.append(datacube)
             self.debugPrint(
                 'DataManager notifying "addDatacube" for datacube', datacube)
@@ -83,7 +83,7 @@ class DataMgr(Singleton, ThreadedDispatcher, Helper):
         else:                                             # the cube is not at the top level of the hyerarchy
             parent = datacube.parent()
             # check that it has a parent or ascendent in the datamanager
-            while parent is not None and not parent in cubes:
+            while parent is not None and parent not in cubes:
                 parent = parent.parent()
             if parent in cubes:                             # give up if the datacube is not managed by the dataManager
                 datacube.parent().removeChild(datacube, deleteChildCube=deleteCube)
@@ -98,10 +98,10 @@ class DataMgr(Singleton, ThreadedDispatcher, Helper):
 
     ##
 
-    ##########################################################################
-    ## Below is a function plot to notify a listener like the dataManager frontpanel to plot the datacube.  #
-    ## Note that a datacube has methods to call this plot function.                                         #
-    ##########################################################################
+    # ########################################################################################################
+    # # Below is a function plot to notify a listener like the dataManager frontpanel to plot the datacube.  #
+    # # Note that a datacube has methods to call this plot function.                                         #
+    # ########################################################################################################
 
     def plot(self, datacube, *args, **kwargs):
         """

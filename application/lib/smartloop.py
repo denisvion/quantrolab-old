@@ -17,16 +17,10 @@ from scipy import *
 from application.lib.base_classes1 import Debugger, Reloadable
 # and can send and receive notifications
 from application.lib.com_classes import Subject, Observer
-try:
-    # try to load the LoopMgr class in order to be able
-    from application.helpers.loopmanager.loopmgr import LoopMgr
-# to push a smartloop to the loop manager automatically
-except:
-    pass
-########################################
-# To Do:
-# - lock modifications during next ?
-########################################
+
+##############################################
+# To Do: lock modifications during next ?    #
+##############################################
 
 epsilon = 1e-10  # for numerical comparisons
 # Rounding is made at each increment to avoid accumulation of numerical errors.
@@ -110,7 +104,7 @@ class SmartLoop(Debugger, Subject, Observer, Reloadable):
             else:
                 self._stop = start + linnsteps * self._step
 
-        self._lm = None                 # loop can have a loop manager
+        self._lm = None               # loop can have a loop manager
         if toLoopManager:             # and adds itself to it if toManager is true.
             self.toLoopManager()
 
@@ -603,7 +597,6 @@ class SmartLoop(Debugger, Subject, Observer, Reloadable):
           - either step if step is None or adaptStep is True and ramp is going towards an existing end (start or stop)
           - or the end (start or stop) the current ramp is going to otherwise,
         in order to have nSteps values from now before the next expected termination.
-        TO BE DONE
         """
         start, stop, prev, val, step = self._start, self._stop, self._previousValue, self._value, self._step
         if val is not None:
@@ -686,25 +679,37 @@ class SmartLoop(Debugger, Subject, Observer, Reloadable):
 
     # Interaction with loopManager
 
-    def loopManager(self):
+    def _findALoopMgr(self):
         """
-        Returns the first LoopManager instance found in the global variables namespace (but does not load it).
+        Private function.
+        Returns the first LoopMgr instance found in the global variables namespace (but does not load it).
+        BUG: the manager will be in globals of a script only if it was loaded before the script is run for the first time.
+        BUG: This is because the global variables are recopied in the script scope at the first run...
         """
         lm = None
         try:
+            # read the class LoopMgr
+            from application.helpers.loopmanager.loopmgr import LoopMgr
+            # try to load the LoopMgr class in order to be able
             lm = LoopMgr._instance
+            if lm:
+                lm = weakref.ref(lm)
         except:
             pass
         return lm
 
+    def loopMgr(self):
+        """ returns the weak reference to the LoopMgr stored in _lm"""
+        return self._lm
+
     def toLoopManager(self):
         """
-        Adds the loop to the loopManager if it exists in memory
+        Adds the loop to the loop manager if it exists in memory
         """
-        self._lm = self.loopManager()
+        if self._lm is None:                    # BUG ? should also check if the manager still exists
+            self._lm = self._findALoopMgr()
         if self._lm is not None:
-            # loop directly added to the manager
-            self._lm.addLoop(self)
+            self._lm().addLoop(self)      # add to the manager
             return 1
         return 0
 

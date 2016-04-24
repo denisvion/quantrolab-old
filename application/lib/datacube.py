@@ -1,15 +1,15 @@
-#*************************************************************************
-# This defines  a hirarchical data storage class called datacube.                 *
-# A datacube stores a 2-dimensional table of values of the same types:            *
-#       array len(self._table[self._index,:])).                                   *
-# Each datacube is identified by a name and has other properties.                 *
-# A datacube can have one or more "children datacubes" for each row of its table, *
-# thus creating a multidimensional data model.                                    *
-#*************************************************************************
+# ***********************************************************************************
+# * This defines  a hirarchical data storage class called datacube.                 *
+# * A datacube stores a 2-dimensional table of values of the same types:            *
+#       array len(self._table[self._index,:])).                                     *
+# * Each datacube is identified by a name and has other properties.                 *
+# * A datacube can have one or more "children datacubes" for each row of its table, *
+# * thus creating a multidimensional data model.                                    *
+# ***********************************************************************************
 
-#*************************************************************************
-# Imports and utility classes
-#*************************************************************************
+# ***********************************
+# * Imports and utility classes     *
+# ***********************************
 
 import sys
 import yaml
@@ -27,11 +27,11 @@ from ctypes import *
 from numpy import *
 from scipy import *
 
-from application.lib.instrum_classes import *
-
-from application.lib.base_classes1 import Reloadable
+# from application.lib.instrum_classes import * # useless ????
+# Datacubes are debuggable and reloadable
+from application.lib.base_classes1 import Debugger, Reloadable
+# and can send and receive notifications
 from application.lib.com_classes import Subject, Observer
-from application.lib.instrum_classes import *
 
 
 class ChildItem:
@@ -51,9 +51,9 @@ class ChildItem:
     def attributes(self):
         return self._attributes
 
-#******************************************************************************
-#  Datacube class
-#******************************************************************************
+# ******************************************************************************
+#  Datacube class                                                              *
+# ******************************************************************************
 
 
 class Datacube(Subject, Observer, Reloadable, Debugger):
@@ -97,18 +97,14 @@ class Datacube(Subject, Observer, Reloadable, Debugger):
       It has at least one attribute with name 'row' the value of which is equal to the row index of its parent.
       This attribute locates it in the datacube hyerarchy.
       Other attributes are free and may store specific parameter values that were incremented from child to child.
-
     """
 
-    # version = "0.2"
-    # version = "0.3"
     version = "0.4"   # DV April 2014: Calls to Datamanager modified with named parameters instead of unnamed ones
-
     defaults = dict()
 
-    ######################################
-    # creator
-    ######################################
+    # ****************************
+    # * Creator                  *
+    # ****************************
     def __init__(self, *args, **kwargs):  # creator
         Debugger.__init__(self)
         Subject.__init__(self)
@@ -148,15 +144,16 @@ class Datacube(Subject, Observer, Reloadable, Debugger):
         self._parent = None
 
         self.setModified()
+        self._dm = None               # weak reference to a data manager DataMgr
 
     def __getitem__(self, keys):
         if not hasattr(keys, '__iter__'):
             keys = [keys]
         return self.columns(keys)
 
-    ###############################
-    # datacube property management
-    ###############################
+    # *********************************
+    # * Datacube property management  *
+    # *********************************
 
     def name(self):
         """
@@ -413,7 +410,7 @@ class Datacube(Subject, Observer, Reloadable, Debugger):
         and so on up to children level upToLevel, starting from level 0 for self.
         Use a negative index for level as usual to specify the level relative to the end.
         Unless flatten is set to True, the hierarchy is respected and the output has the form
-        [names,tree_of_children_if_any] with 
+        [names,tree_of_children_if_any] with
         tree_of_children_if_any=[names_of_children_if_any,tree_of_grandchildren_if_any], and so on.
         """
         names = list(self._meta[
@@ -439,7 +436,7 @@ class Datacube(Subject, Observer, Reloadable, Debugger):
         """
         Returns the  list of lists
         [column names of datacube, names common to all children, names common to all grand-children, ... ]
-        Stops at the first level having no common names and do not include the corresponding empty list in the returned list. 
+        Stops at the first level having no common names and do not include the corresponding empty list in the returned list.
         """
         commonNames = [self.names()]
         children = self.children()
@@ -486,13 +483,13 @@ class Datacube(Subject, Observer, Reloadable, Debugger):
 
     def __len__(self):  # magic method
         """
-        Returns the length of the datacube, i.e., the number of rows (up to the last validated one) 
+        Returns the length of the datacube, i.e., the number of rows (up to the last validated one)
         """
         return self._meta["length"]
 
-    ############################
-    # Table reshaping
-    ############################
+    # *************************
+    # * Table reshaping       *
+    # *************************
 
     def _resize(self, size):
         """
@@ -554,9 +551,9 @@ class Datacube(Subject, Observer, Reloadable, Debugger):
             ), '._adjustTable  notifying "names" with fieldNames=', self._meta["fieldNames"])
             self.notify('names', self._meta['fieldNames'])
 
-    ######################
-    # column management
-    ######################
+    # ***********************
+    # * Column management   *
+    # ***********************
 
     def columnName(self, index):
         """
@@ -722,7 +719,7 @@ class Datacube(Subject, Observer, Reloadable, Debugger):
     def createCol(self, name=None, columnIndex=None, offsetRow=0, values=None, notify=True, **kwargs):
         """
         If it does not already exist, creates a new column and inserts it at index columnIndex or at the end if index is not specified or invalid;
-        If it already exists, overwrites it. 
+        If it already exists, overwrites it.
         Then update the length if the new inserted data exceed the previous length.
         Then sets the passed values (if any) starting from row index = offset.
         Then sends notifications if notify is true.
@@ -753,9 +750,9 @@ class Datacube(Subject, Observer, Reloadable, Debugger):
             if values is not None:
                 self.notify("commit")
 
-    #################
-    # row management
-    #################
+    # **********************
+    # * Row management     *
+    # **********************
 
     def row(self):
         """
@@ -767,7 +764,7 @@ class Datacube(Subject, Observer, Reloadable, Debugger):
         """
         Returns a row at a given index
         """
-        if index != None and index < len(self):
+        if index is not None and index < len(self):
             return self._table[index, :]
 
     def setIndex(self, index):
@@ -795,7 +792,7 @@ class Datacube(Subject, Observer, Reloadable, Debugger):
         Sets all values in the current row to 0
         """
         self.setModified()
-        if self._meta["index"] != None:
+        if self._meta["index"] is not None:
             for i in range(0, len(self._table[self._meta["index"], :])):
                 self._table[self._meta["index"], i] = 0
         self.debugPrint('datacube.clearRow with datacube ',
@@ -841,7 +838,7 @@ class Datacube(Subject, Observer, Reloadable, Debugger):
         Then sends a "commit" notification if notify is true.
         Important: This function does not change the datacube's current row index unless commit is explicitely set to true.
           If commit, the current row index becomes the row after the insertion and not the last row.
-          Note: changing the datacube's current row index with commit can be dangerous if several callers update the datacube simultaneously. 
+          Note: changing the datacube's current row index with commit can be dangerous if several callers update the datacube simultaneously.
         """
         self.setModified()
         str1 = ''
@@ -1055,9 +1052,9 @@ class Datacube(Subject, Observer, Reloadable, Debugger):
                 foundRows.append(i)
         return foundRows
 
-    #**************************************************************************
-    # Methods for children management
-    #**************************************************************************
+    # **************************************************************************
+    # * Children management                                                    *
+    # **************************************************************************
 
     def removeChildren(self, cubes):
         """
@@ -1101,13 +1098,13 @@ class Datacube(Subject, Observer, Reloadable, Debugger):
         if childCube in self.children():
             raise Exception("Datacube is already a child!")
         attributes = kwargs
-        if not "row" in attributes:
+        if "row" not in attributes:
             # a datacube added as a child always have a 'row' attribute, which
             # is set to the current row index on adding
             attributes["row"] = self.index()
         self.debugPrint('attributes = ', attributes)
         item = ChildItem(childCube, attributes)
-        if childCube.parent() != None:             # a datacube can be the child of only one parent
+        if childCube.parent() is not None:             # a datacube can be the child of only one parent
             childCube.parent().removeChild(childCube)
         childCube.setParent(self)
         self._children.append(item)
@@ -1165,16 +1162,16 @@ class Datacube(Subject, Observer, Reloadable, Debugger):
             for item in self._children:
                 deviate = False
                 for key in kwargs:
-                    if (not key in item.attributes()) or item.attributes()[key] != kwargs[key]:
+                    if (key not in item.attributes()) or item.attributes()[key] != kwargs[key]:
                         deviate = True
                         continue
                 if not deviate:
                     children.append(item.datacube())
             return children
 
-    #*************************************************************************
-    # Methods to load from and save to files
-    #*************************************************************************
+    # *************************************************************************
+    # * Loading and saving from/to files                                      *
+    # *************************************************************************
 
     def loadTable(self, filename, delimiter="\t", guessStructure=False):
         """
@@ -1232,14 +1229,14 @@ class Datacube(Subject, Observer, Reloadable, Debugger):
 
     def saveToHdf5(self, path=None, saveChildren=True, overwrite=False, forceSave=False, verbose=False):
         """
-        Saves the datacube to a HDF5 file 
+        Saves the datacube to a HDF5 file
         """
         import h5py
-        if path is None and self.filename() != None:
+        if path is None and self.filename() is not None:
             path = self.filename()
             overwrite = True
 
-        elif path is None and self.name() != None:
+        elif path is None and self.name() is not None:
             path = self.name() + ".hdf"
 
         if path is None:
@@ -1316,7 +1313,7 @@ class Datacube(Subject, Observer, Reloadable, Debugger):
         Saves the data table to a given file
         """
         file = open(filename, "w")
-        if header != None:
+        if header is not None:
             file.write(header)
         headers = ""        # fields (column names)
         for name in self.names():
@@ -1353,10 +1350,10 @@ class Datacube(Subject, Observer, Reloadable, Debugger):
         # determine path and filenames
         self.debugPrint('datacube.savetxt(', self.name(),
                         ') with overwrite=', overwrite, 'newFile=', newFile)
-        if path is None and self.filename() != None:
+        if path is None and self.filename() is not None:
             path = self.filename()
             # overwrite = True # removed by DV in Jan 2015
-        elif path is None and self.name() != None:
+        elif path is None and self.name() is notNone:
             path = self.name()
         if path is None:
             raise Exception("You must supply a filename!")
@@ -1411,7 +1408,7 @@ class Datacube(Subject, Observer, Reloadable, Debugger):
         if os.path.exists(savepath) and (os.path.exists(parpath) or header):
             self.debugPrint('unsaved, par file, txt file and cube modification times =', self._unsaved,
                             ' ,  ', os.path.getmtime(savepath), ' , ', float(self._meta["modificationTime"]))
-            #save= self._unsaved or (os.path.getmtime(parpath)+0.1 < float(self._meta["modificationTime"])) or (os.path.getmtime(savepath)+0.1 < float(self._meta["modificationTime"]))
+            # save= self._unsaved or (os.path.getmtime(parpath)+0.1 < float(self._meta["modificationTime"])) or (os.path.getmtime(savepath)+0.1 < float(self._meta["modificationTime"]))
             save = self._unsaved
         self.debugPrint('file either does not exist or is old = ', save)
 
@@ -1442,7 +1439,7 @@ class Datacube(Subject, Observer, Reloadable, Debugger):
                 self.debugPrint(parpath, ' saved')
                 self.saveTable(savepath)    # save the .txt file
             else:
-                #lines = paramstxt.split("\n")
+                # lines = paramstxt.split("\n")
                 # lines=map(lambda s: '#'+s+'\n',lines)     # modified by DV in Jan 2015 to prevent last sharp character in front of fieldnames
                 # paramstxt=''.join(lines)                  # paramstxt =
                 # "#"+"\n#".join(lines)
@@ -1588,9 +1585,9 @@ class Datacube(Subject, Observer, Reloadable, Debugger):
         self._unsaved = False
         self._meta["modificationTime"] = os.path.getmtime(tableFilename)
 
-    #*************************************************************************
-    #
-    #*************************************************************************
+    # *************************************************************************
+    # * Plotting                                                              *
+    # *************************************************************************
 
     def plot(self, fig=None, x=None, y=None, ls='-', marker='o', color='b', **kwargs):
         # Implement a plot in a matplotlib figure
@@ -1617,7 +1614,7 @@ class Datacube(Subject, Observer, Reloadable, Debugger):
                        uint16, uint32, uint64, float_, float16, float32, float64)
         complexTypes = (complex_, complex64, complex128)
         colors = ['b', 'g', 'r', 'c', 'm', 'k']
-        if not color in colors:
+        if color not in colors:
             colors.insert(0, color)
 
         length = self._meta["length"]
@@ -1680,7 +1677,7 @@ class Datacube(Subject, Observer, Reloadable, Debugger):
         ly = len(y)
         for i in range(max(lx, ly)):
             plots.append([x[i % lx], y[i % ly]])
-        #% function to build columns
+        # function to build columns
 
         def colFunc(name, l):
             if name == 'row index':
@@ -1715,7 +1712,7 @@ class Datacube(Subject, Observer, Reloadable, Debugger):
             if len(xLabel) != 0:
                 xLabel += ', '
                 yLabel += ', '
-            if not type in complexTypes:
+            if type not in complexTypes:
                 plt.plot(xCol, yCol, linestyle=ls, marker=marker,
                          color=colori, label=yName + '(' + xName + ')')
                 xLabel += xName
@@ -1738,51 +1735,74 @@ class Datacube(Subject, Observer, Reloadable, Debugger):
         plt.show()
         return fig
 
-    #*************************************************************************
-    # Methods to interact with a dataManager
-    # (and not directly with the dataManager frontpanel)
-    #*************************************************************************
+    # *************************************************************************
+    # * Methods to interact with a dataManager                                *
+    # * (and not directly with the dataManager frontpanel)                    *
+    # *************************************************************************
 
-    def dataManager(self):
+    def _findADataMgr(self):
         """
-        Returns the first dataMgr instance found in the global variables namespace (but does not load it).
+        Private function.
+        Returns the first DataMgr instance found in the global variables namespace (but does not load it).
+        BUG: the manager will be in globals of a script only if it was loaded before the script is run for the first time.
+        BUG: This is because the global variables are recopied in the script scope at the first run...
         """
-        for key, value in globals().items:
-            if type(value).__name__ == 'DataMgr':
-                return key
+        lm = None
+        try:
+            # read the class LoopMgr
+            from application.helpers.datamanager.datamgr import DataMgr
+            # try to load the LoopMgr class in order to be able
+            dm = DataMgr._instance
+            if dm:
+                dm = weakref.ref(dm)
+        except:
+            pass
+        return dm
+
+    def dataMgr(self):
+        """ returns the weak reference to the DataMgr stored in _lm"""
+        return self._dm
 
     def toDataManager(self):
         """
-        Adds the datacube to the dataManager
+        Adds the datacube to the data manager if it exists in memory
         """
-        self.dataManager().addDatacube(self)
-        return self
+        if self._dm is None:                    # BUG ? should also check if the manager still exists
+            self._dm = self._findADataMgr()
+        if self._dm is not None:
+            self._dm().addDatacube(self)      # add to the manager
+            return 1
+        return 0
 
     def plotInDataManager(self, *args, **kwargs):
         """
         Call dataManager.plot() with the present datacube as first parameter and any other params.
         """
-        self.dataManager().plot(self, *args, **kwargs)  # optional named parameters in version 0.4
+        if self._dm is None:                    # BUG ? should also check if the manager still exists
+            self._dm = self._findADataMgr()
+        if self._dm is not None:
+            # optional named parameters in version 0.4
+            self.dm().plot(self, *args, **kwargs)
 
     def addDefaultPlot(self, listOfVariableNames, replace=False):
         """
         Adds a default plot description to the list of default plot descriptions of the datacube.
-        If replace=True, all previous default plot description are erased. 
+        If replace=True, all previous default plot description are erased.
         The list of descriptions of default plots is stored in datacube._parameters["defaultPlot"].
         It can be accessed through datacube.parameters()["defaultPlot"]
-        A default plot description is a list ['xName','yName'] or ['xName','yName','zName'] for a 2d and 3d plot respectiely. 
+        A default plot description is a list ['xName','yName'] or ['xName','yName','zName'] for a 2d and 3d plot respectiely.
         Default plot descriptions are used by the the datamanager plotters for plot requests that do not specify x,y (and z) variables
         """
-        if self._parameters.has_key("defaultPlot") and not replace:
-            if listOfVariableNames not in self._parameters["defaultPlot"]:
-                self._parameters["defaultPlot"].append(listOfVariableNames)
+        if 'defaultPlot' in self._parameters and not replace:
+            if listOfVariableNames not in self._parameters['defaultPlot']:
+                self._parameters['defaultPlot'].append(listOfVariableNames)
         else:
-            self._parameters["defaultPlot"] = [listOfVariableNames]
+            self._parameters['defaultPlot'] = [listOfVariableNames]
         self.notify('names', self._meta['fieldNames'])
 
-    #*************************************************************************
-    # Methods to interact with Igor software
-    #*************************************************************************
+    # *******************************************************
+    # * Interacting with Igor software              *
+    # *******************************************************
     try:
         from application.lib.igorcom import IgorCommunicator
     except:
@@ -1814,6 +1834,6 @@ class Datacube(Subject, Observer, Reloadable, Debugger):
         for c in self.children():
             c.sendToIgor(path=path + "'" + self.name() + "':")
 
-        #cmd="Display %s vs %s"%("root:'"+folderName+"':'"+y+"'","root:'"+folderName+"':'"+x+"'")
+        # cmd="Display %s vs %s"%("root:'"+folderName+"':'"+y+"'","root:'"+folderName+"':'"+x+"'")
         # print cmd
         # igorCom(cmd)

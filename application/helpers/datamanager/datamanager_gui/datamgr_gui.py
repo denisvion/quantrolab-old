@@ -1,6 +1,6 @@
-#*************************************************************************
+# *************************************************************************
 # DataManager Frontpanel                                                       *
-#*************************************************************************
+# *************************************************************************
 
 # Imports
 
@@ -36,9 +36,9 @@ from application.helpers.datamanager.datamanager_gui.plotter import Plot2DWidget
 
 import numpy
 
-#*******************************************
+# *******************************************
 #  Helper initialization                   *
-#*******************************************
+# *******************************************
 
 # Global module dictionary defining the helper
 helperDic = {'name': 'Data Manager', 'version': '0.4', 'authors': 'A. Dewes-V. Schmitt - D. Vion',
@@ -69,9 +69,9 @@ def startHelperGuiInGui(exitWhenClosed=False, parent=None, globals={}):
 if __name__ == '__main__':
     startHelperGuiInGui(True)
 
-#********************************************
+# ********************************************
 #  DataManager GUI  class                   *
-#********************************************
+# ********************************************
 # general rules :
 #   - the client interacts with the dataManager only, and not with the dataManager frontpanel
 #   - the dataManager or the datacubes then send notifications to the frontpanel or to its elements.
@@ -344,7 +344,7 @@ class DataManager(HelperGUI):
             subDir = os.path.normpath(workingDir + "/bad_data")
             if not os.path.exists(subDir):
                 os.mkdir(subDir)
-            if "badData" in self._cube.parameters() and self._cube.parameters()["badData"] == True:
+            if "badData" in self._cube.parameters() and self._cube.parameters()["badData"]:
                 messageBox = QMessageBox(
                     QMessageBox.Information, "Already marked, returning...")
                 messageBox.exec_()
@@ -364,7 +364,7 @@ class DataManager(HelperGUI):
         subDir = os.path.normpath(workingDir + "/good_data")
         if not os.path.exists(subDir):
             os.mkdir(subDir)
-        if "goodData" in self._cube.parameters() and self._cube.parameters()["goodData"] == True:
+        if "goodData" in self._cube.parameters() and self._cube.parameters()["goodData"]:
             messageBox = QMessageBox(
                 QMessageBox.Information, "Already marked, returning...")
             messageBox.exec_()
@@ -442,9 +442,9 @@ class DataManager(HelperGUI):
             plotter.updatedGui(
                 subject=subject, property="addChild", value=value)
 
-#********************************************
+# ********************************************
 #  CubeTreeView class                       *
-#********************************************
+# ********************************************
 
 
 class CubeTreeView(QTreeWidget, ObserverWidget, Debugger):
