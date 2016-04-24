@@ -94,27 +94,27 @@ loopVoltage=SmartLoop(0.,step=1.0,stop=10.0,name='Voltage',toLoopManager=True,au
 loopPower=SmartLoop(0.,step=2.0,stop=20.0,name='Power',toLoopManager=True,autoremove=False)
 
 # A dummy measurement function
-def measure():
+def measure(x,y):
 	time.sleep(0.5)
-	return 1.
+	return x+2*y
 	
 # We first choose to ramp the power for each value of the voltage
 loopPower.setParent(loopVoltage)
 mainLoop=loopVoltage
-
+ 
 ## We do the experiment
 secondLoop=mainLoop.children()[0]
 names=[loop.getName() for loop in (mainLoop,secondLoop)]
-#cube=Datacube('myExperiment')
-#cube.toDataManager()
+cube=Datacube('myExperiment')
+cube.toDataManager()
 mainLoop.reinit()
 for x in mainLoop:
 	print names[0],' = ',x
 	secondLoop.reinit()
 	for y in secondLoop:
 		print names[1],' = ',y
-		meas=measure()
-		#cube.set(commit=True,**{names[0]:x,names[1]:y,'meas':meas})	
+		meas=measure(x,y)
+		cube.set(commit=True,columnOrder=(names[0],names[1],'meas'),**{names[0]:x,names[1]:y,'meas':meas})	
 
 ## We decide then to ramp rather in the other direction, with a voltage step twice as small:
 loopVoltage.setStep(loopVoltage.getStep()/2.)

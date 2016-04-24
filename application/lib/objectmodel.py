@@ -33,7 +33,7 @@ class Object(object, Subject):
         return {'name': self.name()}
 
     def Id(self):
-        if self.parent() != None:
+        if self.parent() is not None:
             return self.parent().Id() + "_" + str(self.parent().indexOfChild(self))
         return "root"
 
@@ -47,19 +47,19 @@ class Object(object, Subject):
         if node == self:
             return True
         currentNode = node
-        while currentNode.parent() != None:
+        while currentNode.parent() is not None:
             currentNode = currentNode.parent()
             if currentNode == self:
                 return True
         return False
 
     def indexOfChild(self, child):
-        if not child in self.children():
+        if child not in self.children():
             raise KeyError("Not a child of mine!")
         return self._children.index(child)
 
     def insertChild(self, index, child):
-        if not child in self._children:
+        if child not in self._children:
             self._children.insert(index, child)
             child.setParent(self)
 
@@ -159,7 +159,7 @@ class Converter(object):
 
     def load(self, params):
         (key, objparams, children) = params
-        if not key in self._objectMap:
+        if key not in self._objectMap:
             raise KeyError("Don't know how to load objects of type %s" % key)
         object = self._objectMap[key](**objparams)
         for childparams in children:

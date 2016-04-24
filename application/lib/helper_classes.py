@@ -5,9 +5,9 @@ A HelperGUI is a GUI plugin that adds functionalities to the Quantrolab IDE.
 Helpers and HelperGUIs can be either independant applications from the IDE, or be run inside the IDE to share the same global variables as the scripts.
 They can be Singletons (that exist in only one exemplary) or not
 A HelperGUI can be stand-alone or be the GUI layer of a Helper associated to it.
-  In case of Helper-HelperGUI association, 
+  In case of Helper-HelperGUI association,
     - both classes can be in the same or in different files.
-    - the HelperGUI is usually in charge of loading the Helper if it is not already loaded.  
+    - the HelperGUI is usually in charge of loading the Helper if it is not already loaded.
 The possible strategies of interaction with Helpers and HelperGUIs are the following:
   1) Helper without HelperGUI => Users interact with the Helper through scripts in the IDE
   2) Stand alone HelperGUI
@@ -17,7 +17,7 @@ The possible strategies of interaction with Helpers and HelperGUIs are the follo
   3) Associated Helper and HelperGUI
     3a) User interacts only with Helper through scripts, HelperGUI receive messages from the Helper and is only a display.
     3b) => Both scripts of the IDE and the HelperGUI are clients and send commands to the Helper;
-        After both type of interaction, the HelperGUI receives messages from the Helper and update its GUI 
+        After both type of interaction, the HelperGUI receives messages from the Helper and update its GUI
         This strategy is powerful but difficult to program.
 
 Example:  The DataMgr and DataManager form a couple of associated Helper-HelperGUI implementing strategy 3b to help

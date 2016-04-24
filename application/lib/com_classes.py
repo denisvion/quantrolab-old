@@ -8,7 +8,7 @@ DEBUG = False
 
 """
 This module defines the abstract classes able to communicate asynchroneously between each other
-Subject, Observer, and Dispatcher(Subject) and ThreadedDispatcher(KillableThread). 
+Subject, Observer, and Dispatcher(Subject) and ThreadedDispatcher(KillableThread).
 """
 
 import threading
@@ -45,11 +45,11 @@ class Subject:
 
     def attach(self, observer):
         r = weakref.ref(observer)
-        if not r in self._observers:
+        if r not in self._observers:
             self._observers.append(r)
 
     def setObservers(self, observers):
-        if not observers is None:
+        if observers is not None:
             self._observers = observers
         else:
             self._observers = []
@@ -126,7 +126,7 @@ class Dispatcher(Subject):
     Each of these specific messages always indicates a particular method to run and its arguments, and optionally a callback method.
     The Dispatcher does not derive from the observer class and has no updated method.
     It manages a queue of received messages that are FIFO processed.
-    The processing consists in 
+    The processing consists in
       1) running the specified method,
       2) notifies the result
       3) calling the callback method with the result as parameter, if requested.
@@ -207,7 +207,7 @@ class Dispatcher(Subject):
                 # notify the name of the method run and its result (this is
                 # different from callback)
                 self.notify(command, result)
-                if callback != None:
+                if callback is not None:
                     # this is the callback call
                     callback(dispatchId, result)
             else:
