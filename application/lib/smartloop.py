@@ -41,16 +41,18 @@ class SmartLoop(Debugger, Subject, Observer, Reloadable):
             - one output value accessed with the method 'getValue',
             - an index that counts the number of iterations, which is read with method 'getIndex',
             - and a history of all its past values, which is accessed with method 'history'.
-      The SmartLoop's base parameters are its start,stop and step values;
-        They can be read or redefined at any time using methods 'getStart', 'getStop', 'getStep', 'setStart', 'setStop', 'setStep';
+      The SmartLoop's base parameters are its start,stop, step, and first values;
+        They can be read or redefined at any time using methods:
+            'getStart', 'getStop', 'getStep', 'getFirst', 'setStart', 'setStop', 'setStep','setFirst';
         Consequently, there is no fixed number of steps, although an initial number of steps can be specified at creation for conveniency.
       The SmartLoop is automatically terminated if its next value falls outside the start-stop range;
-      Stop (and start after the loop has been started) can be set to None to make the loop infinite;
+      Start and stop can be set to None to make the loop infinite;
+      First is set to start by default but can be set to another value; It has to be set to a real value if start is None.
       The SmartLoop can jump to any value along the loop at the next increment using the method 'jumpToValue';
       The SmartLoop can be paused, played, reversed or terminated at the next increment using methods 'pause', 'play', 'reverse', 'stopAtNext'.
       Autoreverse or circular looping  when crossing start or stop can be set on and off, or read,
         using methods 'setAutoreverse', 'getAutoreverse', 'setAutoLoop', 'getAutoLoop'.
-      Duration of an iteration averaged over all previous iterations with no pause can be obtained using 'iterationDuration()'.
+      Duration of an iteration averaged over all previous iterations (that were not paused) can be obtained using 'iterationDuration()'.
       A dictionary including all loop parameters as well as an estimate of the remaining time before termination is obtained with method 'getParams'
 
     Iteration mechanism:
@@ -73,7 +75,7 @@ class SmartLoop(Debugger, Subject, Observer, Reloadable):
 
     """
 
-    def __init__(self, start=0, step=1, stop=None, linnsteps=None, name='unamed', parent=None, toLoopManager=True, autoreverse=False, autoloop=False, autoremove=True):
+    def __init__(self, start=None, step=1, stop=None, first=None, linnsteps=None, name='unamed', parent=None, toLoopManager=True, autoreverse=False, autoloop=False, autoremove=True):
         """
         Initializes the smartloop and adds it to the LoopManager if toLoopManager is true.
         """
@@ -88,7 +90,11 @@ class SmartLoop(Debugger, Subject, Observer, Reloadable):
 
         self._name = name
         # memorize the initial start value in case it is erased by user
-        self._start0 = start
+        if first is None:
+            first = start
+        if first is None:
+            first = 0
+        self._first = first
         self._stop = stop
         self._step = step
         self._autoreverse = autoreverse  # has priority over autoLoop
@@ -115,7 +121,7 @@ class SmartLoop(Debugger, Subject, Observer, Reloadable):
         """
         Restores the loop in the states before first increment.
         """
-        self._start = self._start0
+        self._start = self._first
         # index, value and previous value start at None.
         self._index = None
         self._value = None            # index, value will be valued at first  iteration
@@ -281,7 +287,7 @@ class SmartLoop(Debugger, Subject, Observer, Reloadable):
             if self._start is not None:
                 self._value = self._start
             else:
-                self._value = self._start0
+                self._value = self._first
         else:
             # gets the next value to be applied or None if loop is finished
             nextVal = self.finishedOrNext()
@@ -297,7 +303,7 @@ class SmartLoop(Debugger, Subject, Observer, Reloadable):
         """
         Private function
         Returns the current value + the step without introducing numerical errors,
-        or _start0 if the current value is not a number.
+        or _first if the current value is not a number.
         """
         val, step = self._value, self._step
         if all([isinstance(v, (int, long)) for v in [val, step]]):  # preserve the integer type
@@ -307,7 +313,7 @@ class SmartLoop(Debugger, Subject, Observer, Reloadable):
             # avoid accumulating numerical errors due to finite real precision
             return round(val + step, digits2)
         else:
-            return self._start0
+            return self._first
 
     def incrementIndexValue(self, nextValue):
         """
@@ -489,6 +495,10 @@ class SmartLoop(Debugger, Subject, Observer, Reloadable):
         """ returns the loop's step value"""
         return self._step
 
+    def getFirst(self):
+        """ returns the loop's first value"""
+        return self._first
+
     def getIndex(self):
         """ returns the loop's current index value"""
         return self._index
@@ -544,16 +554,23 @@ class SmartLoop(Debugger, Subject, Observer, Reloadable):
         self.notify('updateLoop')
         return self._name
 
-    def setStart(self, newStart):
+    def setStart(self, newStart, firstIsStart=True):
         """
         Stores in _nextParams dictionary the new start and corresponding new nsteps and index, leaving other parameters unchanged.
+        Sets first to start if not None and firstIsStart is true.
         """
-        # self._nextParams={'start':newStart}
         self._start = newStart
-        if newStart is not None:
-            # memorize the last start different from None to be able to restart
-            # a loop
-            self._start0 = newStart
+        if firstIsStart and newStart is not None:
+            self._first = newStart
+        self.notify('updateLoop')
+
+    def setFirst(self, newFirst):
+        """
+        Stores in _nextParams dictionary the new first value, leaving other parameters unchanged.
+        (Note that first can also be set by setStart(newStart,firstIsStart=True))
+        """
+        if newFirst is not None:
+            self._first = newFirst
         self.notify('updateLoop')
 
     def setStop(self, newStop):
