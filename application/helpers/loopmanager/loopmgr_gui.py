@@ -152,7 +152,7 @@ class LoopManager(HelperGUI):
             "stateChanged(int)"), self.autoRemove)
         self._iconsBar.addWidget(self.autoRemoveBox, 0, 9)
 
-        self.deleteButton = QPushButton('Delete')
+        self.deleteButton = QPushButton('Remove')
         # self.deleteButton.setIcon(self._icons['trash'])
         self.connect(self.deleteButton, SIGNAL("clicked()"), self.delete)
         self._iconsBar.addWidget(self.deleteButton, 0, 10)
@@ -465,44 +465,57 @@ class LoopManager(HelperGUI):
         The data type is imposed to be the same as the current value.
         """
         loop = item._loopRef()
-        if colIndex in [0, 2, 3, 4, 8, 9] or (colIndex == 9 and item.text(colIndex) not in ['inf', '?']):
-            val, newVal, ok = [None] * 3
-            textValue = str(item.text(colIndex))
-            columnName = self._loopsTree.headerItem().text(colIndex)
-            try:                        # try first integer type
-                val = int(textValue)
-                newVal, ok = QInputDialog().getInt(self, 'Get new integer value',
-                                                   'New % s =' % columnName, value=val)
+        val, newVal, ok = [None] * 3
+        textValue = str(item.text(colIndex))
+        textValue2 = textValue
+        colName = self._loopsTree.headerItem().text(colIndex)
+        if colName not in ['Name', 'Start', 'Stop', 'Step', 'Next', 'Steps to go']:
+            return
+        if colName in ['Start', 'Stop'] and textValue == '':
+            textValue2 = str(item.text(8))  # use Next to determine the type
+        try:
+            int(textValue2)
+            typ = int
+            message = 'Get new integer value'
+        except:
+            try:
+                float(textValue2)
+                typ = float
+                message = 'Get new real value'
             except:
-                try:                      # then try float type
-                    val = float(textValue)
-                    # check that the current value fits a double before reading
-                    # a double
-                    if 1e-10 < abs(val) < 1e10:
-                        newVal, ok = QInputDialog().getDouble(self, 'Get new real value', 'New % s =' %
-                                                              columnName, value=val, decimals=10)
-                    else:  # otherwise simulate a float reading with getText
-                        while True:
-                            newVal, ok = QInputDialog().getText(self, 'Get new real value',
-                                                                'New % s =' % columnName, text=textValue)
-                            if not ok:
-                                break
-                            try:
-                                newVal = float(newVal)
-                                break
-                            except:
-                                print 'Please enter a valid number or cancel'
-                except:                    # finally try getting text
-                    val = QString(textValue)
-                    newVal, ok = QInputDialog().getText(self, 'Get text', 'New % s =' %
-                                                        columnName, text=val)
-                    newVal = str(newVal)
-            if ok and newVal != val:
-                functions = ['setName', None, 'setStart', 'setStop', 'setStep',
-                             None, None, None, 'jumpToValue', 'setNSteps2Go', None]
-                item.setText(colIndex, QString(str(newVal)))
-                getattr(loop, functions[colIndex])(newVal)
-                self.updateLoop(loop)
+                typ = str
+                message = 'Get new value'
+        if colName in ['Start', 'Stop']:
+            message += ' (or leave empty)'
+        while True:
+            newVal, ok = QInputDialog().getText(self, message, 'New % s =' %
+                                                colName, text=textValue)
+            if not ok:
+                break
+            if colName in ['Start', 'Stop'] and newVal == '':
+                break
+            elif typ == int:
+                try:
+                    newVal = int(newVal)
+                    break
+                except:
+                    print 'Please enter a valid integer number or cancel'
+            elif typ == float:
+                try:
+                    newVal = float(newVal)
+                    break
+                except:
+                    print 'Please enter a valid float number or cancel'
+            elif typ == str:
+                break
+        if ok and (textValue == '' or newVal != typ(textValue)):
+            functions = ['setName', None, 'setStart', 'setStop', 'setStep',
+                         None, None, None, 'jumpToValue', 'setNSteps2Go', None]
+            item.setText(colIndex, QString(str(newVal)))
+            if newVal == '':
+                newVal = None
+            getattr(loop, functions[colIndex])(newVal)
+            self.updateLoop(loop)
 
 
 class LoopsTreeWidget(QTreeWidget):

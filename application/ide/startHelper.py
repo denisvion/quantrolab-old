@@ -50,8 +50,7 @@ def startHelper(modulename, filename, classname, associateAttr, associateTypeNam
         if hasattr(helper, associateAttr):
             associate = getattr(helper, associateAttr)
             if isinstance(associate, eval(associateTypeName)): 		# and is loaded,
-                associatePath = inspect.getfile(
-                    associate.__class__) 	# get information about it
+                associatePath = inspect.getfile(associate.__class__) 	# get information about it
                 associateName = associate.__class__.__name__
                 # keep a reference to the associate in gv
                 gv[associateName] = associate
