@@ -137,7 +137,7 @@ class IDE(QMainWindow, ObserverWidget):
         """
         IDE's GUI definition and call of initialize
         """
-        print "defining IDE's GUI..."
+        print "Defining IDE's GUI..."
         QMainWindow.__init__(self, parent)
         ObserverWidget.__init__(self)
         # beginning of GUI definition  +
@@ -163,15 +163,17 @@ class IDE(QMainWindow, ObserverWidget):
         # to be shared with its helpers and scripts.
         self._gv = dict()
         self._gv['from_main'] = 1   # test to be deleted
-        print 'starting code runner...',
-        # The Process will have only a copy of self._gv
-        self._codeRunner = MultiProcessCodeRunner(gv=self._gv, lv=self._gv)
-        print 'OK'
-        print 'starting editor...',
+        print 'Starting editor...',
         self.editorWindow = CodeEditorWindow(
             parent=self, newEditorCallback=self.newEditorCallback)   # tab editor window
         print 'OK'
-        print 'starting error console...',
+        print 'starting MultiProcessCodeRunner...',
+        # The sub-process(es) of MultiProcessCodeRunner will have only a copy of self._gv
+        print '\n process running Main is', os.getpid()
+        print '\n id(main._gv)=', id(self._gv)
+        self._codeRunner = MultiProcessCodeRunner(gv=self._gv, lv=self._gv)
+        print 'OK'
+        print 'Starting error console...',
         self.errorConsole = ErrorConsole(
             codeEditorWindow=self.editorWindow, codeRunner=self._codeRunner)
         print 'OK'
@@ -545,13 +547,10 @@ class IDE(QMainWindow, ObserverWidget):
         return self._codeRunner.processVar(varname)
 
     def executeCode(self, code, filename="none", editor=None, identifier="main"):
-        # this function returns when the code has started running in the
-        # coderunner
+        # this function returns when the code has started running in the coderunner
         if self._codeRunner.executeCode(code, identifier, filename) != -1:
-            # why does main memorize codesessions rather than relying on
-            # coderunner?
-            self._runningCodeSessions.append(
-                (code, identifier, filename, editor))
+            # why does main memorize codesessions rather than relying on coderunner?
+            self._runningCodeSessions.append((code, identifier, filename, editor))
             # if editor is not None:
             # editor.hasBeenRun = True # leave a trace in the editor that its
             # code has been run at least once. Why not relying on the
@@ -562,17 +561,22 @@ class IDE(QMainWindow, ObserverWidget):
         This method runs a piece of textual python code.
         It is called by runBlock, runSelection, or runFile, and calls executeCode.
         """
-        editor = self.editorWindow.currentEditor(
-        )        # retrieve the current editor (i.e. script)
+        # retrieve the current editor (i.e. script)
+        editor = self.editorWindow.currentEditor()        
         # retrieve the relevant piece of code
         code = editor.getCurrentCodeBlock(delimiter)
-        try:
-            justName = editor.filename().split('\\')[-1]
-        except:
-            justName = False
+        # retrieve the relevant name
+        shortname=editor._shortname
+        if shortname is None: shortname = '[untitled buffer]' # should never occur, but just in case
+        filename=editor.filename()
+        if filename is None : filename = shortname
+        #try:
+        #    justName = editor.filename().split('\\')[-1]
+        #except:
+        #   justName = False
         # builds  and prints feedback message to the user
-        filename = justName or "[unnamed buffer]"
-        shortFileName = filename[filename.rfind("\\") + 1:]
+        #filename = justName or "[untitled buffer]"
+        #shortFileName = filename[filename.rfind("\\") + 1:]
         identifier = id(editor)
         if delimiter == "":
             poc = "entire file"
@@ -582,10 +586,8 @@ class IDE(QMainWindow, ObserverWidget):
             poc = "current block"
         else:
             poc = "???"
-        print("Running " + poc + " in " + shortFileName +
-              " (id=" + str(identifier) + ")")
-        self.executeCode(code, filename=filename, editor=editor,
-                         identifier=identifier)  # execute the code
+        print('Running ' + poc +' in ' + shortname +' (id=' + str(identifier) + ')')
+        self.executeCode(code, filename=filename, editor=editor,identifier=identifier)  # execute the code
         return True
 
     def runBlock(self):
@@ -864,16 +866,15 @@ class IDE(QMainWindow, ObserverWidget):
                 print("Startup file or folder not found")
 
     def showAbout(self):
-
         text = "<p align='center'> <FONT COLOR='blue' >QuantroLab Version " + __version__ + "<br>\
-    <FONT COLOR='black'> QuantroLab is a simple python<br>\
-    integrated development environment<br>\
-    for controlling a physics laboratory.<br><br>\
-    CEA-Saclay 2012-2015<br>\
-    <br><FONT COLOR='blue'>\
-    Andreas Dewes<br>\
-    Vivien Schmitt<br>\
-    Denis Vion</p>"
+        <FONT COLOR='black'> QuantroLab is a simple python<br>\
+        integrated development environment<br>\
+        for controlling a physics laboratory.<br><br>\
+        CEA-Saclay 2012-2015<br>\
+        <br><FONT COLOR='blue'>\
+        Andreas Dewes<br>\
+        Vivien Schmitt<br>\
+        Denis Vion</p>"
         QMessageBox.about(self, 'About QuantroLab python IDE', QString(text))
 
     def updatedGui(self, subject=None, property=None, value=None):

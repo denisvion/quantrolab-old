@@ -87,8 +87,7 @@ def _async_raise(tid, excobj):
     """
     Function called to kill a KillableThread.
     """
-    res = ctypes.pythonapi.PyThreadState_SetAsyncExc(
-        tid, ctypes.py_object(excobj))
+    res = ctypes.pythonapi.PyThreadState_SetAsyncExc(tid, ctypes.py_object(excobj))
     if res == 0:
         raise ValueError("nonexistent thread id")
     elif res > 1:

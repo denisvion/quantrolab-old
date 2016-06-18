@@ -182,23 +182,18 @@ class CodeEditorWindow(QWidget):
 
     def updateTabText(self, editor):
         index = self.tab.indexOf(editor)
-        extraText = editor.tabText()
+        shortname=editor._shortname
+        if shortname is None : shortname = '[untitled]'
+        filename=editor.filename()
+        if filename is None : filename = shortname
+        #extraText = editor.tabText()
         if editor.hasUnsavedModifications():
             changedText = "*"
         else:
             changedText = ""
-        if editor.filename() is not None:
-            (dir, file) = os.path.split(editor.filename())
-            self.tab.setTabText(index, file + extraText + changedText)
-            self.tab.setTabToolTip(index, str(editor.filename()))
-        else:
-            currentTabText = self.tab.tabText(index)
-            if currentTabText in [None, '']:
-                currentTabText = 'untitled'
-            self.tab.setTabText(index, currentTabText +
-                                extraText + changedText)
-            self.tab.setTabToolTip(index, currentTabText)
-
+        self.tab.setTabText(index, shortname + changedText)
+        self.tab.setTabToolTip(index, filename)
+            
     def openFile(self, filename=None):
 
         if filename is None:
@@ -216,6 +211,7 @@ class CodeEditorWindow(QWidget):
             self.setWorkingDirectory(filename)
             editor = self.newEditor()
             editor.openFile(filename)
+            self.updateTabText(editor)
             self.saveTabState()
             return editor
         return None
@@ -228,13 +224,22 @@ class CodeEditorWindow(QWidget):
             editor = CodeEditor()
             editor.append("")
             editor.activateHighlighter()
+        # find the lowest index not already used a names of type 'untiltled n'
+        names=[str(self.tab.tabText(i)) for i in range(self.tab.count())]
+        names=[name for name in names if name.startswith('untitled')]
+        indices=[int(''.join([s for s in name.split() if s.isdigit()])) for name in names]
+        index= 1
+        while index in indices: index +=1
+        name='[untitled %i]' % index
+        editor._shortname=name
+        # append editor
         self.editors.append(editor)
-        self.tab.addTab(editor, "untitled %i" % self.count)
-        self.tab.setTabToolTip(self.tab.indexOf(
-            editor), "untitled %i" % self.count)
+        self.tab.addTab(editor, name)
+        self.updateTabText(editor)
+        #self.tab.setTabToolTip(self.tab.indexOf(editor), name)
         self.connect(editor, SIGNAL("hasUnsavedModifications(bool)"), lambda changed,
                      editor=editor: self.editorHasUnsavedModifications(editor, changed))
-        self.count = self.count + 1
+        #self.count = self.count + 1
         self.tab.setCurrentWidget(editor)
         if self._newEditorCallback is not None:
             self._newEditorCallback(editor)
@@ -295,7 +300,7 @@ class CodeEditorWindow(QWidget):
             editor.destroy()
             self.tab.removeTab(self.tab.indexOf(editor))
             if self.tab.count() == 0:
-                self.count = 1
+                #self.count = 1
                 self.newEditor()
             self.saveTabState()
             return True
@@ -358,7 +363,7 @@ class CodeEditorWindow(QWidget):
                     self.tab.setCurrentWidget(currentEditor)
 
     def sendCloseEventToParent():
-            # under development
+        # under development
         app = QtGui.QApplication.instance()
         event = QEvent(1000)
         target = self.parent()
@@ -368,7 +373,7 @@ class CodeEditorWindow(QWidget):
     def __init__(self, parent=None, gv=dict(), lv=dict(), newEditorCallback=None):
         self._parent = parent
         self.editors = []
-        self.count = 1
+        #self.count = 1 # use len(self.editors)
         self._workingDirectory = None
         self._newEditorCallback = newEditorCallback
         QWidget.__init__(self, parent)
@@ -1060,7 +1065,7 @@ class CodeEditor(SearchableEditor, LineTextWidget):
         self.setTextCursor(cursor)
 
     def getCurrentBlock(self, delimiter="\n##"):
-
+        # Bug Check what happens in all cases
         text = unicode(self.document().toPlainText())
         blockStart = 0
         blockEnd = len(text)
