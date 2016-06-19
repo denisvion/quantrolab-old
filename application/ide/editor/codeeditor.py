@@ -64,8 +64,7 @@ class ErrorConsole(QTreeWidget, ObserverWidget):
 
         (exception_type, exception_value, tb) = exceptionInfo
 
-        text = traceback.format_exception_only(
-            exception_type, exception_value)[0]
+        text = traceback.format_exception_only(exception_type, exception_value)[0]
 
         text = text.replace("\n", " ")
 
@@ -94,6 +93,9 @@ class ErrorConsole(QTreeWidget, ObserverWidget):
 
 
 class EditorTabBar(QTabBar):
+    """
+    A QTabBar with tabs that are both movable horizontally and drad-and-droppable by initiating the drag vertically.
+    """
 
     def __init__(self, parent=None):
         QTabBar.__init__(self, parent)
@@ -132,20 +134,61 @@ class EditorTabBar(QTabBar):
 
 
 class CodeEditorWindow(QWidget):
+    """
+    A multi-editor class that has a parent, a working directory, and a list of editors displayed in a
+    QTabWidget with a QTabBar of the EditorTabBar type.
+    """
+
+    def __init__(self, parent=None, gv=dict(), lv=dict(), newEditorCallback=None):
+        self._parent = parent
+        self.editors = []
+        self._workingDirectory = None
+        self._newEditorCallback = newEditorCallback
+        QWidget.__init__(self, parent)
+
+        timer = QTimer(self)
+        timer.setInterval(1000)
+        self.connect(timer, SIGNAL("timeout()"), self.onTimer)
+        timer.start()
+
+        myLayout = QGridLayout()
+
+        self.tabBar = EditorTabBar()
+        self.tab = QTabWidget()
+        self.tab.setTabBar(self.tabBar)
+        # does not work as is because of drag and drop on tabBar
+        self.tab.setMovable(True)
+
+        self.tab.setTabsClosable(True)
+        self.connect(self.tab, SIGNAL("tabCloseRequested(int)"), self.closeTab)
+        myLayout.addWidget(self.tab, 0, 0)
+        self.setLayout(myLayout)
+
+        self.restoreTabState()
 
     def workingDirectory(self):
+        """
+        Returns  self_workingDirectory or the current directory if None.
+        """
         if self._workingDirectory is None:
             return os.getcwd()
         return self._workingDirectory
 
     def setWorkingDirectory(self, filename):
+        """
+        Sets _workingDirectory to the directory of the file whose name filename is passed.
+        """
         if filename is not None:
             directory = os.path.dirname(str(filename))
             self._workingDirectory = directory
         else:
             self._workingDirectory = None
 
-    def checkForOpenFile(self, filename):
+    def widgetOfOpenFile(self, filename):
+        """
+        Retrieves, sets as current widget, and returns the QTabWidget corresponding to the passed filename.
+        Returns None if does not exist.
+        """
         if filename is None:
             return None
         path = os.path.normpath(str(filename))
@@ -156,22 +199,23 @@ class CodeEditorWindow(QWidget):
         return None
 
     def saveCurrentFile(self):
-        currentEditor = self.currentEditor()
-        if currentEditor.filename() is None:
-            return self.saveCurrentFileAs()
-        else:
-            return currentEditor.save()
+        """
+        Calls the save function of the current editor.
+        """
+        editor = self.currentEditor()
+        result = editor.save()
+        if result:
+            self.setWorkingDirectory(editor.filename())
 
     def saveCurrentFileAs(self):
-        currentEditor = self.currentEditor()
-        filename = str(QFileDialog.getSaveFileName(caption='Save file as',
-                                                   filter="Python(*.py *.pyw)", directory=self.workingDirectory()))
-        if filename != "":
-            print "Saving document as %s" % filename
-            self.setWorkingDirectory(filename)
-            currentEditor.setFilename(filename)
-            return self.saveCurrentFile()
-        return False
+        """
+        Calls the saveAs function of the current editor.
+        """
+        editor = self.currentEditor()
+        result = editor.saveAs()
+        if result:
+            self.setWorkingDirectory(editor.filename())
+            self.updateTabText(editor)
 
     def getEditorForFile(self, filename):
         for i in range(0, self.tab.count()):
@@ -182,31 +226,30 @@ class CodeEditorWindow(QWidget):
 
     def updateTabText(self, editor):
         index = self.tab.indexOf(editor)
-        shortname=editor._shortname
-        if shortname is None : shortname = '[untitled]'
-        filename=editor.filename()
-        if filename is None : filename = shortname
-        #extraText = editor.tabText()
+        shortname = editor._shortname
+        if shortname is None:
+            shortname = '[untitled]'
+        filename = editor.filename()
+        if filename is None:
+            filename = shortname
+        # extraText = editor.tabText()
         if editor.hasUnsavedModifications():
             changedText = "*"
         else:
             changedText = ""
         self.tab.setTabText(index, shortname + changedText)
         self.tab.setTabToolTip(index, filename)
-            
+
     def openFile(self, filename=None):
-
         if filename is None:
-            filename = str(QFileDialog.getOpenFileName(
-                caption='Open file', filter="Python(*.py *.pyw)", directory=self.workingDirectory()))
-
-        if filename == "":
+            direc = self.workingDirectory()
+            fi = 'Python(*.py *.pyw)'
+            filename = str(QFileDialog.getOpenFileName(caption='Open file', filter=fi, directory=direc))
+        if filename == '':
             return None
-
-        check = self.checkForOpenFile(filename)
+        check = self.widgetOfOpenFile(filename)
         if check is not None:
             return check
-
         if os.path.isfile(str(filename)):
             self.setWorkingDirectory(filename)
             editor = self.newEditor()
@@ -221,25 +264,24 @@ class CodeEditorWindow(QWidget):
 
     def newEditor(self, editor=None):
         if editor is None:
-            editor = CodeEditor()
-            editor.append("")
+            editor = CodeEditor(parent=self)
+            editor.append('')
             editor.activateHighlighter()
-        # find the lowest index not already used a names of type 'untiltled n'
-        names=[str(self.tab.tabText(i)) for i in range(self.tab.count())]
-        names=[name for name in names if name.startswith('untitled')]
-        indices=[int(''.join([s for s in name.split() if s.isdigit()])) for name in names]
-        index= 1
-        while index in indices: index +=1
-        name='[untitled %i]' % index
-        editor._shortname=name
+        # find the lowest index not already used names of type 'untitled n'
+        names = [ed._shortname for ed in self.editors]
+        names = [name for name in names if name.startswith('[untitled')]
+        indices = [int(''.join([s for s in list(name) if s.isdigit()])) for name in names]
+        index = 1
+        while index in indices:
+            index += 1
+        name = '[untitled %i]' % index
+        editor._shortname = name
         # append editor
         self.editors.append(editor)
         self.tab.addTab(editor, name)
         self.updateTabText(editor)
-        #self.tab.setTabToolTip(self.tab.indexOf(editor), name)
-        self.connect(editor, SIGNAL("hasUnsavedModifications(bool)"), lambda changed,
+        self.connect(editor, SIGNAL('hasUnsavedModifications(bool)'), lambda changed,
                      editor=editor: self.editorHasUnsavedModifications(editor, changed))
-        #self.count = self.count + 1
         self.tab.setCurrentWidget(editor)
         if self._newEditorCallback is not None:
             self._newEditorCallback(editor)
@@ -300,7 +342,7 @@ class CodeEditorWindow(QWidget):
             editor.destroy()
             self.tab.removeTab(self.tab.indexOf(editor))
             if self.tab.count() == 0:
-                #self.count = 1
+                # self.count = 1
                 self.newEditor()
             self.saveTabState()
             return True
@@ -369,34 +411,6 @@ class CodeEditorWindow(QWidget):
         target = self.parent()
         print 'parent of code editor window is ', target
         app.sendEvent(target, event)
-
-    def __init__(self, parent=None, gv=dict(), lv=dict(), newEditorCallback=None):
-        self._parent = parent
-        self.editors = []
-        #self.count = 1 # use len(self.editors)
-        self._workingDirectory = None
-        self._newEditorCallback = newEditorCallback
-        QWidget.__init__(self, parent)
-
-        timer = QTimer(self)
-        timer.setInterval(1000)
-        self.connect(timer, SIGNAL("timeout()"), self.onTimer)
-        timer.start()
-
-        myLayout = QGridLayout()
-
-        self.tabBar = EditorTabBar()
-        self.tab = QTabWidget()
-        self.tab.setTabBar(self.tabBar)
-        # does not work as is because of drag and drop on tabBar
-        self.tab.setMovable(True)
-
-        self.tab.setTabsClosable(True)
-        self.connect(self.tab, SIGNAL("tabCloseRequested(int)"), self.closeTab)
-        myLayout.addWidget(self.tab, 0, 0)
-        self.setLayout(myLayout)
-
-        self.restoreTabState()
 
 
 class LineNumbers(QPlainTextEdit):
@@ -698,24 +712,27 @@ class LineTextWidget(QPlainTextEdit):
 
 
 class SearchableEditor(QPlainTextEdit):
+    """
+    A QPlainTextEdit with a searchbar that can be displayed/hidden.
+    """
 
     def __init__(self, parent=None):
         self._panel = QWidget(self)
         self._layout = QBoxLayout(QBoxLayout.LeftToRight)
         self._panel.setLayout(self._layout)
-        self._searchText = QLineEdit("")
-        self._replaceText = QLineEdit("")
-        self._replaceButton = QCheckBox("and replace by")  # dv
-        self._forwardButton = QPushButton("Forward")
-        self._backwardButton = QPushButton("Backward")
-        self._caseSensitive = QCheckBox("Case Sensitive")
-        self._useRegex = QCheckBox("Regex")
+        self._searchText = QLineEdit('')
+        self._replaceText = QLineEdit('')
+        self._replaceButton = QCheckBox('and replace by')  # dv
+        self._forwardButton = QPushButton('Forward')
+        self._backwardButton = QPushButton('Backward')
+        self._caseSensitive = QCheckBox('Case Sensitive')
+        self._useRegex = QCheckBox('Regex')
 
         self._panel.setFocusPolicy(Qt.TabFocus)
         self._replaceText.setFocusPolicy(Qt.TabFocus)
         self._searchText.setFocusPolicy(Qt.TabFocus)
 
-        self._layout.addWidget(QLabel("Search"))  # dv
+        self._layout.addWidget(QLabel('Search'))  # dv
         self._layout.addWidget(self._searchText)
         self._layout.addWidget(self._replaceButton)
         self._layout.addWidget(self._replaceText)
@@ -723,15 +740,13 @@ class SearchableEditor(QPlainTextEdit):
         self._layout.addWidget(self._backwardButton)
         self._layout.addWidget(self._caseSensitive)
         self._layout.addWidget(self._useRegex)  # dv
-        self._layout.addWidget(QLabel("(Esc to exit search)"))  # dv
+        self._layout.addWidget(QLabel('(Esc to exit search)'))  # dv
         self._layout.addStretch()
         self._panel.hide()
 
-        self.connect(self._searchText, SIGNAL(
-            "enterPressed()"), self.searchText)
-        self.connect(self._forwardButton, SIGNAL("clicked()"), self.searchText)
-        self.connect(self._backwardButton, SIGNAL("clicked()"),
-                     lambda: self.searchText(backward=True))
+        self.connect(self._searchText, SIGNAL('enterPressed()'), self.searchText)
+        self.connect(self._forwardButton, SIGNAL('clicked()'), self.searchText)
+        self.connect(self._backwardButton, SIGNAL('clicked()'), lambda: self.searchText(backward=True))
 
     def resizeEvent(self, e):
         self._panel.setGeometry(
@@ -837,31 +852,23 @@ class SearchableEditor(QPlainTextEdit):
 
 
 class CodeEditor(SearchableEditor, LineTextWidget):
-
+    """
+    A simple SearchableEditor with
+        - _filename, _shortname, _modifiedAt properties, as well as open, save, saveas and close methods;
+        - text set or returned by setTabText() or tabText();
+        - syntax highlighting;
+        - indentation (automatic and controlled with Key_Left and Key_Reight);
+        - line wrapping;
+        - text block management (block delimiter = ##);
+        - reloading capabilities set or read with setFileReloadPolicy/fileReloadPolicy.
+    """
     class FileReloadPolicy:
         Always = 0
         Never = 1
         Ask = 2
 
-    def tabText(self):
-        return self._tabText
-
-    def setTabText(self, text):
-        self._tabText = text
-
-    def reloadFile(self):
-        if self.filename() is None or not (os.path.exists(self.filename()) and os.path.isfile(self.filename())):
-            raise Exception(
-                "CodeEditor.reloadFile: Unable to perform reload since no filename has been defined!")
-        self.openFile(self.filename())
-
-    def fileReloadPolicy(self):
-        return self._fileReloadPolicy
-
-    def setFileReloadPolicy(self, policy):
-        self._fileReloadPolicy = policy
-
     def __init__(self, parent=None, lineWrap=True):
+        self._parent = parent
         LineTextWidget.__init__(self, parent)
         SearchableEditor.__init__(self, parent)
         self._filename = None
@@ -869,7 +876,7 @@ class CodeEditor(SearchableEditor, LineTextWidget):
         self._tabToolTip = self._shortname
         self.setTabStopWidth(30)
         self._modifiedAt = None
-        self._tabText = ""
+        self._tabText = ''
         self._fileReloadPolicy = CodeEditor.FileReloadPolicy.Ask
         self._errorSelections = []
         self._blockHighlighting = True
@@ -885,12 +892,27 @@ class CodeEditor(SearchableEditor, LineTextWidget):
           font-weight:normal;
         }
         """)
-        self.connect(self.document(), SIGNAL(
-            'modificationChanged(bool)'), self.updateUndoStatus)
-        self.connect(self, SIGNAL("cursorPositionChanged()"),
-                     self.cursorPositionChanged)
+        self.connect(self.document(), SIGNAL('modificationChanged(bool)'), self.updateUndoStatus)
+        self.connect(self, SIGNAL("cursorPositionChanged()"), self.cursorPositionChanged)
         self.setLineWrap(lineWrap)
         self.setHasUnsavedModifications(False)
+
+    def tabText(self):
+        return self._tabText
+
+    def setTabText(self, text):
+        self._tabText = text
+
+    def reloadFile(self):
+        if self.filename() is None or not (os.path.exists(self.filename()) and os.path.isfile(self.filename())):
+            raise Exception('CodeEditor.reloadFile: Unable to perform reload since no filename has been defined!')
+        self.openFile(self.filename())
+
+    def fileReloadPolicy(self):
+        return self._fileReloadPolicy
+
+    def setFileReloadPolicy(self, policy):
+        self._fileReloadPolicy = policy
 
     def resizeEvent(self, e):
         LineTextWidget.resizeEvent(self, e)
@@ -943,7 +965,7 @@ class CodeEditor(SearchableEditor, LineTextWidget):
             self.activateHighlighter(True)
         else:
             self.activateHighlighter(False)
-        if os.path.exists(self.filename()):
+        if os.path.exists(self._filename):
             self._modifiedAt = os.path.getmtime(self._filename)
         else:
             self._modifiedAt = 0
@@ -1175,37 +1197,6 @@ class CodeEditor(SearchableEditor, LineTextWidget):
     def toggleLineWrap(self):
         self.setLineWrap(not self._lineWrap)
 
-    def save(self):
-        if self.filename() is not None:
-            return self.saveAs(self.filename())
-        else:
-            return False
-
-    def updateFileModificationDate(self):
-        self._modifiedAt = os.path.getmtime(self.filename()) + 1
-
-    def fileHasChangedOnDisk(self):
-        if self.filename() is not None:
-            if not os.path.exists(self.filename()):
-                return True
-            elif os.path.getmtime(self.filename()) > self._modifiedAt:
-                return True
-        return False
-
-    def saveAs(self, filename):
-        if self.filename() is None:
-            return False
-        self._modifiedAt = time.time() + 1
-        try:
-            file = open(self.filename(), 'w')
-            file.write(unicode(self.document().toPlainText()))
-            file.close()
-            self.setHasUnsavedModifications(False)
-            self._modifiedAt = os.path.getmtime(self.filename()) + 1
-            return True
-        finally:
-            file.close()
-
     def openFile(self, filename):
         if os.path.isfile(filename):
             try:
@@ -1218,6 +1209,60 @@ class CodeEditor(SearchableEditor, LineTextWidget):
             self.setHasUnsavedModifications(False)
         else:
             raise IOError("Invalid path: %s" % filename)
+
+    def save(self):
+        """
+        Saves the editor content in the current file by calling saveAs(self._filename).
+        """
+        return self.saveAs(self._filename)
+
+    def saveAs(self, filename=None):
+        """
+        Saves the editor content in a file with the passed filename or with a name prompted on the fly.
+        """
+        ask = False
+        if filename is None:
+            ask = True
+            filename = self._filename
+        if filename is not None:
+            directory = filename
+        else:
+            try:
+                directory = self._parent.workingDirectory()
+            except:
+                directory = os.getcwd()
+        if ask:
+            filename = str(QFileDialog.getSaveFileName(caption='Save file as',
+                                                       filter='Python(*.py *.pyw)', directory=directory))
+        if filename != '':
+            try:
+                print "Saving document %s:" % filename,
+                file = open(filename, 'w')
+                file.write(unicode(self.document().toPlainText()))
+                file.close()
+                self.setHasUnsavedModifications(False)
+                self._modifiedAt = os.path.getmtime(filename) + 1
+                self._filename = filename
+                (di, self._shortname) = os.path.split(filename)
+                print " Done."
+                return True
+            except:
+                print " Error."
+                raise Error('Could not save file %s' % filename)
+            finally:
+                file.close()
+        return False
+
+    def updateFileModificationDate(self):
+        self._modifiedAt = os.path.getmtime(self.filename()) + 1
+
+    def fileHasChangedOnDisk(self):
+        if self.filename() is not None:
+            if not os.path.exists(self.filename()):
+                return True
+            elif os.path.getmtime(self.filename()) > self._modifiedAt:
+                return True
+        return False
 
     def activateBlockHighlighting(self, activate=False):
         self._blockHighlighting = activate

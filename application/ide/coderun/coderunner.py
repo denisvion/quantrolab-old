@@ -22,7 +22,8 @@ import traceback
 
 import threading
 from threading import RLock
-from multiprocessing import Process, Queue        # Process and Queue will be used
+# Process and Queue will be used
+from multiprocessing import Process, Queue
 
 from application.lib.base_classes1 import KillableThread, Reloadable, StopThread
 from application.lib.com_classes import Subject
@@ -370,7 +371,8 @@ class CodeRunner(Reloadable, Subject):
                 # the dictionary of properties of the object becomes the passed
                 # dictionary gv
                 self.__dict__ = gv
-                self.__coderunner__ = __coderunner__    # the coderunner property is added to (or overwritten in) gv
+                # the coderunner property is added to (or overwritten in) gv
+                self.__coderunner__ = __coderunner__
 
             def __setitem__(self, key, value):
                 setattr(self, key, value)
@@ -382,7 +384,8 @@ class CodeRunner(Reloadable, Subject):
         lv['gv'] = GlobalVariables(gv, self)
         # - making the filename the code is originating from, available as a local variable _filename
         lv['__file__'] = filename
-        ct = CodeThread(code, filename=filename, lv=lv, gv=lv, callback=self._threadCallback)
+        ct = CodeThread(code, filename=filename, lv=lv,
+                        gv=lv, callback=self._threadCallback)
         # - instantiating a CodeThread with the passed or prepared variables
         ct._id = self._threadID
         self._threadID += 1  # - setting the thread ID
@@ -421,6 +424,7 @@ class CodeProcess(Process):
         Proxy for a Queue instance passed to init, which allows to
         to read from or write to the queue, or even get an attribute of the queue
         """
+
         def __getattr__(self, attr):
             if hasattr(self._queue, attr):
                 return getattr(self._queue, attr)
@@ -511,7 +515,8 @@ class CodeProcess(Process):
                             # build the command call
                             f = getattr(self._codeRunner, command)
                             r = f(*args, **kwargs)  # run it, get a result
-                            self._responseQueue.put(r, False)  # and put it to the response queue
+                            # and put it to the response queue
+                            self._responseQueue.put(r, False)
                         except Exception as e:
                             traceback.print_exc()
             except KeyboardInterrupt:
