@@ -58,16 +58,15 @@ class Log(LineTextWidget):
     """
     Log text window.
     To do:
-      -Add a context menu with a "clear all" menu entry
-      -Add a search function
+      Add a search function
     """
 
-    def __init__(self, queue, ide=None, tabID=0, parent=None):
+    def __init__(self, queue=None, ide=None, tabID=0, parent=None):
         self._ide = ide
         self._queue = queue
         self._tabID = tabID
         LineTextWidget.__init__(self, parent)
-        MyFont = QFont("Courier", 10)
+        MyFont = QFont('Courier', 10)
         MyDocument = self.document()
         MyDocument.setDefaultFont(MyFont)
         self.setDocument(MyDocument)
@@ -77,14 +76,17 @@ class Log(LineTextWidget):
         self.timer = QTimer(self)
         self._writing = False
         self.timer.setInterval(20)   # set its timeout to 0.3s
-        self.queuedStdoutText = ""  # initialize a Stdout queue to an empty string
-        self.queuedStderrText = ""  # initialize a Stderr queue to an empty string
-        self.connect(self.timer, SIGNAL("timeout()"), self.addQueuedText)
+        self.queuedStdoutText = ''  # initialize a Stdout queue to an empty string
+        self.queuedStderrText = ''  # initialize a Stderr queue to an empty string
+        self.connect(self.timer, SIGNAL('timeout()'), self.addQueuedText)
         # call addQueuedText() every timeout
         self.timer.start()            # start the timer
         self.cnt = 0
         self._timeOfLastMessage = 0
         self._hasUnreadMessage = False
+
+    def setQueue(self, queue):
+        self._queue = queue
 
     def clearLog(self):
         self.clear()
@@ -92,11 +94,13 @@ class Log(LineTextWidget):
     def contextMenuEvent(self, event):
         MyMenu = self.createStandardContextMenu()
         MyMenu.addSeparator()
-        clearLog = MyMenu.addAction("clear log")
-        self.connect(clearLog, SIGNAL("triggered()"), self.clearLog)
+        clearLog = MyMenu.addAction('clear log')
+        self.connect(clearLog, SIGNAL('triggered()'), self.clearLog)
         MyMenu.exec_(self.cursor().pos())
 
     def addQueuedText(self):
+        if self._queue is None:
+            return
         self._ide.logTabs.setTabIcon(self._ide.logTabs.currentIndex(), QIcon())
         if self._tabID == self._ide.logTabs.currentIndex():
             self._hasUnreadMessage = False
@@ -105,7 +109,6 @@ class Log(LineTextWidget):
         #    self._ide.logTabs.setTabIcon(self._tabID,self._ide._icons['logo'])
         # print self._tabID
         # print str(self._hasUnreadMessage)
-
         try:
             message = ''
             try:
@@ -118,8 +121,7 @@ class Log(LineTextWidget):
                 if len(message) > 0:
                     self._hasUnreadMessage = True
                 if self._ide.logTabs.currentIndex() != self._tabID:
-                    self._ide.logTabs.setTabIcon(
-                        self._tabID, self._ide._icons['killThread'])
+                    self._ide.logTabs.setTabIcon(self._tabID, self._ide._icons['killThread'])
                     self._timeOfLastMessage = time.time()
                 self.textCursor().insertText(message)
                 self.moveCursor(QTextCursor.End)
@@ -159,30 +161,25 @@ class IDE(QMainWindow, ObserverWidget):
 
         self.initializeIcons()
 
-        # this is the global variable dictionary of the Quantrolab application,
-        # to be shared with its helpers and scripts.
+        # this is the global variable dictionary of the Quantrolab application, to
+        # be shared with its helpers and scripts.
         self._gv = dict()
         self._gv['from_main'] = 1   # test to be deleted
         print 'Starting editor...',
-        self.editorWindow = CodeEditorWindow(
-            parent=self, newEditorCallback=self.newEditorCallback)   # tab editor window
-        print 'OK'
+        self.editorWindow = CodeEditorWindow(parent=self, newEditorCallback=self.newEditorCallback)  # tab editor window
+        print 'OK.'
         print 'starting MultiProcessCodeRunner...',
-        # The sub-process(es) of MultiProcessCodeRunner will have only a copy
-        # of self._gv
-        print '\n process running Main is', os.getpid()
-        print '\n id(main._gv)=', id(self._gv)
+        # The sub-process(es) of MultiProcessCodeRunner will have only a copy of self._gv
+        # print '\n process running Main is', os.getpid()
+        # print '\n id(main._gv)=', id(self._gv)
         self._codeRunner = MultiProcessCodeRunner(gv=self._gv, lv=self._gv)
-        print 'OK'
+        print 'OK.'
         print 'Starting error console...',
-        self.errorConsole = ErrorConsole(
-            codeEditorWindow=self.editorWindow, codeRunner=self._codeRunner)
-        print 'OK'
+        self.errorConsole = ErrorConsole(codeEditorWindow=self.editorWindow, codeRunner=self._codeRunner)
         self.logTabs = QTabWidget()
-        stdoutLog = Log(self._codeRunner.stdoutQueue(), ide=self, tabID=0)
-        self.logTabs.addTab(stdoutLog, "&Log")
-        stderrLog = Log(self._codeRunner.stderrQueue(), ide=self, tabID=1)
-        self.logTabs.addTab(stderrLog, "&Error")
+        self.logTabs.addTab(Log(None, ide=self, tabID=0), "&Log")    # prepare for coderunner's stdout log
+        self.logTabs.addTab(Log(None, ide=self, tabID=1), "&Error")  # prepare for coderunner's stderr log
+        print 'OK.'
 
         # outer verticalsplitter
         verticalSplitter = QSplitter(Qt.Vertical)
@@ -211,10 +208,8 @@ class IDE(QMainWindow, ObserverWidget):
         edit = self.projectToolbar.addAction("Edit")
         delete = self.projectToolbar.addAction("Delete")
 
-        self.connect(newFolder, SIGNAL("triggered()"),
-                     self.projectTree.createNewFolder)
-        self.connect(edit, SIGNAL("triggered()"),
-                     self.projectTree.editCurrentItem)
+        self.connect(newFolder, SIGNAL("triggered()"), self.projectTree.createNewFolder)
+        self.connect(edit, SIGNAL("triggered()"), self.projectTree.editCurrentItem)
         self.connect(delete, SIGNAL("triggered()"), self.projectTree.deleteCurrentItem)
 
         layout = QGridLayout()
@@ -242,22 +237,11 @@ class IDE(QMainWindow, ObserverWidget):
         self.initializeIcons()
         self.initializeMenus()
         self.initializeToolbars()
+        print 'Future messages will be routed to GUI.'
+        self.initializeLogs()
 
         # end of GUI definition
         self._workingDirectory = None
-
-        print 'Future messages will be routed to GUI'
-
-        sys.stdout = self._codeRunner._stdoutProxy
-        sys.stderr = self._codeRunner._stderrProxy
-        try:
-            sys.sdtout = self._codeRunner.stdoutQueue()
-            sys.sdterr = self._codeRunner.stderrQueue()
-        except:
-            raise
-        finally:
-            pass
-
         self.showMaximized()
         self.initialize()
 
@@ -324,16 +308,11 @@ class IDE(QMainWindow, ObserverWidget):
         fileExit = fileMenu.addAction(self._icons["exit"], "Quitter")
         fileExit.setShortcut(QKeySequence("ALT+F4"))
 
-        self.connect(fileNew, SIGNAL('triggered()'),
-                     self.editorWindow.newEditor)
-        self.connect(fileOpen, SIGNAL('triggered()'),
-                     self.editorWindow.openFile)
-        self.connect(fileClose, SIGNAL('triggered()'),
-                     self.editorWindow.closeCurrentFile)
-        self.connect(fileSave, SIGNAL('triggered()'),
-                     self.editorWindow.saveCurrentFile)
-        self.connect(fileSaveAs, SIGNAL('triggered()'),
-                     self.editorWindow.saveCurrentFileAs)
+        self.connect(fileNew, SIGNAL('triggered()'), self.editorWindow.newEditor)
+        self.connect(fileOpen, SIGNAL('triggered()'), self.editorWindow.openFile)
+        self.connect(fileClose, SIGNAL('triggered()'), self.editorWindow.closeCurrentFile)
+        self.connect(fileSave, SIGNAL('triggered()'), self.editorWindow.saveCurrentFile)
+        self.connect(fileSaveAs, SIGNAL('triggered()'), self.editorWindow.saveCurrentFileAs)
         self.connect(fileExit, SIGNAL('triggered()'), self.close)
 
         self.connect(projectNew, SIGNAL('triggered()'), self.newProject)
@@ -371,54 +350,58 @@ class IDE(QMainWindow, ObserverWidget):
         self.connect(debug, SIGNAL('triggered()'), self.debug)
 
         restartCodeRunner = self.codeMenu.addAction("&Restart Code Process")
-        self.connect(restartCodeRunner, SIGNAL(
-            "triggered()"), self.restartCodeProcess)
+        self.connect(restartCodeRunner, SIGNAL("triggered()"), self.restartCodeProcess)
         self.codeMenu.addSeparator()
-        runFiles = self.codeMenu.addAction(
-            self._icons["executeAllCode"], "Run &File(s)")
+        runFiles = self.codeMenu.addAction(self._icons["executeAllCode"], "Run &File(s)")
         runFiles.setShortcut(QKeySequence("CTRL+Enter"))
-        runBlock = self.codeMenu.addAction(
-            self._icons["executeCodeBlock"], "Run &Block")
-        runSelection = self.codeMenu.addAction(
-            self._icons["executeCodeSelection"], "Run &Selection")
+        runBlock = self.codeMenu.addAction(self._icons["executeCodeBlock"], "Run &Block")
+        runBlock.setShortcut(QKeySequence("Enter"))
+        runSelection = self.codeMenu.addAction(self._icons["executeCodeSelection"], "Run &Selection")
+        runSelection.setShortcut(QKeySequence("SHIFT+Enter"))
         self.connect(runFiles, SIGNAL('triggered()'), self.runFiles)
         self.connect(runBlock, SIGNAL('triggered()'), self.runBlock)
         self.connect(runSelection, SIGNAL('triggered()'), self.runSelection)
+
+    def initializeLogs(self):
+        # make the log out point to the new coderunner stdout Queue
+        self.logTabs.widget(0).setQueue(self._codeRunner.stdoutQueue())
+        # make the log error point to the new coderunner stderr Queue
+        self.logTabs.widget(1).setQueue(self._codeRunner.stderrQueue())
+        # route the system stdout to the coderunner stdout proxy
+        sys.stdout = self._codeRunner.stdoutProxy()
+        # route the system stderr to the coderunner stderr proxy
+        sys.stderr = self._codeRunner.stderrProxy()
 
     def initialize(self):
         """
         IDE initialization (after having defined the GUI).
         """
-        self.queuedText = ""
+        self.queuedText = ''
 
-        print "Loading settings...",
+        print 'Loading settings...',
         settings = QSettings()
         if settings.contains('ide.workingpath'):
-            self.changeWorkingPath(settings.value(
-                'ide.workingpath').toString())
+            self.changeWorkingPath(settings.value('ide.workingpath').toString())
         print 'done.'
         # self.logTabs.show()
 
-        print "Loading project...",
+        print 'Loading project...',
         self.setProject(Project())
         lastProjectOpened = False
-        if settings.contains("ide.lastproject"):
+        if settings.contains('ide.lastproject'):
             try:
-                self.openProject(str(settings.value("ide.lastproject").toString()))
+                self.openProject(str(settings.value('ide.lastproject').toString()))
                 lastProjectOpened = True
                 print 'done.'
             except:
-                print('Cannot open last project: %s.' % str(settings.value("ide.lastproject").toString()))
+                print('Cannot open last project: %s.' % str(settings.value('ide.lastproject').toString()))
 
         self._helpersRootDir = _helpersDefaultDir
         if settings.contains('ide.helpersRootDir'):
-            self._helpersRootDir = settings.value(
-                'ide.helpersRootDir').toString()
+            self._helpersRootDir = settings.value('ide.helpersRootDir').toString()
 
-        self._helperManager = HelperManager(
-            self, self._helpersRootDir, self.executeCode)
-        # rebuild menu because 'load helper' is added to the menu only if a
-        # _helperManager exists.
+        self._helperManager = HelperManager(self, self._helpersRootDir, self.executeCode)
+        # rebuild menu because 'load helper' is added to the menu only if a _helperManager exists.
         self.buildHelperMenu()
         self._helpers = {}
 
@@ -530,8 +513,7 @@ class IDE(QMainWindow, ObserverWidget):
         """
         iden = id(editor)
         if iden in self._codeRunner.status():
-            question = 'Closing editor %s terminates the access to thread %i. Close anyway?' % (
-                editor._shortname, iden)
+            question = 'Closing editor %s terminates the access to thread %i. Close anyway?' % (editor._shortname, iden)
             if QMessageBox.question(self, 'Warning', question, QMessageBox.Ok, QMessageBox.Cancel) == QMessageBox.Cancel:
                 return False
         return True
@@ -543,13 +525,10 @@ class IDE(QMainWindow, ObserverWidget):
         return self._codeRunner.processVar(varname)
 
     def executeCode(self, code, filename="none", editor=None, identifier="main"):
-        # this function returns when the code has started running in the
-        # coderunner
+        # this function returns when the code has started running in the coderunner
         if self._codeRunner.executeCode(code, identifier, filename) != -1:
-            # why does main memorize codesessions rather than relying on
-            # coderunner?
-            self._runningCodeSessions.append(
-                (code, identifier, filename, editor))
+            # why does main memorize codesessions rather than relying on coderunner?
+            self._runningCodeSessions.append((code, identifier, filename, editor))
             # if editor is not None:
             # editor.hasBeenRun = True # leave a trace in the editor that its
             # code has been run at least once. Why not relying on the
@@ -560,8 +539,7 @@ class IDE(QMainWindow, ObserverWidget):
         This method runs a piece of textual python code.
         It is called by runBlock, runSelection, or runFile, and calls executeCode.
         """
-# retrieve the current editor (i.e. script)
-
+        # retrieve the current editor (i.e. script)
         editor = self.editorWindow.currentEditor()
         # retrieve the relevant piece of code
         code = editor.getCurrentCodeBlock(delimiter)
@@ -641,24 +619,22 @@ class IDE(QMainWindow, ObserverWidget):
         """
         if event.type() == QEvent.KeyPress:
             if event.key() == Qt.Key_Enter and type(object) == CodeEditor:
-                if event.modifiers() & Qt.ShiftModifier:     # shift+enter runs only the lines in the selection
+                if event.modifiers() & Qt.ShiftModifier:      # shift+enter runs only the lines in the selection
                     self.runSelection()
                     return True
                 elif event.modifiers() & Qt.ControlModifier:  # ctrl+enter runs the entire file
                     self.runFile()
                     return True
-                else:                                        # enter runs the current block between ##
+                else:                                         # enter runs the current block between ##
                     self.runBlock()
                     return True
         return False
 
     def restartCodeProcess(self):
-        print 'Restarting CodeProcess'
-        self._codeRunner.restart()
-        settings = QSettings()
-        if settings.contains('ide.workingpath'):
-            self.changeWorkingPath(
-                str(settings.value('ide.workingpath').toString()))
+        question = 'All active threads will be lost. Are you sure?'
+        if QMessageBox.question(self, 'Warning', question, QMessageBox.Ok, QMessageBox.Cancel) == QMessageBox.Ok:
+            self._codeRunner.startCodeProcess()         # restart a new code process of coderunner
+            self.initializeLogs()
 
     def changeWorkingPath(self, path=None):
         """
@@ -915,8 +891,7 @@ def startIDE(qApp=None):
     QCoreApplication.setApplicationVersion(QString(__version__))
 
     qApp.setStyle(QStyleFactory.create("QMacStyle"))
-    qApp.setStyleSheet(
-        """QTreeWidget:Item {padding:6;}QTreeView:Item {padding:6;}""")
+    qApp.setStyleSheet("""QTreeWidget:Item {padding:6;}QTreeView:Item {padding:6;}""")
     qApp.connect(qApp, SIGNAL('lastWindowClosed()'), qApp, SLOT('quit()'))
     myIDE = IDE()
     myIDE.showMaximized()

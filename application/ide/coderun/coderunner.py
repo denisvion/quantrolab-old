@@ -534,23 +534,28 @@ class MultiProcessCodeRunner():
     """
 
     def __init__(self, gv=dict(), lv=dict(), logProxy=lambda x: False, errorProxy=lambda x: False):
-        # added by DV in may 2015 to get a handle to global variables for a
-        # possible code process restart
+        # added by DV in may 2015 to get a handle to global variables for a possible code process restart
         self._gv, self._lv = gv, lv
         self._timeout = 2
+        self._codeProcess = None  # useful to test it in startCodeProcess
         # For debugging:
         self._gv['from_MultiProcessCodeRunner'] = 2  # test to be deleted
-        # print self._gv
         print '\n process running MultiProcessCodeRunner is', os.getpid()
         print '\n id(MultiProcessCodeRunner._gv)=', id(self._gv)
+
         self.startCodeProcess()
+        # For debugging:
         print '\n CodeProcess id is ', self._codeProcess.pid, ' with self.pid after start'
 
     def startCodeProcess(self):
         """
-        Starts the associated CodeProcess.
+        Starts or restarts the associated CodeProcess.
         """
         # Creates a single CodeProcess with global variables gv
+        if self._codeProcess is not None:
+            self.terminateCodeProcess()
+        # Creates a single CodeProcess with global variables gv
+        print "Starting or restarting code process..."
         self._codeProcess = CodeProcess(gv=self._gv)
         # Start the Process that automatically calls the Process.run() method
         self._codeProcess.start()
@@ -560,22 +565,14 @@ class MultiProcessCodeRunner():
         self._stdoutProxy = self._codeProcess.stdoutProxy()
         self._stderrProxy = self._codeProcess.stderrProxy()
 
-    def restart(self):
-        """
-        Terminate and restarts the associated CodeProcess with the same global variables.
-        """
-        print "Restarting code runner..."
-        self.terminate()
-        self.startCodeProcess()
+    def terminateCodeProcess(self):
+        """ Terminates the associated CodeProcess if alive."""
+        if self._codeProcess.is_alive():
+            self._codeProcess.terminate()
 
     def __del__(self):
         """ Destructor"""
         self.terminate()
-
-    def terminate(self):
-        """ Terminates the associated CodeProcess."""
-        if self._codeProcess.is_alive():
-            self._codeProcess.terminate()
 
     def stderrQueue(self):
         """
@@ -588,6 +585,18 @@ class MultiProcessCodeRunner():
         Returns the output queue of the code process.
         """
         return self._stdoutQueue
+
+    def stderrProxy(self):
+        """
+        Returns the error proxy of the code process.
+        """
+        return self._stderrProxy
+
+    def stdoutProxy(self):
+        """
+        Returns the output proxy of the code process.
+        """
+        return self._stdoutProxy
 
     def setTimeout(self, timeout):
         """
@@ -668,7 +677,7 @@ class MultiProcessCodeRunner():
         """
         message = (command, args, kwargs)
         if not self._codeProcess.is_alive():
-            self.restart()
+            self.startCodeProcess()
         self._clearQueue(self._codeProcess.responseQueue())
         self._codeProcess.commandQueue().put(message, False)
         try:

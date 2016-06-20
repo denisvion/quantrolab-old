@@ -3,6 +3,7 @@ import os
 import os.path
 import string
 import threading
+import time
 
 from PyQt4.QtGui import *
 from PyQt4.QtCore import *
@@ -13,10 +14,10 @@ from application.ide.widgets.observerwidget import ObserverWidget
 
 class ThreadPanel(QWidget, ObserverWidget):
     """
-    QWidget that refreshes every half seconds information about the different threads run in a codeRunner
-    from different pieces of code edited in an editorWindow.
-    The widget displays the source name, the thread identifier and the thread status (running, finished, or failed).
-    It is able stop a killable trhead and to remove a thread from the code runner when the corresponding editor has been closed.
+    QWidget that refreshes every half second information about the different threads of a codeRunner, corresponding to
+     different editors of the editorWindow.
+    The widget displays the thread identifier, the thread status (running, finished, or failed), and the source name.
+    It is able to stop a killable trhead and to remove a thread from the code runner when the corresponding editor has been closed.
     """
 
     def __init__(self, codeRunner=None, editorWindow=None, parent=None):
@@ -61,7 +62,8 @@ class ThreadPanel(QWidget, ObserverWidget):
             return
         self._threads[identifier] = thread
         item.setText(0, str(identifier))
-        item.setText(1, 'running' if thread['isRunning'] else 'failed' if thread['failed'] else 'finished')
+        status = 'running' if thread['isRunning'] else 'failed' if thread['failed'] else 'finished'
+        item.setText(1, status)
         filename = str(thread['filename'])
         (di, shortname) = os.path.split(filename)
         item.setText(2, shortname)
@@ -93,8 +95,7 @@ class ThreadPanel(QWidget, ObserverWidget):
             if tobeadded:
                 item = QTreeWidgetItem()
                 self._updateItemInfo(item, idr, threadDict[idr])
-                self._threadView.insertTopLevelItem(
-                    self._threadView.topLevelItemCount(), item)
+                self._threadView.insertTopLevelItem(self._threadView.topLevelItemCount(), item)
                 self._threadItems[idr] = item
         tbr = []
         for idr in self._threadItems:                                   # update in or remove from list of threads
@@ -112,6 +113,7 @@ class ThreadPanel(QWidget, ObserverWidget):
             item = self._threadItems[idr]
             self._threadView.takeTopLevelItem(self._threadView.indexOfTopLevelItem(item))
             del self._threadItems[idr]
+            del self._threads[idr]
 
     def killThread(self):
         selectedItems = self._threadView.selectedItems()
