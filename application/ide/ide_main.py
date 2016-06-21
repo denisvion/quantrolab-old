@@ -94,7 +94,7 @@ class Log(LineTextWidget):
     def contextMenuEvent(self, event):
         MyMenu = self.createStandardContextMenu()
         MyMenu.addSeparator()
-        clearLog = MyMenu.addAction('clear log')
+        clearLog = MyMenu.addAction('Clear log')
         self.connect(clearLog, SIGNAL('triggered()'), self.clearLog)
         MyMenu.exec_(self.cursor().pos())
 
@@ -164,7 +164,7 @@ class IDE(QMainWindow, ObserverWidget):
         # this is the global variable dictionary of the Quantrolab application, to
         # be shared with its helpers and scripts.
         self._gv = dict()
-        self._gv['from_main'] = 1   # test to be deleted
+        # self._gv['from_main'] = 1   # test to be deleted
         print 'Starting editor...',
         self.editorWindow = CodeEditorWindow(parent=self, newEditorCallback=self.newEditorCallback)  # tab editor window
         print 'OK.'
@@ -195,7 +195,7 @@ class IDE(QMainWindow, ObserverWidget):
         verticalSplitter.addWidget(horizontalSplitter)
         # add the log/error window
         verticalSplitter.addWidget(self.logTabs)
-        verticalSplitter.setStretchFactor(0, 2)
+        verticalSplitter.setStretchFactor(0, 1)
 
         # create the project tab with its toolbar menu
         self.projectWindow = QWidget()
@@ -632,7 +632,7 @@ class IDE(QMainWindow, ObserverWidget):
 
     def restartCodeProcess(self):
         question = 'All active threads will be lost. Are you sure?'
-        if QMessageBox.question(self, 'Warning', question, QMessageBox.Ok, QMessageBox.Cancel) == QMessageBox.Ok:
+        if QMessageBox.warning(self, 'Warning', question, QMessageBox.Ok, QMessageBox.Cancel) == QMessageBox.Ok:
             self._codeRunner.startCodeProcess()         # restart a new code process of coderunner
             self.initializeLogs()
 

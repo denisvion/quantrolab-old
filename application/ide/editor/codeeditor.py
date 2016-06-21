@@ -64,7 +64,8 @@ class ErrorConsole(QTreeWidget, ObserverWidget):
 
         (exception_type, exception_value, tb) = exceptionInfo
 
-        text = traceback.format_exception_only(exception_type, exception_value)[0]
+        text = traceback.format_exception_only(
+            exception_type, exception_value)[0]
 
         text = text.replace("\n", " ")
 
@@ -142,6 +143,7 @@ class CodeEditorWindow(QWidget):
     def __init__(self, parent=None, gv=dict(), lv=dict(), newEditorCallback=None):
         self._parent = parent
         self.editors = []
+        # self.count = 1 # use len(self.editors)
         self._workingDirectory = None
         self._newEditorCallback = newEditorCallback
         QWidget.__init__(self, parent)
@@ -200,22 +202,28 @@ class CodeEditorWindow(QWidget):
 
     def saveCurrentFile(self):
         """
-        Calls the save function of the current editor.
+        Calls the save function of the current editor if it has a filename,
+        or branches to the saveCurrentFileAs() otherwise.
         """
-        editor = self.currentEditor()
-        result = editor.save()
-        if result:
-            self.setWorkingDirectory(editor.filename())
+        currentEditor = self.currentEditor()
+        if currentEditor.filename() is None:
+            return self.saveCurrentFileAs()
+        else:
+            return currentEditor.save()
 
     def saveCurrentFileAs(self):
         """
-        Calls the saveAs function of the current editor.
+
         """
-        editor = self.currentEditor()
-        result = editor.saveAs()
-        if result:
-            self.setWorkingDirectory(editor.filename())
-            self.updateTabText(editor)
+        currentEditor = self.currentEditor()
+        filename = str(QFileDialog.getSaveFileName(caption='Save file as',
+                                                   filter="Python(*.py *.pyw)", directory=self.workingDirectory()))
+        if filename != "":
+            print "Saving document as %s" % filename
+            self.setWorkingDirectory(filename)
+            currentEditor.setFilename(filename)
+            return self.saveCurrentFile()
+        return False
 
     def getEditorForFile(self, filename):
         for i in range(0, self.tab.count()):
@@ -242,14 +250,16 @@ class CodeEditorWindow(QWidget):
 
     def openFile(self, filename=None):
         if filename is None:
-            direc = self.workingDirectory()
-            fi = 'Python(*.py *.pyw)'
-            filename = str(QFileDialog.getOpenFileName(caption='Open file', filter=fi, directory=direc))
-        if filename == '':
+            filename = str(QFileDialog.getOpenFileName(
+                caption='Open file', filter="Python(*.py *.pyw)", directory=self.workingDirectory()))
+
+        if filename == "":
             return None
+
         check = self.widgetOfOpenFile(filename)
         if check is not None:
             return check
+
         if os.path.isfile(str(filename)):
             self.setWorkingDirectory(filename)
             editor = self.newEditor()
@@ -267,10 +277,11 @@ class CodeEditorWindow(QWidget):
             editor = CodeEditor(parent=self)
             editor.append('')
             editor.activateHighlighter()
-        # find the lowest index not already used names of type 'untitled n'
-        names = [ed._shortname for ed in self.editors]
-        names = [name for name in names if name.startswith('[untitled')]
-        indices = [int(''.join([s for s in list(name) if s.isdigit()])) for name in names]
+        # find the lowest index not already used a names of type 'untiltled n'
+        names = [str(self.tab.tabText(i)) for i in range(self.tab.count())]
+        names = [name for name in names if name.startswith('untitled')]
+        indices = [int(''.join([s for s in name.split() if s.isdigit()]))
+                   for name in names]
         index = 1
         while index in indices:
             index += 1
@@ -280,8 +291,10 @@ class CodeEditorWindow(QWidget):
         self.editors.append(editor)
         self.tab.addTab(editor, name)
         self.updateTabText(editor)
-        self.connect(editor, SIGNAL('hasUnsavedModifications(bool)'), lambda changed,
+        # self.tab.setTabToolTip(self.tab.indexOf(editor), name)
+        self.connect(editor, SIGNAL("hasUnsavedModifications(bool)"), lambda changed,
                      editor=editor: self.editorHasUnsavedModifications(editor, changed))
+        # self.count = self.count + 1
         self.tab.setCurrentWidget(editor)
         if self._newEditorCallback is not None:
             self._newEditorCallback(editor)
@@ -427,26 +440,13 @@ class LineNumbers(QPlainTextEdit):
 
 
 class LineTextWidget(QPlainTextEdit):
+    """
 
-        # For QTextEdit
-        #   def contentOffset(self):
-        #     return QPointF(0,0)
-
-        # For QTextEdit:
-        #  def firstVisibleBlock(self):
-        #   return self.document().begin()
-
-    def appendPlainText(self, string):
-        QPlainTextEdit.appendPlainText(self, string)
-
-    # For QTextEdit:
-    # def blockBoundingGeometry(self,block):
-    # return self.document().documentLayout().blockBoundingRect(block)
-
-    def append(self, string):
-        self.appendPlainText(string)
-
+    """
     class NumberBar(QWidget):
+        """
+        ???
+        """
 
         def __init__(self, *args):
             QWidget.__init__(self, *args)
@@ -461,8 +461,7 @@ class LineTextWidget(QPlainTextEdit):
         def update(self, *args):
             maxline = self.edit.document().lastBlock().blockNumber() + \
                 self.edit.document().lastBlock().lineCount()
-            width = QFontMetrics(self.edit.document().defaultFont()).width(
-                str(maxline)) + 10 + 10
+            width = QFontMetrics(self.edit.document().defaultFont()).width(str(maxline)) + 10 + 10
             if self.width() != width:
                 self.setFixedWidth(width)
                 margins = QMargins(width, 0, 0, 0)
@@ -634,11 +633,15 @@ class LineTextWidget(QPlainTextEdit):
 
     def __init__(self, *args):
         QPlainTextEdit.__init__(self, *args)
-
         self.number_bar = self.NumberBar(self)
         self.number_bar.setTextEdit(self)
-
         self.viewport().installEventFilter(self)
+
+    def appendPlainText(self, string):
+        QPlainTextEdit.appendPlainText(self, string)
+
+    def append(self, string):
+        self.appendPlainText(string)
 
     def resizeEvent(self, e):
         self.number_bar.setFixedHeight(self.height())
@@ -658,13 +661,9 @@ class LineTextWidget(QPlainTextEdit):
 
         QPlainTextEdit.paintEvent(self, event)
 
-        """
-      This functions paints a dash-dotted line before hidden blocks.
-      """
+        # This functions paints a dash-dotted line before hidden blocks.
         contents_y = self.verticalScrollBar().value() * 0 + 1
-
         page_bottom = self.viewport().height()
-
         painter = QPainter(self.viewport())
 
         # Iterate over all text blocks in the document.
@@ -717,64 +716,68 @@ class SearchableEditor(QPlainTextEdit):
     """
 
     def __init__(self, parent=None):
-        self._panel = QWidget(self)
+        self._panel = QFrame(self)
+        self._panel.setFrameStyle(QFrame.Box)
         self._layout = QBoxLayout(QBoxLayout.LeftToRight)
         self._panel.setLayout(self._layout)
         self._searchText = QLineEdit('')
-        self._replaceText = QLineEdit('')
-        self._replaceButton = QCheckBox('and replace by')  # dv
-        self._forwardButton = QPushButton('Forward')
-        self._backwardButton = QPushButton('Backward')
         self._caseSensitive = QCheckBox('Case Sensitive')
         self._useRegex = QCheckBox('Regex')
+        self._forwardButton = QPushButton('Forward')
+        self._backwardButton = QPushButton('Backward')
+        self._replaceButton = QPushButton('Replace by')
+        self._replaceText = QLineEdit('')
 
-        self._panel.setFocusPolicy(Qt.TabFocus)
-        self._replaceText.setFocusPolicy(Qt.TabFocus)
-        self._searchText.setFocusPolicy(Qt.TabFocus)
+        # self._panel.setFocusPolicy(Qt.ClickFocus)
+        # self._searchText.setFocusPolicy(Qt.StrongFocus)
+        # self._replaceText.setFocusPolicy(Qt.StrongFocus)
 
-        self._layout.addWidget(QLabel('Search'))  # dv
+        self._layout.addWidget(QLabel('Search'))
         self._layout.addWidget(self._searchText)
-        self._layout.addWidget(self._replaceButton)
-        self._layout.addWidget(self._replaceText)
+        self._layout.addWidget(self._caseSensitive)
+        self._layout.addWidget(self._useRegex)
         self._layout.addWidget(self._forwardButton)
         self._layout.addWidget(self._backwardButton)
-        self._layout.addWidget(self._caseSensitive)
-        self._layout.addWidget(self._useRegex)  # dv
-        self._layout.addWidget(QLabel('(Esc to exit search)'))  # dv
+        self._layout.addWidget(self._replaceButton)
+        self._layout.addWidget(self._replaceText)
+        self._layout.addWidget(QLabel('(Esc to exit search)'))
         self._layout.addStretch()
         self._panel.hide()
 
         self.connect(self._searchText, SIGNAL('enterPressed()'), self.searchText)
         self.connect(self._forwardButton, SIGNAL('clicked()'), self.searchText)
         self.connect(self._backwardButton, SIGNAL('clicked()'), lambda: self.searchText(backward=True))
+        self.connect(self._replaceButton, SIGNAL('clicked()'), self.replaceText)
+
+        self._lastBackward = False
 
     def resizeEvent(self, e):
-        self._panel.setGeometry(
-            0, self.viewport().height(), self.viewport().width(), 40)
+        self._panel.setGeometry(0, self.viewport().height(), self.viewport().width(), 40)
         self.adjustMargins()
+
+    def adjustMargins(self):
+        bottom = 0
+        if self._panel.isVisible():
+            bottom = 40
+        margins = self.viewport().contentsMargins()  # error here bad coordinate system
+        margins.setBottom(bottom)
+        self.setViewportMargins(margins)
 
     def searchText(self, backward=False, clip=True):
         text = self._searchText.text()
+        pos = self.textCursor().position()
+        flag = QTextDocument.FindFlag(0)
+        self._lastBackward = False
+        if backward:
+            pos = self.textCursor().selectionStart()
+            flag = flag | QTextDocument.FindBackward
+            self._lastBackward = True
+        if self._caseSensitive.isChecked():
+            flag = flag | QTextDocument.FindCaseSensitively
         if self._useRegex.isChecked():
-            if backward:
-                result = self.document().find(QRegExp(text), self.textCursor(
-                ).selectionStart(), QTextDocument.FindBackward)
-            else:
-                result = self.document().find(QRegExp(text), self.textCursor().position())
-        else:
-            if self._caseSensitive.isChecked():
-                if backward:
-                    result = self.document().find(text, self.textCursor().selectionStart(),
-                                                  QTextDocument.FindCaseSensitively | QTextDocument.FindBackward)
-                else:
-                    result = self.document().find(text, self.textCursor().position(),
-                                                  QTextDocument.FindCaseSensitively)
-            else:
-                if backward:
-                    result = self.document().find(text, self.textCursor(
-                    ).selectionStart(), QTextDocument.FindBackward)
-                else:
-                    result = self.document().find(text, self.textCursor().position())
+            text = QRegExp(text)
+        result = self.document().find(text, pos, flag)
+
         if not result.isNull():
             self.setTextCursor(result)
             self.ensureCursorVisible()
@@ -784,14 +787,13 @@ class SearchableEditor(QPlainTextEdit):
             selection.format.setBackground(QBrush(QColor(255, 0, 0, 140)))
             self.selections = []
             self.selections.append(selection)
-        #      self.setExtraSelections(self.selections)
+            # self.setExtraSelections(self.selections)
             self.setFocus()
             self._searchText.setStyleSheet("background:#5F5;")
         else:
             cursor = QTextCursor(self.document())
             if backward:
-                cursor.setPosition(self.document().lastBlock().position(
-                ) + self.document().lastBlock().length() - 1)
+                cursor.setPosition(self.document().lastBlock().position() + self.document().lastBlock().length() - 1)
             else:
                 cursor.setPosition(0)
             self.setTextCursor(cursor)
@@ -800,13 +802,21 @@ class SearchableEditor(QPlainTextEdit):
                 self.searchText(backward, clip=False)
 
     def replaceText(self):
-        pass
+        search = self._searchText.text()
+        if self._useRegex.isChecked():
+            search = QRegExp(search)
+        if self.textCursor().selectedText() == search:
+            replacement = self._replaceText.text()
+            if self._useRegex.isChecked():
+                replacement = QRegExp(replacement)
+            self.textCursor().insertText(replacement)
+        self.searchText(self._lastBackward)
 
     def showSearchBar(self):
         self._panel.show()
         self._searchText.setFocus()
         self._searchText.selectAll()
-        self._searchText.setStyleSheet("")
+        self._searchText.setStyleSheet('')
         self.adjustMargins()
 
     def hideSearchBar(self):
@@ -814,41 +824,28 @@ class SearchableEditor(QPlainTextEdit):
         self.setFocus()
         self.adjustMargins()
 
-    def adjustMargins(self):
-        if self._panel.isVisible():
-            margins = self.viewport().contentsMargins()
-            margins.setBottom(40)
-            self.setViewportMargins(margins)
-        else:
-            margins = self.viewport().contentsMargins()
-            margins.setBottom(0)
-            self.setViewportMargins(margins)
-
     def keyPressEvent(self, e):
-        if (e.key() == Qt.Key_F) and (e.modifiers() & Qt.ControlModifier):
+        if (e.key() == Qt.Key_F) and (e.modifiers() & Qt.ControlModifier):  # CTRL+F = show
             self.showSearchBar()
-        elif (e.key() == Qt.Key_Escape):
+        elif (e.key() == Qt.Key_Escape):                                    # ESC = Hide
             self.hideSearchBar()
         if not self._panel.isVisible():
             e.ignore()
             return
-        elif (e.key() == Qt.Key_Enter or e.key() == Qt.Key_Return):
+        elif (e.key() == Qt.Key_Enter or e.key() == Qt.Key_Return):         # Enter or Return = search
             e.accept()
-            self.searchText()
-        elif e.key() == Qt.Key_Up or e.key() == Qt.Key_Down:
-            e.accept()
+            self.searchText(self._lastBackward)
+        elif e.key() == Qt.Key_Up or e.key() == Qt.Key_Down:                # Down = search downward
+            e.accept()                                                      # Up = search upward
+            backward = False
             if e.key() == Qt.Key_Up:
-                self.searchText(backward=True)
-            else:
-                self.searchText()
-        elif e.key() == Qt.Key_Tab:
-            self._panel.keyPressEvent(e)
+                backward = True
+            self.searchText(backward=backward)
+        elif e.key() == Qt.Key_Tab:                                         # Tab = Tab at the panel level
             e.accept()
+            self._panel.keyPressEvent(e)
         else:
-            if self._panel.isVisible():
-                e.accept()
-            else:
-                e.ignore()
+            e.accept()
 
 
 class CodeEditor(SearchableEditor, LineTextWidget):
@@ -868,7 +865,7 @@ class CodeEditor(SearchableEditor, LineTextWidget):
         Ask = 2
 
     def __init__(self, parent=None, lineWrap=True):
-        self._parent = parent
+        self.parent = parent
         LineTextWidget.__init__(self, parent)
         SearchableEditor.__init__(self, parent)
         self._filename = None
@@ -1220,34 +1217,24 @@ class CodeEditor(SearchableEditor, LineTextWidget):
         """
         Saves the editor content in a file with the passed filename or with a name prompted on the fly.
         """
-        ask = False
-        if filename is None:
-            ask = True
-            filename = self._filename
-        if filename is not None:
-            directory = filename
-        else:
+        if filename is None:  # prompt user for a new file name
             try:
-                directory = self._parent.workingDirectory()
+                directory = self.parent().workingDirectory()
             except:
                 directory = os.getcwd()
-        if ask:
             filename = str(QFileDialog.getSaveFileName(caption='Save file as',
-                                                       filter='Python(*.py *.pyw)', directory=directory))
+                                                       filter="Python(*.py *.pyw)", directory=directory))
         if filename != '':
             try:
-                print "Saving document %s:" % filename,
                 file = open(filename, 'w')
                 file.write(unicode(self.document().toPlainText()))
                 file.close()
                 self.setHasUnsavedModifications(False)
                 self._modifiedAt = os.path.getmtime(filename) + 1
                 self._filename = filename
-                (di, self._shortname) = os.path.split(filename)
-                print " Done."
+                self._shortname = filename
                 return True
             except:
-                print " Error."
                 raise Error('Could not save file %s' % filename)
             finally:
                 file.close()
