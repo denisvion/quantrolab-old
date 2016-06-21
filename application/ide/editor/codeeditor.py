@@ -180,11 +180,11 @@ class CodeEditorWindow(QWidget):
         """
         Sets _workingDirectory to the directory of the file whose name filename is passed.
         """
-        if filename is not None:
-            directory = os.path.dirname(str(filename))
+        directory = filename
+        if directory is not None:
+            directory = os.path.dirname(str(directory))
+        if os.path.exists(directory):
             self._workingDirectory = directory
-        else:
-            self._workingDirectory = None
 
     def widgetOfOpenFile(self, filename):
         """
@@ -204,17 +204,23 @@ class CodeEditorWindow(QWidget):
         """
         Calls the save function of the current editor
         """
-        currentEditor = self.currentEditor()
-        if currentEditor is not None:
-            return currentEditor.save()
+        self._saveOrSaveAs(True)
 
     def saveCurrentFileAs(self):
         """
         Calls the saveAs function of the current editor
         """
+        self._saveOrSaveAs(False)
+
+    def _saveOrSaveAs(self, save=True):
+        """ Private function for writing the code only once"""
         currentEditor = self.currentEditor()
-        if currentEditor is not None:
-            return currentEditor.saveAs()
+        if save:
+            filename = currentEditor.save()
+        else:
+            filename = currentEditor.saveAs()
+        self.updateTabText(currentEditor)
+        self.setWorkingDirectory(filename)
 
     def getEditorForFile(self, filename):
         for i in range(0, self.tab.count()):
@@ -240,17 +246,18 @@ class CodeEditorWindow(QWidget):
         self.tab.setTabToolTip(index, filename)
 
     def openFile(self, filename=None):
+        """
+        Opens a file from the passed or prompted filename, then creates the editor if the opening was successful.
+        (Does not call the open method of a created editor)
+        """
         if filename is None:
             filename = str(QFileDialog.getOpenFileName(
                 caption='Open file', filter="Python(*.py *.pyw)", directory=self.workingDirectory()))
-
-        if filename == "":
+        if filename == '':
             return None
-
         check = self.widgetOfOpenFile(filename)
         if check is not None:
             return check
-
         if os.path.isfile(str(filename)):
             self.setWorkingDirectory(filename)
             editor = self.newEditor()
@@ -413,7 +420,6 @@ class CodeEditorWindow(QWidget):
         app = QtGui.QApplication.instance()
         event = QEvent(1000)
         target = self.parent()
-        print 'parent of code editor window is ', target
         app.sendEvent(target, event)
 
 
@@ -856,7 +862,7 @@ class CodeEditor(SearchableEditor, LineTextWidget):
         Ask = 2
 
     def __init__(self, parent=None, lineWrap=True):
-        self.parent = parent
+        self._parent = parent
         LineTextWidget.__init__(self, parent)
         SearchableEditor.__init__(self, parent)
         self._filename = None
@@ -917,8 +923,6 @@ class CodeEditor(SearchableEditor, LineTextWidget):
         # self.setPlainText(self.fileOpenThread.text)
 
     def highlightLine(self, line):
-
-        print "Highlighting line no %d" % line
 
         block = self.document().findBlockByLineNumber(line - 1)
 
@@ -1208,11 +1212,13 @@ class CodeEditor(SearchableEditor, LineTextWidget):
         """
         Saves the editor content in a file with the passed filename or with a name prompted on the fly.
         """
-        if filename is None:  # prompt user for a new file name
-            try:
-                directory = self.parent().workingDirectory()
-            except:
-                directory = os.getcwd()
+        if filename is None:  # prompt user for a new file name with a proposed directory and name
+            directory = self._filename                              # proposing first the existing filename
+            if directory is None or not os.path.exists(directory):
+                try:
+                    directory = self._parent.workingDirectory()    # or the parent working directory
+                except:
+                    directory = os.getcwd()                         # or the os current directory
             filename = str(QFileDialog.getSaveFileName(caption='Save file as',
                                                        filter="Python(*.py *.pyw)", directory=directory))
         if filename != '':
@@ -1223,13 +1229,12 @@ class CodeEditor(SearchableEditor, LineTextWidget):
                 self.setHasUnsavedModifications(False)
                 self._modifiedAt = os.path.getmtime(filename) + 1
                 self._filename = filename
-                self._shortname = filename
-                return True
+                di, self._shortname = os.path.split(filename)
             except:
                 raise Error('Could not save file %s' % filename)
             finally:
                 file.close()
-        return False
+        return filename
 
     def updateFileModificationDate(self):
         self._modifiedAt = os.path.getmtime(self.filename()) + 1
