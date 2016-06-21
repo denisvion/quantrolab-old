@@ -202,28 +202,19 @@ class CodeEditorWindow(QWidget):
 
     def saveCurrentFile(self):
         """
-        Calls the save function of the current editor if it has a filename,
-        or branches to the saveCurrentFileAs() otherwise.
+        Calls the save function of the current editor
         """
         currentEditor = self.currentEditor()
-        if currentEditor.filename() is None:
-            return self.saveCurrentFileAs()
-        else:
+        if currentEditor is not None:
             return currentEditor.save()
 
     def saveCurrentFileAs(self):
         """
-
+        Calls the saveAs function of the current editor
         """
         currentEditor = self.currentEditor()
-        filename = str(QFileDialog.getSaveFileName(caption='Save file as',
-                                                   filter="Python(*.py *.pyw)", directory=self.workingDirectory()))
-        if filename != "":
-            print "Saving document as %s" % filename
-            self.setWorkingDirectory(filename)
-            currentEditor.setFilename(filename)
-            return self.saveCurrentFile()
-        return False
+        if currentEditor is not None:
+            return currentEditor.saveAs()
 
     def getEditorForFile(self, filename):
         for i in range(0, self.tab.count()):
