@@ -82,7 +82,7 @@ def startHelper(modulename, filename, classname, associateAttr, associateTypeNam
 
 class HelperManager():
     """
-    The helper manager has a parent, a default helper root directory, and a callable method to execute the helper code.
+    The helper manager has a parent, a default helper root directory, and a handle to a method that can exexute code.
     It memorizes information about the loaded helpers in a dictionary _helpers, the structure of which is:
      # {classname: {'helper':classname,'helperPath':filename,'helperType':helperType,
      #              'associate':associateName,'associatePath':associatePath,'associateType':associateType},...}
@@ -90,20 +90,15 @@ class HelperManager():
 
     def __init__(self, parent=None, helpersRootDir=None, execute=None):
         self._parent = parent
-        self.setHelpersRootDir(helpersRootDir)
-        self.setExecute(execute)
-        # dictionary of the available gui or non-gui helpers. see structure
-        # above
-        self._helpers = {}
-
-    def setHelpersRootDir(self, helpersRootDir):
         self._helpersRootDir = helpersRootDir
-
-    def setExecute(self, execute):
         self._execute = execute
+        self._helpers = {}
 
     def helpers(self):
         return self._helpers			# return the helper directory
+
+    def loadHelpers2(self):             # for debugging purpose
+        self._execute("print 'printing from CodeProcess' ")
 
     def loadHelpers(self, filename=None):
         """
@@ -132,9 +127,8 @@ class HelperManager():
 
         # Build the .py filename of the helper module and read the module
         if filename is None:
-            filename = str(QFileDialog.getOpenFileName(
-                caption='Open Quantrolab helper',
-                filter="helper (*.pyh)", directory=self._helpersRootDir))
+            filename = str(QFileDialog.getOpenFileName(caption='Open Quantrolab helper',
+                                                       filter="helper (*.pyh)", directory=self._helpersRootDir))
         if not filename:
             return
         if os.path.isfile(filename):

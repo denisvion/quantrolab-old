@@ -154,7 +154,7 @@ class IDE(QMainWindow, ObserverWidget):
         self.RightBottomDock.setWindowTitle("File Browser")
 
         self._timer = QTimer(self)
-        self._runningCodeSessions = []
+        #self._runningCodeSessions = []
         self._timer.setInterval(500)
         self.connect(self._timer, SIGNAL("timeout()"), self.onTimer)
         self._timer.start()
@@ -396,10 +396,10 @@ class IDE(QMainWindow, ObserverWidget):
             except:
                 print('Cannot open last project: %s.' % str(settings.value('ide.lastproject').toString()))
 
+        print 'Loading HelperManager...',
         self._helpersRootDir = _helpersDefaultDir
         if settings.contains('ide.helpersRootDir'):
             self._helpersRootDir = settings.value('ide.helpersRootDir').toString()
-        print 'Loading HelperManager...',
         self._helperManager = HelperManager(self, self._helpersRootDir, self.executeCode)
         # rebuild menu because 'load helper' is added to the menu only if a _helperManager exists.
         self.buildHelperMenu()
@@ -525,15 +525,12 @@ class IDE(QMainWindow, ObserverWidget):
         """
         return self._codeRunner.processVar(varname)
 
-    def executeCode(self, code, filename="none", editor=None, identifier="main"):
+    def executeCode(self, code, filename='', editor=None, identifier=None):
+        """
+        This function executes code in the coderunner.
+        """
         # this function returns when the code has started running in the coderunner
-        if self._codeRunner.executeCode(code, identifier, filename) != -1:
-            # why does main memorize codesessions rather than relying on coderunner?
-            self._runningCodeSessions.append((code, identifier, filename, editor))
-            # if editor is not None:
-            # editor.hasBeenRun = True # leave a trace in the editor that its
-            # code has been run at least once. Why not relying on the
-            # coderunner?
+        result = self._codeRunner.executeCode(code, identifier, filename)
 
     def runCode(self, delimiter=""):
         """
@@ -561,8 +558,7 @@ class IDE(QMainWindow, ObserverWidget):
             poc = 'current block'
         else:
             poc = '???'
-        print('Running ' + poc + ' in ' + shortname +
-              ' (id=' + str(identifier) + ')')
+        print('Running ' + poc + ' in ' + shortname + ' (id=' + str(identifier) + ')')
         self.executeCode(code, filename=filename, editor=editor, identifier=identifier)  # execute the code
         return True
 
@@ -676,12 +672,11 @@ class IDE(QMainWindow, ObserverWidget):
         """
         Tries to stop the execution of the script selected in the editor if it is running
         """
-        currentEditor = self.editorWindow.currentEditor()
-        for session in self._runningCodeSessions:
-            (code, identifier, filename, editor) = session
-            if editor == currentEditor:
-                print("Stopping execution...")
-                self._codeRunner.stopExecution(identifier)
+        currentEditorId = id(self.editorWindow.currentEditor())
+        threadDict = self._codeRunner.status()
+        if currentEditorId in threadDict:
+            print('Stopping code thread...%i' % currentEditorId)
+            self._codeRunner.stopExecution(currentEditorId)
 
     def onTimer(self):
         return
@@ -730,6 +725,9 @@ class IDE(QMainWindow, ObserverWidget):
             loadHelpers = self.helpersMenu.addAction('Load helper...')
             loadHelpers.setShortcut(QKeySequence("Ctrl+h"))
             self.connect(loadHelpers, SIGNAL('triggered()'), self._helperManager.loadHelpers)
+            loadHelpers2 = self.helpersMenu.addAction('Load helper2...')
+            loadHelpers2.setShortcut(QKeySequence("Ctrl+j"))
+            self.connect(loadHelpers2, SIGNAL('triggered()'), self._helperManager.loadHelpers2)
             self.helpersMenu.addSeparator()
             helpers = self._helperManager.helpers()
             ag1, ag2 = QActionGroup(self, exclusive=False,
@@ -786,44 +784,29 @@ class IDE(QMainWindow, ObserverWidget):
         self.mainToolbar.addSeparator()
 
         newFile = self.mainToolbar.addAction(icons["newFile"], "New file")
-        openFile = self.mainToolbar.addAction(
-            icons["openFile"], "Open file...")
+        openFile = self.mainToolbar.addAction(icons["openFile"], "Open file...")
         saveFile = self.mainToolbar.addAction(icons["saveFile"], "Save file")
-        saveFileAs = self.mainToolbar.addAction(
-            icons["saveFileAs"], "Save file as...")
+        saveFileAs = self.mainToolbar.addAction(icons["saveFileAs"], "Save file as...")
 
         self.mainToolbar.addSeparator()
 
-        runFiles = self.mainToolbar.addAction(
-            icons["executeAllCode"], "Run file(s) (ctrl + enter)")
-        runBlock = self.mainToolbar.addAction(
-            icons["executeCodeBlock"], "Run block (enter)")
-        runSelection = self.mainToolbar.addAction(
-            icons["executeCodeSelection"], "Run selection (shift + enter)")
+        runFiles = self.mainToolbar.addAction(icons["executeAllCode"], "Run file(s) (ctrl + enter)")
+        runBlock = self.mainToolbar.addAction(icons["executeCodeBlock"], "Run block (enter)")
+        runSelection = self.mainToolbar.addAction(icons["executeCodeSelection"], "Run selection (shift + enter)")
         self.connect(runFiles, SIGNAL('triggered()'), self.runFiles)
         self.connect(runBlock, SIGNAL('triggered()'), self.runBlock)
         self.connect(runSelection, SIGNAL('triggered()'), self.runSelection)
 
         self.mainToolbar.addSeparator()
 
-        killThread = self.mainToolbar.addAction(
-            self._icons["killThread"], "Kill thread")
+        killThread = self.mainToolbar.addAction(self._icons["killThread"], "Kill thread")
 
-        # obsolete
-        # self.connect(executeBlock,SIGNAL('triggered()'),lambda: self.executeCode(self.editorWindow.currentEditor().getCurrentCodeBlock(),filename = self.editorWindow.currentEditor().filename() or "[unnamed buffer]",editor = self.editorWindow.currentEditor(),identifier = id(self.editorWindow.currentEditor())))
-
-        self.connect(newFile, SIGNAL('triggered()'),
-                     self.editorWindow.newEditor)
-        self.connect(openFile, SIGNAL('triggered()'),
-                     self.editorWindow.openFile)
-        self.connect(saveFile, SIGNAL('triggered()'),
-                     self.editorWindow.saveCurrentFile)
-        self.connect(saveFileAs, SIGNAL('triggered()'),
-                     self.editorWindow.saveCurrentFileAs)
-        self.connect(killThread, SIGNAL("triggered()"),
-                     self.terminateCodeExecution)
-        self.connect(changeWorkingPath, SIGNAL(
-            'triggered()'), self.changeWorkingPath)
+        self.connect(newFile, SIGNAL('triggered()'), self.editorWindow.newEditor)
+        self.connect(openFile, SIGNAL('triggered()'), self.editorWindow.openFile)
+        self.connect(saveFile, SIGNAL('triggered()'), self.editorWindow.saveCurrentFile)
+        self.connect(saveFileAs, SIGNAL('triggered()'), self.editorWindow.saveCurrentFileAs)
+        self.connect(killThread, SIGNAL("triggered()"), self.terminateCodeExecution)
+        self.connect(changeWorkingPath, SIGNAL('triggered()'), self.changeWorkingPath)
 
     def runStartup(self):
         print "Looking for a startup file or folder at tree level 1 in current project"

@@ -79,7 +79,7 @@ class ThreadPanel(QWidget, ObserverWidget):
         # list of displayed identifiers
         threadIds = self.threadIds()
         for idr in threadDict:                                          # add to list of threads
-            tobeadded = idr not in threadIds and (not isinstance(idr, int) or idr in editorIDs)
+            tobeadded = idr not in threadIds  # and (not isinstance(idr, int) or idr in editorIDs)
             if tobeadded:
                 item = QTreeWidgetItem()
                 self._updateItemInfo(item, idr, threadDict[idr])
@@ -87,7 +87,7 @@ class ThreadPanel(QWidget, ObserverWidget):
 
         tbr = []
         for idr in threadIds:                                           # update in or remove from list of threads
-            orphean = idr in threadDict and isinstance(idr, int) and idr not in editorIDs
+            orphean = idr in threadDict and idr not in editorIDs and threadDict[idr]['filename'] != ''
             orphean = orphean and not threadDict[idr]['isRunning']
             toberemoved = orphean or idr not in threadDict
             if toberemoved:
