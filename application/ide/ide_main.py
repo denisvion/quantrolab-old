@@ -195,7 +195,7 @@ class IDE(QMainWindow, ObserverWidget):
         verticalSplitter.addWidget(horizontalSplitter)
         # add the log/error window
         verticalSplitter.addWidget(self.logTabs)
-        verticalSplitter.setStretchFactor(0, 1)
+        verticalSplitter.setStretchFactor(0, 2)
 
         # create the project tab with its toolbar menu
         self.projectWindow = QWidget()
@@ -399,11 +399,12 @@ class IDE(QMainWindow, ObserverWidget):
         self._helpersRootDir = _helpersDefaultDir
         if settings.contains('ide.helpersRootDir'):
             self._helpersRootDir = settings.value('ide.helpersRootDir').toString()
-
+        print 'Loading HelperManager...',
         self._helperManager = HelperManager(self, self._helpersRootDir, self.executeCode)
         # rebuild menu because 'load helper' is added to the menu only if a _helperManager exists.
         self.buildHelperMenu()
         self._helpers = {}
+        print 'done.'
 
     def fileBrowser(self):
         """
@@ -728,15 +729,13 @@ class IDE(QMainWindow, ObserverWidget):
         if hasattr(self, '_helperManager'):
             loadHelpers = self.helpersMenu.addAction('Load helper...')
             loadHelpers.setShortcut(QKeySequence("Ctrl+h"))
-            self.connect(loadHelpers, SIGNAL('triggered()'),
-                         self._helperManager.loadHelpers)
+            self.connect(loadHelpers, SIGNAL('triggered()'), self._helperManager.loadHelpers)
             self.helpersMenu.addSeparator()
             helpers = self._helperManager.helpers()
-            ag1, ag2 = QActionGroup(
-                self, exclusive=False, triggered=self.showHelper), QActionGroup(self, exclusive=False)
+            ag1, ag2 = QActionGroup(self, exclusive=False,
+                                    triggered=self.showHelper), QActionGroup(self, exclusive=False)
             for key, dic in helpers.items():
-                helperType, associate, associateType = dic[
-                    'helperType'], dic['associate'], dic['associateType']
+                helperType, associate, associateType = dic['helperType'], dic['associate'], dic['associateType']
                 if helperType == 'HelperGUI':
                     ag1.addAction(QAction(key, self, checkable=False))
                     if associate is not None:
@@ -851,6 +850,7 @@ class IDE(QMainWindow, ObserverWidget):
         QMessageBox.about(self, 'About QuantroLab python IDE', QString(text))
 
     def updatedGui(self, subject=None, property=None, value=None):
+
         if property == 'deleted':
             key = subject.__class__.__name__
             if key in self._helpers and isinstance(self._helpers[key]['helper'], (Helper, HelperGUI)):
@@ -902,8 +902,8 @@ def startIDE(qApp=None):
         time.sleep(minSplashDuration - t1)
     # and terminates the display when the IDE is fully displayed.
     splash.finish(myIDE)
+    print 'Entering main event loop at t = %f' % time.time()
     qApp.exec_()                        # Start the application main event loop
-
 
 if __name__ == '__main__':
     startIDE()

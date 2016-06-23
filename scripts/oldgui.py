@@ -12,9 +12,12 @@ def startHelpers():
 	global dataManagerPanel
 	dataManagerPanel= DataManager(globals = gv)	# instantiate both data manager and its frontend
 	dataManagerPanel.show()								# show all helper panels
-	gv['dataManager']=dataManagerPanel.manager
+	gv['dataManager']=dataManagerPanel._helper
 
+import time
+t0=time.time()
 execInGui(startHelpers)
+print time.time()-t0
 
 ##
 ## For debugging only

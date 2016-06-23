@@ -26,10 +26,8 @@ class ThreadPanel(QWidget, ObserverWidget):
         self.setMinimumHeight(200)
         self.setWindowTitle('Active threads')
         layout = QGridLayout()
-        self._codeRunner = codeRunner
-        self._editorWindow = editorWindow
-        self._threads = {}
-        self._threadItems = {}
+        self._codeRunner = codeRunner           # handle to coderunner
+        self._editorWindow = editorWindow       # handle to coderunner
         self._threadView = QTreeWidget()
         self._threadView.setSelectionMode(QAbstractItemView.ExtendedSelection)
         self._threadView.setHeaderLabels(['Identifier', 'Status', 'Filename'])
@@ -54,25 +52,14 @@ class ThreadPanel(QWidget, ObserverWidget):
         self.timer.start()
         self.connect(self.timer, SIGNAL('timeout()'), self.updateThreadList)
 
-    def updatedGui(self, subject=None, property=None, value=None):
-        pass
-
-    def _updateItemInfo(self, item, identifier, thread):
-        if identifier in self._threads and self._threads[identifier] == thread:
-            return
-        self._threads[identifier] = thread
-        item.setText(0, str(identifier))
-        status = 'running' if thread['isRunning'] else 'failed' if thread['failed'] else 'finished'
-        item.setText(1, status)
-        filename = str(thread['filename'])
-        (di, shortname) = os.path.split(filename)
-        item.setText(2, shortname)
-        item.setToolTip(2, filename)
-        if self._editorWindow is not None:
-            editor = self._editorWindow.getEditorForFile(thread['filename'])
-            if editor is not None:
-                editor.setTabText(' [-]' if thread['isRunning'] else ' [!]' if thread['failed'] else ' [.]')
-                self._editorWindow.updateTabText(editor)
+    def threadIds(self):
+        """
+        Returns the dictionary {identifier: item} of the threadview QTreeWidget.
+        """
+        count = self._threadView.topLevelItemCount()
+        header = self._threadView.headerItem()
+        index = [str(header.text(i)) for i in range(header.columnCount())].index('Identifier')
+        return {int(item.text(index)): item for item in [self._threadView.topLevelItem(j) for j in range(count)]}
 
     def updateThreadList(self):
         """
@@ -89,16 +76,17 @@ class ThreadPanel(QWidget, ObserverWidget):
             return
         # list of identifiers of open editors
         editorIDs = map(id, self._editorWindow.editors)
-        # print threadDict.keys() # for debugging
+        # list of displayed identifiers
+        threadIds = self.threadIds()
         for idr in threadDict:                                          # add to list of threads
-            tobeadded = idr not in self._threadItems and (not isinstance(idr, int) or idr in editorIDs)
+            tobeadded = idr not in threadIds and (not isinstance(idr, int) or idr in editorIDs)
             if tobeadded:
                 item = QTreeWidgetItem()
                 self._updateItemInfo(item, idr, threadDict[idr])
                 self._threadView.insertTopLevelItem(self._threadView.topLevelItemCount(), item)
-                self._threadItems[idr] = item
+
         tbr = []
-        for idr in self._threadItems:                                   # update in or remove from list of threads
+        for idr in threadIds:                                           # update in or remove from list of threads
             orphean = idr in threadDict and isinstance(idr, int) and idr not in editorIDs
             orphean = orphean and not threadDict[idr]['isRunning']
             toberemoved = orphean or idr not in threadDict
@@ -107,18 +95,36 @@ class ThreadPanel(QWidget, ObserverWidget):
                 if orphean:
                     self._codeRunner.deleteThread(idr)
             else:
-                item = self._threadItems[idr]
+                item = threadIds[idr]
                 self._updateItemInfo(item, idr, threadDict[idr])
         for idr in tbr:
-            item = self._threadItems[idr]
+            item = threadIds[idr]
             self._threadView.takeTopLevelItem(self._threadView.indexOfTopLevelItem(item))
-            del self._threadItems[idr]
-            del self._threads[idr]
+
+    def _updateItemInfo(self, item, identifier, thread):
+        headers = self._threadView.headerItem()
+        headers = [str(headers.text(i)) for i in range(headers.columnCount())]
+        item.setText(headers.index('Identifier'), str(identifier))
+        status = 'running' if thread['isRunning'] else 'failed' if thread['failed'] else 'finished'
+        item.setText(headers.index('Status'), status)
+        filename = str(thread['filename'])
+        (di, shortname) = os.path.split(filename)
+        index = headers.index('Filename')
+        item.setText(index, shortname)
+        item.setToolTip(index, filename)
+        if self._editorWindow is not None:
+            editor = self._editorWindow.getEditorForFile(thread['filename'])
+            if editor is not None:
+                editor.setTabText(' [-]' if thread['isRunning'] else ' [!]' if thread['failed'] else ' [.]')
+                self._editorWindow.updateTabText(editor)
 
     def killThread(self):
-        selectedItems = self._threadView.selectedItems()
-        for item in selectedItems:
-            keys, values = self._threadItems.keys(), self._threadItems.values()
-            if item in self._threadItems.values():
-                identifier = filter(lambda x: x[0] == item, zip(values, keys))[0][1]
-                self._codeRunner.stopExecution(identifier)
+        header = self._threadView.headerItem()
+        index = [str(header.text(i)) for i in range(header.columnCount())].index('Identifier')
+        ids = [int(item.text(index)) for item in self._threadView.selectedItems()]
+        for id in ids:
+            print 'Stopping code thread %i ...' % id
+            self._codeRunner.stopExecution(id)
+
+    def updatedGui(self, subject=None, property=None, value=None):
+        pass
