@@ -87,7 +87,7 @@ class CodeThread (KillableThread):
     Because CodeThread subclasses KillableThread, it can be stopped by calling its terminate() method.
     """
 
-    def __init__(self, code, gv=dict(), lv=dict(), callback=None, filename="<my string>"):
+    def __init__(self, code, gv=dict(), lv=dict(), callback=None, filename=''):
         """
         Initializes the class.
         """
@@ -157,6 +157,7 @@ class CodeThread (KillableThread):
             if self._restart:
                 try:
                     self._isBusy, self._failed = True, False
+
                     code = compile(self._code, self._filename, 'exec')
                     exec(code, self._gv, self._lv)
                 except StopThread:
@@ -334,9 +335,9 @@ class CodeRunner(Reloadable, Subject):
         Executes a code string in an existing or new thread,
         with a given identifier, filename and local and global variable dictionaries.
         """
-        # print 'in CodeRunner.executeCode with codeRunner = ',self
-        # Raises exception if trying to run an existing thread that is executing
-        # code
+
+        if identifier is None:
+            identifier = self.getId()
         if self.isExecutingCode(identifier):
             raise Exception("Code thread %s is busy!" % identifier)
         if lv is None:                          # creates the local variable dictionary for the thread if not passed
