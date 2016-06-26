@@ -400,7 +400,7 @@ class IDE(QMainWindow, ObserverWidget):
         self._helpersRootDir = _helpersDefaultDir
         if settings.contains('ide.helpersRootDir'):
             self._helpersRootDir = settings.value('ide.helpersRootDir').toString()
-        self._helperManager = HelperManager(self, self._helpersRootDir, self.executeCode)
+        self._helperManager = HelperManager(self._codeRunner, parent=self, helpersRootDir=self._helpersRootDir)
         # rebuild menu because 'load helper' is added to the menu only if a _helperManager exists.
         self.buildHelperMenu()
         self._helpers = {}
@@ -519,11 +519,11 @@ class IDE(QMainWindow, ObserverWidget):
                 return False
         return True
 
-    def processVar(self, varname):
+    def processGlobalVar(self, varname):
         """
         Retrieve a global variable of the CodeProcess
         """
-        return self._codeRunner.processVar(varname)
+        return self._codeRunner.gloVar(varname)
 
     def executeCode(self, code, filename='', editor=None, identifier=None):
         """
@@ -708,7 +708,7 @@ class IDE(QMainWindow, ObserverWidget):
         self.runStartupGroup.setChecked(self.runStartupGroup.isChecked())
 
     def debug(self):
-        print self.processVar('lastHelper')
+        pass
 
     def buildHelperMenu(self):
         """
@@ -885,7 +885,6 @@ def startIDE(qApp=None):
         time.sleep(minSplashDuration - t1)
     # and terminates the display when the IDE is fully displayed.
     splash.finish(myIDE)
-    print 'Entering main event loop at t = %f' % time.time()
     qApp.exec_()                        # Start the application main event loop
 
 if __name__ == '__main__':

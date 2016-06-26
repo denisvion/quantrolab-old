@@ -215,7 +215,7 @@ class CodeRunner(Reloadable, Subject):
         """
         return self._gv
 
-    def processVar(self, varname):
+    def globalVar(self, varname):
         """
         Returns a variable from the global variable dictionary, provided it can be pickled (otherwise return None).
         """
@@ -229,6 +229,15 @@ class CodeRunner(Reloadable, Subject):
         Returns the local variables dictionary.
         """
         return self._lv
+
+    def localVar(self, varname):
+        """
+        Returns a variable from the local variable dictionary, provided it can be pickled (otherwise return None).
+        """
+        if varname in self._lv:
+            return self._lv[varname]
+        else:
+            return None
 
     def currentWorkingDirectory(self):
         """

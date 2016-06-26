@@ -11,8 +11,8 @@ import time
 import threading
 from threading import Thread
 
-from PyQt4.QtGui import *
-from PyQt4.QtCore import *
+from PyQt4.QtGui import QApplication
+from PyQt4.QtCore import Qt, SIGNAL, QThread
 
 # Memorize at the module level if the runGuiCode(PyQt_PyObject) signal has
 # been connected to the _runGuiCode function
@@ -48,25 +48,24 @@ def _ensureGuiThreadIsRunning():
     # Gets a handle to an existing QApplication in the process
     app = QApplication.instance()
     if app is None:                                 # if no QApplication
-        print 'Creating new application...',
-        # creates a new thread with new application as target
-        # global app created here
+        print 'No existing Qt application in current process => creating one...',
+        # creates a new thread with new application as target global app created here
         thread = Thread(target=_createApplication)
         thread.daemon = True
         thread.start()                                  # starts it
         while thread.is_alive() and (app is None or app.startingUp()):
             # and wait until it is started
             time.sleep(0.01)
-        print 'done'
+        print 'done.'
     else:                                           # there is already a QApplication
-        # if we have not memorized in signalConnected that a conection to
-        # _runGuiCodeSignal exists
+        print 'Use existing Qt application of current process...',
+        # if we have not memorized in signalConnected that a conection to _runGuiCodeSignal exists
         if not signalConnected:
             print 'Adding signal handler to application...',
             # defines the connection and memorize it
             print app.connect(app, SIGNAL("runGuiCode(PyQt_PyObject)"), _runGuiCode, Qt.QueuedConnection | Qt.UniqueConnection)
             signalConnected = True
-            print 'done'
+        print 'done'
 
 
 def _createApplication():
@@ -77,9 +76,8 @@ def _createApplication():
     """
     global app, signalConnected, _runGuiCode
     app = QApplication(sys.argv)          # The Qt application is created here
-    app.setQuitOnLastWindowClosed(False)
-    app.connect(app, SIGNAL('runGuiCode(PyQt_PyObject)'),
-                _runGuiCode, Qt.QueuedConnection | Qt.UniqueConnection)
+    app.setQuitOnLastWindowClosed(True)
+    app.connect(app, SIGNAL('runGuiCode(PyQt_PyObject)'), _runGuiCode, Qt.QueuedConnection | Qt.UniqueConnection)
     signalConnected = True
     if app.thread() != QThread.currentThread():
         raise Exception(
