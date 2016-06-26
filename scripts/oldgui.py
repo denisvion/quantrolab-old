@@ -1,7 +1,7 @@
-import matplotlib
-matplotlib.use('module://pyview.gui.mpl.backend')
-
 from ide.coderun.coderunner_gui import execInGui
+import time
+
+t0=time.time()
 from helpers.datamanager.datamanager_gui.datamgr_gui import DataManager
 
 def startHelpers():
@@ -14,8 +14,7 @@ def startHelpers():
 	dataManagerPanel.show()								# show all helper panels
 	gv['dataManager']=dataManagerPanel._helper
 
-import time
-t0=time.time()
+
 execInGui(startHelpers)
 print time.time()-t0
 

@@ -325,8 +325,7 @@ class CodeRunner(Reloadable, Subject):
         for identifier in self._threads:
             status[identifier] = dict()
             status[identifier]["isRunning"] = self.isExecutingCode(identifier)
-            status[identifier]["filename"] = self._threads[
-                identifier].filename()
+            status[identifier]["filename"] = self._threads[identifier].filename()
             status[identifier]["failed"] = self._threads[identifier].failed()
         return status
 

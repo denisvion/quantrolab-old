@@ -725,9 +725,9 @@ class IDE(QMainWindow, ObserverWidget):
             loadHelpers = self.helpersMenu.addAction('Load helper...')
             loadHelpers.setShortcut(QKeySequence("Ctrl+h"))
             self.connect(loadHelpers, SIGNAL('triggered()'), self._helperManager.loadHelpers)
-            loadHelpers2 = self.helpersMenu.addAction('Load helper2...')
-            loadHelpers2.setShortcut(QKeySequence("Ctrl+j"))
-            self.connect(loadHelpers2, SIGNAL('triggered()'), self._helperManager.loadHelpers2)
+            #loadHelpers2 = self.helpersMenu.addAction('Load helper2...')
+            # loadHelpers2.setShortcut(QKeySequence("Ctrl+j"))
+            #self.connect(loadHelpers2, SIGNAL('triggered()'), self._helperManager.loadHelpers2)
             self.helpersMenu.addSeparator()
             helpers = self._helperManager.helpers()
             ag1, ag2 = QActionGroup(self, exclusive=False,
