@@ -277,9 +277,8 @@ class CodeEditorWindow(QWidget):
             editor.activateHighlighter()
         # find the lowest index not already used a names of type 'untiltled n'
         names = [str(self.tab.tabText(i)) for i in range(self.tab.count())]
-        names = [name for name in names if name.startswith('untitled')]
-        indices = [int(''.join([s for s in name.split() if s.isdigit()]))
-                   for name in names]
+        names = [name for name in names if name.startswith('[untitled')]
+        indices = [int(''.join([s for s in name if s.isdigit()])) for name in names]
         index = 1
         while index in indices:
             index += 1

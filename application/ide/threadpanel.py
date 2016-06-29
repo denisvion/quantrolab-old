@@ -59,7 +59,10 @@ class ThreadPanel(QWidget, ObserverWidget):
         count = self._threadView.topLevelItemCount()
         header = self._threadView.headerItem()
         index = [str(header.text(i)) for i in range(header.columnCount())].index('Identifier')
-        return {int(item.text(index)): item for item in [self._threadView.topLevelItem(j) for j in range(count)]}
+        items = [item for item in [self._threadView.topLevelItem(j) for j in range(count)]]
+        keys = [str(item.text(index)) for item in items]
+        keys = [int(key) if key.isdigit() else key for key in keys]
+        return {key: item for key, item in zip(keys, items)}
 
     def updateThreadList(self):
         """
@@ -67,6 +70,8 @@ class ThreadPanel(QWidget, ObserverWidget):
             - adding threads from the coderunner status that are not already listed
             - removing non running threads created from editors that have been closed.
                 (these threads have integer identifiers that are no longer identifier of an editor)
+            - removing non running threads created from IDE.
+                (these threads have a text identifier)
             - updating the status of other threads
         and deletes from the coderunner non-running threads created from editors that have been closed.
         """
@@ -87,7 +92,7 @@ class ThreadPanel(QWidget, ObserverWidget):
 
         tbr = []
         for idr in threadIds:                                           # update in or remove from list of threads
-            orphean = idr in threadDict and idr not in editorIDs and threadDict[idr]['filename'] != ''
+            orphean = idr in threadDict and idr not in editorIDs and isinstance(idr, int)
             orphean = orphean and not threadDict[idr]['isRunning']
             toberemoved = orphean or idr not in threadDict
             if toberemoved:
@@ -121,10 +126,11 @@ class ThreadPanel(QWidget, ObserverWidget):
     def killThread(self):
         header = self._threadView.headerItem()
         index = [str(header.text(i)) for i in range(header.columnCount())].index('Identifier')
-        ids = [int(item.text(index)) for item in self._threadView.selectedItems()]
-        for id in ids:
-            print 'Stopping code thread %i ...' % id
-            self._codeRunner.stopExecution(id)
+        ids = [str(item.text(index)) for item in self._threadView.selectedItems()]
+        ids = [int(id1) if id1.isdigit() else id1 for id1 in ids]
+        for id1 in ids:
+            print 'Stopping code thread ', id1, '...'
+            self._codeRunner.stopExecution(id1)
 
     def updatedGui(self, subject=None, property=None, value=None):
         pass

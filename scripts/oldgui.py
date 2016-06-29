@@ -16,7 +16,6 @@ def startHelpers():
 
 
 execInGui(startHelpers)
-print time.time()-t0
 
 ##
 ## For debugging only

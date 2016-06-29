@@ -180,21 +180,21 @@ class CodeRunner(Reloadable, Subject):
     A class that manages the execution of different pieces of code in different threads (of type CodeThread),
     in a single Process (of type CodeProcess)
     """
-    _id = 0  # Declared outside init so that identifiers continue to be incremented after reloading the coderunner ?
 
     def getId(self):
         """
-        Returns a new unique ID which can be used to identify a code thread.
+        Returns an integer ID not already present in self._threads, which can be used to identify a code thread.
         """
-        # print "in getId"
-        CodeRunner._id += 1
-        return CodeRunner._id
+        id1 = 0
+        while id1 in self._threads:
+            id1 += 1
+        return id1
 
     def __init__(self, gv=dict(), lv=dict()):
         # print 'in  CodeRunner._init with self = ',self
         Reloadable.__init__(self)
         Subject.__init__(self)
-        self._threadID = 0
+        # initializes self._threads, self._exceptions, self._tracebacks
         self.clear(gv, lv)
         print '\n process running CodeRunner is', os.getpid()
         print '\n id(CodeRunner._gv)=', id(self._gv)
@@ -209,35 +209,31 @@ class CodeRunner(Reloadable, Subject):
         self._gv, self._lv = gv, dict()
         self._threads, self._exceptions, self._tracebacks = {}, {}, {}
 
-    def gv(self):
+    def _varDico(self, dic1, varname=None):
         """
-        Returns the global variables dictionary.
+        Private function that returns the value of variable varname in the variables dictionary dic1,
+        or the entire dictionary if varname is unspecified (None).
         """
-        return self._gv
-
-    def globalVar(self, varname):
-        """
-        Returns a variable from the global variable dictionary, provided it can be pickled (otherwise return None).
-        """
-        if varname in self._gv:
-            return self._gv[varname]
+        if varname is None:
+            return dic1  # str(dic1)
+        elif varname in dic1:
+            return dic1[varname]
         else:
             return None
 
-    def lv(self):
+    def gv(self, varname=None):
         """
-        Returns the local variables dictionary.
+        Returns the value of variable varname in the global variables dictionary,
+        or the entire dictionary if varname is unspecified (None)
         """
-        return self._lv
+        return self._varDico(self._gv, varname=varname)
 
-    def localVar(self, varname):
+    def lv(self, varname=None):
         """
-        Returns a variable from the local variable dictionary, provided it can be pickled (otherwise return None).
+        Returns the value of variable varname in the coderunner local variables dictionary (not child thread),
+        or the entire dictionary if varname is unspecified (None)
         """
-        if varname in self._lv:
-            return self._lv[varname]
-        else:
-            return None
+        return self._varDico(self._lv, varname=varname)
 
     def currentWorkingDirectory(self):
         """
@@ -342,11 +338,9 @@ class CodeRunner(Reloadable, Subject):
         """
         Executes a code string in an existing or new thread,
         with a given identifier, filename and local and global variable dictionaries.
+        Returns the final thread id.
         """
-
-        if identifier is None:
-            identifier = self.getId()
-        if self.isExecutingCode(identifier):
+        if identifier is not None and self.isExecutingCode(identifier):
             raise Exception("Code thread %s is busy!" % identifier)
         if lv is None:                          # creates the local variable dictionary for the thread if not passed
             if identifier not in self._lv:
@@ -359,11 +353,10 @@ class CodeRunner(Reloadable, Subject):
             ct = self._threads[identifier]
             # use it to execute the passed piece of code
             ct.executeCode(code, filename)
-        else:                                   # otherwise initiate a new thread
+        else:                       # otherwise initiate a new thread
             ct = self.createThread(code, identifier, filename, gv, lv)
         return ct._id  # returns the thread ID.
 
-    # separated from execute code by dv in Jan 2016
     def createThread(self, code, identifier, filename, gv, lv):
         """
         Creates and executes a codeThread with a given identifer and returns the created codeThread instance.
@@ -374,30 +367,34 @@ class CodeRunner(Reloadable, Subject):
             The GlobalVariable class is a handle to a global variable dictionary with a reference to the __coderunner__
             in the dictionnary itself. It is not a copy of the passed dictionary.
             It allows users to get or set a variable var using the syntax gv.var instead of gv['var'].
+            Printing the GlobalVariables prints its dictionary.
+            But syntax 'key' in gv does not work and has to be replaced by 'key' in gv.__dict__: (is there a solution ?)
             """
 
             def __init__(self, gv, __coderunner__=None):
-                # the dictionary of properties of the object becomes the passed
-                # dictionary gv
+                # the dictionary of properties of the object becomes the passed dictionary gv
                 self.__dict__ = gv
                 # the coderunner property is added to (or overwritten in) gv
                 self.__coderunner__ = __coderunner__
 
-            def __setitem__(self, key, value):
-                setattr(self, key, value)
+            def __setitem__(self, key, value):  # transforms gv.key = b
+                setattr(self, key, value)       # into of gv['keyname'] = b
 
             def __getitem__(self, key):
                 return getattr(self, key)
+
+            def __str__(self):
+                return str(self.__dict__)
 
         # - making the GlobalVariables handle to gv accessible by 'gv' in the local variable namespace
         lv['gv'] = GlobalVariables(gv, self)
         # - making the filename the code is originating from, available as a local variable _filename
         lv['__file__'] = filename
-        ct = CodeThread(code, filename=filename, lv=lv,
-                        gv=lv, callback=self._threadCallback)
+        ct = CodeThread(code, filename=filename, lv=lv, gv=lv, callback=self._threadCallback)
         # - instantiating a CodeThread with the passed or prepared variables
-        ct._id = self._threadID
-        self._threadID += 1  # - setting the thread ID
+        if identifier is None:
+            identifier = self.getId()
+        ct._id = identifier
         # - adding the thread to the thread dictionary self._threads
         self._threads[identifier] = ct
         ct.setDaemon(True)
@@ -484,8 +481,7 @@ class CodeProcess(Process):
         return self.StreamProxy(self._stderrQueue)
 
     def commandQueue(self):
-        # print 'in CodeProcess.commandQueue with self._codeRunner =
-        # ',self._codeRunner
+        # print 'in CodeProcess.commandQueue with self._codeRunner = ', self._codeRunner
         return self._commandQueue
 
     def responseQueue(self):
@@ -682,7 +678,8 @@ class MultiProcessCodeRunner():
         This dispatch method is used to transform a command unknown by MultiProcessCodeRunner into a message
         put in the codeProcess' command queue.
         If a reponse from the responseQueue is returned before timeout, it is returned by dispatch.
-        Like this a MultiProcessCodeRunner.command(*args,**kwargs) becomes self._codeProcess.commandQueue().put((command,args,kwargs),False).
+        Like this a MultiProcessCodeRunner.command(*args,**kwargs) becomes
+                    self._codeProcess.commandQueue().put((command,args,kwargs),False).
         """
         message = (command, args, kwargs)
         if not self._codeProcess.is_alive():

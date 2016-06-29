@@ -154,7 +154,7 @@ class IDE(QMainWindow, ObserverWidget):
         self.RightBottomDock.setWindowTitle("File Browser")
 
         self._timer = QTimer(self)
-        #self._runningCodeSessions = []
+        # self._runningCodeSessions = []
         self._timer.setInterval(500)
         self.connect(self._timer, SIGNAL("timeout()"), self.onTimer)
         self._timer.start()
@@ -525,7 +525,7 @@ class IDE(QMainWindow, ObserverWidget):
         """
         return self._codeRunner.gloVar(varname)
 
-    def executeCode(self, code, filename='', editor=None, identifier=None):
+    def executeCode(self, code, identifier=None, filename=''):
         """
         This function executes code in the coderunner.
         """
@@ -559,7 +559,7 @@ class IDE(QMainWindow, ObserverWidget):
         else:
             poc = '???'
         print('Running ' + poc + ' in ' + shortname + ' (id=' + str(identifier) + ')')
-        self.executeCode(code, filename=filename, editor=editor, identifier=identifier)  # execute the code
+        self.executeCode(code, identifier=identifier, filename=filename)  # execute the code
         return True
 
     def runBlock(self):
@@ -708,7 +708,10 @@ class IDE(QMainWindow, ObserverWidget):
         self.runStartupGroup.setChecked(self.runStartupGroup.isChecked())
 
     def debug(self):
-        pass
+        print ''
+        self.executeCode('print "Writing 5 in global variables."\ngv.c=5', 1, 'debug')
+        print 'Reading in global variables c = ', self._codeRunner.gv('c')
+        print 'Reading global variable dictionay = ', self._codeRunner.gv()
 
     def buildHelperMenu(self):
         """
@@ -725,9 +728,9 @@ class IDE(QMainWindow, ObserverWidget):
             loadHelpers = self.helpersMenu.addAction('Load helper...')
             loadHelpers.setShortcut(QKeySequence("Ctrl+h"))
             self.connect(loadHelpers, SIGNAL('triggered()'), self._helperManager.loadHelpers)
-            #loadHelpers2 = self.helpersMenu.addAction('Load helper2...')
+            # loadHelpers2 = self.helpersMenu.addAction('Load helper2...')
             # loadHelpers2.setShortcut(QKeySequence("Ctrl+j"))
-            #self.connect(loadHelpers2, SIGNAL('triggered()'), self._helperManager.loadHelpers2)
+            # self.connect(loadHelpers2, SIGNAL('triggered()'), self._helperManager.loadHelpers2)
             self.helpersMenu.addSeparator()
             helpers = self._helperManager.helpers()
             ag1, ag2 = QActionGroup(self, exclusive=False,
@@ -750,8 +753,7 @@ class IDE(QMainWindow, ObserverWidget):
         actionName = str(action.text())
         if actionName in self._helpers:
             code = 'gv.%s.window2Front()' % actionName
-            self.executeCode(code, identifier=actionName,
-                             filename="IDE", editor=None)
+            self.executeCode(code, identifier=actionName, filename="IDE", editor=None)
 
     def buildWindowMenu(self):
         self.windowMenu.clear()
