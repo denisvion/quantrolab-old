@@ -129,7 +129,7 @@ class ThreadPanel(QWidget, ObserverWidget):
         ids = [str(item.text(index)) for item in self._threadView.selectedItems()]
         ids = [int(id1) if id1.isdigit() else id1 for id1 in ids]
         for id1 in ids:
-            print 'Stopping code thread ', id1, '...'
+            print 'Stopping code thread', id1, '... ',
             self._codeRunner.stopExecution(id1)
 
     def updatedGui(self, subject=None, property=None, value=None):

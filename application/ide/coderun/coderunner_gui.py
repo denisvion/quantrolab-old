@@ -14,30 +14,29 @@ from threading import Thread
 from PyQt4.QtGui import QApplication
 from PyQt4.QtCore import Qt, SIGNAL, QThread
 
-# Memorize at the module level if the runGuiCode(PyQt_PyObject) signal has
-# been connected to the _runGuiCode function
+# Memorize at the module level if the runGuiCode(PyQt_PyObject) signal has been connected to the _runGuiCode function
 signalConnected = False
 
 
-def _runGuiCode(f):
-    f()
+def _runGuiCode(f):  # There are neihter input parameterts nor returned value, as recommneded for slots in Qt.
+    f()              # => use global variables
 
 
-def execInGui(f):
+def execInGui(f, nameIfNew=None):
     """
-    execInGui(f) is a public method that executes a function f() with no arguments in the current Qt application
-    or in a new one created on the fly if it does not exist.
+    execInGui(f,nameIfNew=None) is a public method that executes a function f() with no arguments in the current Qt application
+    or in a new one created on the fly if it does not exist. In that case nameIfnew is the name of the new application.
     """
     # This tests the existence of the Qt application and creates it if needed.
-    _ensureGuiThreadIsRunning()
+    _ensureGuiThreadIsRunning(nameIfNew)
     global app
     if app is None:
-        raise Exception("Invalid application handle!")
+        raise Exception('Invalid application handle!')
     # This tells the application to run f
-    app.emit(SIGNAL("runGuiCode(PyQt_PyObject)"), f)
+    app.emit(SIGNAL('runGuiCode(PyQt_PyObject)'), f)
 
 
-def _ensureGuiThreadIsRunning():
+def _ensureGuiThreadIsRunning(nameIfNew=None):
     """
     This private function
       - tests whether a QApplication instance is available;
@@ -50,11 +49,10 @@ def _ensureGuiThreadIsRunning():
     if app is None:                                 # if no QApplication
         print 'No existing Qt application in current process => creating one...',
         # creates a new thread with new application as target global app created here
-        thread = Thread(target=_createApplication)
+        thread = Thread(target=_createApplication, kwargs={'nameIfNew': nameIfNew})
         thread.daemon = True
-        thread.start()                                  # starts it
-        while thread.is_alive() and (app is None or app.startingUp()):
-            # and wait until it is started
+        thread.start()                                                  # starts it
+        while thread.is_alive() and (app is None or app.startingUp()):  # and wait until it is started
             time.sleep(0.01)
         print 'done.'
     else:                                           # there is already a QApplication
@@ -63,12 +61,12 @@ def _ensureGuiThreadIsRunning():
         if not signalConnected:
             print 'Adding signal handler to application...',
             # defines the connection and memorize it
-            print app.connect(app, SIGNAL("runGuiCode(PyQt_PyObject)"), _runGuiCode, Qt.QueuedConnection | Qt.UniqueConnection)
+            print app.connect(app, SIGNAL('runGuiCode(PyQt_PyObject)'), _runGuiCode, Qt.QueuedConnection | Qt.UniqueConnection)
             signalConnected = True
-        print 'done'
+        print 'done.'
 
 
-def _createApplication():
+def _createApplication(nameIfNew=None):
     """
     This private function creates a QApplication thread and connects the signal "runGuiCode(PyQt_PyObject)"
     to the handler _runGuiCodeSignal in unique connection mode (multiple identical signals treated only once).
@@ -76,10 +74,12 @@ def _createApplication():
     """
     global app, signalConnected, _runGuiCode
     app = QApplication(sys.argv)          # The Qt application is created here
+    if nameIfNew is not None:
+        app.setApplicationName(nameIfNew)
     app.setQuitOnLastWindowClosed(True)
     app.connect(app, SIGNAL('runGuiCode(PyQt_PyObject)'), _runGuiCode, Qt.QueuedConnection | Qt.UniqueConnection)
     signalConnected = True
     if app.thread() != QThread.currentThread():
-        raise Exception(
-            "Cannot start QT application from side thread! You will have to restart your process...")
+        message = 'Cannot start QT application from side thread! You will have to restart your process.'
+        raise Exception(message)
     app.exec_()                           # The event loop of the new application starts here

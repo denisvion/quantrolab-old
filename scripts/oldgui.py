@@ -4,6 +4,8 @@ import time
 t0=time.time()
 from helpers.datamanager.datamanager_gui.datamgr_gui import DataManager
 
+global dataManagerPanel
+
 def startHelpers():
 	"""
 	Start helpers' frontpanels,

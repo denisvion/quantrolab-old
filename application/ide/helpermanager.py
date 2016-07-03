@@ -2,11 +2,12 @@
 This module defines the HelperManager Class in charge of loading, unloading and keeping track of helpers loaded
 in Quantrolab.
 
-Helpers are run with the codeRunner, in the same code process, and share the same global variables as the scripts.
-(they are referenced in this global variable namespace).
+A series of helpers loaded from a single python file is run in its own thread of the codeRunner's code process,
+and share the same global variables as the scripts.
+The helpers are referenced in this global variable namespace to be used by the script.
 
-The HelperManager makes use of the codeRunner_gui methods to group all helpers and helpers_gui
-in a single Qt application of a single QThread of the codeRunner's code process.
+Nevertheless, since only one Qt application can exist by code process, coderunner_gui is used to group all helpers
+and helpers_gui in a single QThread of the codeRunner's code process.
 """
 import sys
 import inspect
@@ -25,9 +26,11 @@ def startHelper(modulename, filename, classname, associateAttr, associateTypeNam
     import inspect
     from PyQt4.QtGui import QMainWindow
     from application.lib.helper_classes import Helper, HelperGUI
-
+    global helper  # make the helper variable global
+    """
     if reportname in gv.__dict__:
         del gv.__dict__[reportname]
+    """
     try:
         # import the module containing the helper
         module = imp.load_source(modulename, filename)
@@ -35,13 +38,12 @@ def startHelper(modulename, filename, classname, associateAttr, associateTypeNam
         print 'Error loading %s.' % filename
         raise
     try:
-        global helper
         # instantiate the helper with class name classname with gv as global variables
         helper = getattr(module, classname)(parent=None, globals=gv)
         # If it is a Qt window (HelperGUI)
         if isinstance(helper, QMainWindow):
             helper.show()  # show it
-        # keep a reference to the helper in gv
+        """# keep a reference to the helper in gv
         gv[classname] = helper
         # inform user
         print 'Helper %s loaded and accessible as gv.%s.' % (classname, classname)
@@ -49,9 +51,12 @@ def startHelper(modulename, filename, classname, associateAttr, associateTypeNam
             helperType = 'HelperGUI'
         elif isinstance(helper, Helper):
             helperType = 'Helper'
+        """
     except:
         print 'Error in loading ' + classname + '.'
         raise
+    print 'exiting startHelper with helper = ', helper
+    """
     associatePath, associateName, helperType, associateType = None, None, None, None
     try:
         # Check if an associate exists (Helper for a HelperGUI or vice and versa)
@@ -79,21 +84,23 @@ def startHelper(modulename, filename, classname, associateAttr, associateTypeNam
     else:
         gv[reportname] = {'helper': classname, 'helperPath': filename, 'helperType': helperType,
                           'associate': associateName, 'associatePath': associatePath, 'associateType': associateType}
+    """
 
 
 class HelperManager():
     """
     The helper manager has
-        - a handle to the codeRunner,
         - a parent (the Quantrolab IDE),
+        - a handle to the codeRunner,
+        - the thread id of a unique codeRunner thread dedicated to all helpers
         - a default helper root directory,
-        - a dictinary for storing a reference to all open helpers
+        - a dictionary _helpers for storing a reference to all open helpers:
     Its method loadHelpers can
             - prompt the user for the path to a helper file .pyh.
             - open a .pyh or .py helper file and look for all helpers in it.
             - run and memorize each helper by calling the runHelper() method,
     Its method runHelper
-        - builts and executes a script in the codeRunner, with the helper classname as the thread identifier,
+        - builts and executes a script in the codeRunner's thread with id 'Helpers',
         - return a report
     The helper manager memorizes information about the loaded helpers in a dictionary _helpers, the structure of which is:
      # {classname: {'helper':classname,'helperPath':filename,'helperType':helperType,
@@ -106,11 +113,15 @@ class HelperManager():
         if helpersRootDir is None:
             helpersRootDir = sys.gcwd()
         self._helpersRootDir = helpersRootDir
-        self._codeRunner = codeRunner  # handle to codeRunner to exeute code
-        # code used to lauch a new helper starts with the definition of startHelper() above...
-        self._code = inspect.getsource(startHelper)
+        self._codeRunner = codeRunner  # handle to codeRunner to execute code
+        self._threadID = 'Helpers'
+        # code used to lauch a new series of helpers ...
+        self._code = 'global helpers\nhelpers={}\n'     # ...starts with the declaration of the global variable helpers,
+        self._code += inspect.getsource(startHelper)    # continues withe the definition of startHelper() above...
         # and continues with the import of execingui().
-        self._code += '\nfrom ide.coderun.codeRunner_gui import execInGui\n'
+        self._code += '\nfrom ide.coderun.coderunner_gui import execInGui\n'
+        # the script will be terminated execingui(starthelper(params)) when params are knonw from loadhelpers
+        codeRunner.executeCode('helpers={}\n', identifier=self._threadID, filename='IDE')
 
     def helpers(self):
         return self._helpers			# return the helper directory
@@ -181,7 +192,7 @@ class HelperManager():
                     self.runHelper(name, pyFilename, key, associateAttr, associateTypeName, 'lastHelper')
                 else:
                     print 'Helper ' + key + ' already loaded. Close before reloading if necessary.'
-        print 'helpers dic = ', self._helpers
+        # print 'helpers dic = ', self._helpers
 
     def runHelper(self, modulename, filename, classname, associateAttr, associateTypeName, reportname, timeout=10):
         """
@@ -193,21 +204,26 @@ class HelperManager():
         if self._codeRunner is None:
             print 'No codeRunner available for running helpers'
             return
-        code = self._code
         params = (modulename, filename, classname, associateAttr, associateTypeName, reportname)
         # print 'in runHelper(%s, %s, %s, %s, %s, %s)' % params
-        code += "execInGui(lambda : startHelper('%s','%s','%s','%s','%s','%s'))" % params
-        print 'Trying to Launch %s' % classname
+        code = self._code
+        code += "execInGui(lambda : startHelper('%s','%s','%s','%s','%s','%s'),nameIfNew='Quantrolab helpers')" % params
+        # print 'Trying to Launch %s' % classname
         # Note that we use classname as the thread id
-        threadId = self._codeRunner.executeCode(code, identifier=classname, filename='IDE')
+        self._codeRunner.executeCode(code, identifier=self._threadID, filename='IDE')
         t0 = time.time()
         # wait for the thread to finish code execution
-        while self._codeRunner.isExecutingCode(identifier=threadId) and time.time() - t0 < timeout:
+        while self._codeRunner.isExecutingCode(identifier=self._threadID) and time.time() - t0 < timeout:
             pass
+        while time.time() - t0 < timeout:
+            print 'waiting for helper to be loaded by execingui'
+            self._codeRunner.executeCode("print 'helper = ', helper", identifier=self._threadID, filename='IDE')
+        """
         if time.time() - t0 < timeout:
             helperId = self.helperId(threadId)
             if helperId:
                 self._helpers.update({threadId: helperId})
+        """
 
     def helperId(self, threadId):
         varname = 'helperId_' + threadId

@@ -209,31 +209,49 @@ class CodeRunner(Reloadable, Subject):
         self._gv, self._lv = gv, dict()
         self._threads, self._exceptions, self._tracebacks = {}, {}, {}
 
-    def _varDico(self, dic1, varname=None):
+    def _varDic(self, varDic, identifier=None, varname=None, keysOnly=False):
         """
         Private function that returns the value of variable varname in the variables dictionary dic1,
-        or the entire dictionary if varname is unspecified (None).
+        or the entire dictionary if varname is None and keysOnly is false,
+        or the list of keys if varname is None and keysOnly is true.
         """
+        if identifier is None or identifier not in self._threads:
+            obj = self                          # target is  a codeRunner dictionnary
+        else:
+            obj = self._threads[identifier]     # target is  a thread dictionnary
+        if varDic == 'lv':
+            varDic = obj._lv
+        else:
+            varDic = obj._gv
         if varname is None:
-            return dic1  # str(dic1)
-        elif varname in dic1:
-            return dic1[varname]
+            if keysOnly:
+                return varDic.keys()
+            else:
+                return varDic
+        elif varname in varDic:
+            return varDic[varname]
         else:
             return None
 
-    def gv(self, varname=None):
+    def gv(self, identifier=None, varname=None, keysOnly=False):
         """
-        Returns the value of variable varname in the global variables dictionary,
-        or the entire dictionary if varname is unspecified (None)
+        Returns the value of variable varname
+            - either in the coderunner global variables dictionary if identifier is None,
+            - or in the thread global variables dictionary with thread ID identifier,
+        or if varname is None
+            - either the corresponding entire dictionary if keysOnly is false,
+            - or the list of all variable names (keys) if keysOnly is true.
         """
-        return self._varDico(self._gv, varname=varname)
+        return self._varDic('gv', identifier=identifier, varname=varname, keysOnly=keysOnly)
 
-    def lv(self, varname=None):
+    def lv(self, identifier=None, varname=None, keysOnly=False):
         """
-        Returns the value of variable varname in the coderunner local variables dictionary (not child thread),
-        or the entire dictionary if varname is unspecified (None)
+        Returns the value of variable varname
+            - either in the coderunner local variables dictionary if identifier is None,
+            - or in the thread local variables dictionary with thread ID identifier,
+        or the corresponding entire dictionary if varname is None.
         """
-        return self._varDico(self._lv, varname=varname)
+        return self._varDic('lv', identifier=identifier, varname=varname, keysOnly=keysOnly)
 
     def currentWorkingDirectory(self):
         """
@@ -317,10 +335,13 @@ class CodeRunner(Reloadable, Subject):
         Stops the code execution in the thread with the given identifier by asynchronously raising a special exception in the thread.
         """
         if not self.isExecutingCode(identifier):
+            print 'thread is already stopped.'
             return
         if identifier not in self._threads:
+            print 'thread is not in memory any more. '
             return
         self._threads[identifier].terminate()
+        print 'calling terminate.'
 
     def status(self):
         """

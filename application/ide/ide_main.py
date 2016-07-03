@@ -32,8 +32,6 @@ from application.ide.coderun.coderunner import MultiProcessCodeRunner
 # Utility function to run a Qt helper in the coderunner process
 # QtWidget being notified in its Qt event queue
 from application.ide.widgets.observerwidget import ObserverWidget
-# helper management
-from application.ide.helpermanager import HelperManager
 
 # important directories
 # module containing directory parameters
@@ -326,7 +324,7 @@ class IDE(QMainWindow, ObserverWidget):
         # self.viewMenu = menuBar.addMenu("View")
 
         self.helpersMenu = menuBar.addMenu("&Helpers")
-        self.buildHelperMenu()
+        # self.buildHelperMenu()
 
         self.codeMenu = menuBar.addMenu("&Code")
 
@@ -400,10 +398,12 @@ class IDE(QMainWindow, ObserverWidget):
         self._helpersRootDir = _helpersDefaultDir
         if settings.contains('ide.helpersRootDir'):
             self._helpersRootDir = settings.value('ide.helpersRootDir').toString()
-        self._helperManager = HelperManager(self._codeRunner, parent=self, helpersRootDir=self._helpersRootDir)
+        code = 'from application.ide.helpermanager2 import HelperManager\n'
+        code += "helperManager = HelperManager(helpersRootDir='%s')\n" % self._helpersRootDir
+        code += "global helpers\nhelpers = []\n"
+        self.executeCode(code, identifier='HelperManager', filename='IDE')
         # rebuild menu because 'load helper' is added to the menu only if a _helperManager exists.
         self.buildHelperMenu()
-        self._helpers = {}
         print 'done.'
 
     def fileBrowser(self):
@@ -675,7 +675,7 @@ class IDE(QMainWindow, ObserverWidget):
         currentEditorId = id(self.editorWindow.currentEditor())
         threadDict = self._codeRunner.status()
         if currentEditorId in threadDict:
-            print('Stopping code thread...%i' % currentEditorId)
+            print('Stopping code thread %i ... ' % currentEditorId),
             self._codeRunner.stopExecution(currentEditorId)
 
     def onTimer(self):
@@ -724,14 +724,14 @@ class IDE(QMainWindow, ObserverWidget):
         Only HelperGUIs are enabled so that user can bring HelperGUI window to the front. Helpers are dimmed.
         """
         self.helpersMenu.clear()
-        if hasattr(self, '_helperManager'):
+        threadDic = self._codeRunner.status()
+        if 'HelperManager' in threadDic:
             loadHelpers = self.helpersMenu.addAction('Load helper...')
             loadHelpers.setShortcut(QKeySequence("Ctrl+h"))
-            self.connect(loadHelpers, SIGNAL('triggered()'), self._helperManager.loadHelpers)
-            # loadHelpers2 = self.helpersMenu.addAction('Load helper2...')
-            # loadHelpers2.setShortcut(QKeySequence("Ctrl+j"))
-            # self.connect(loadHelpers2, SIGNAL('triggered()'), self._helperManager.loadHelpers2)
+            self.connect(loadHelpers, SIGNAL('triggered()'), self.loadHelpers)
             self.helpersMenu.addSeparator()
+            helpers = self._codeRunner.lv(identifier='HelperManager', varname='helpers')
+            """
             helpers = self._helperManager.helpers()
             ag1, ag2 = QActionGroup(self, exclusive=False,
                                     triggered=self.showHelper), QActionGroup(self, exclusive=False)
@@ -748,6 +748,10 @@ class IDE(QMainWindow, ObserverWidget):
             self.helpersMenu.addActions(ag1.actions())
             self.helpersMenu.addSeparator()
             self.helpersMenu.addActions(ag2.actions())
+            """
+
+    def loadHelpers(self):
+        self.executeCode('helperManager.loadHelpers()\n', identifier='HelperManager', filename='IDE')
 
     def showHelper(self, action):
         actionName = str(action.text())
@@ -846,13 +850,13 @@ class IDE(QMainWindow, ObserverWidget):
                     self._helpers[associateName] = {
                         'helper': associate, 'filepath': associatePath, 'associateName': None, 'associate': None, 'associatePath': None}
                 self._helpers.pop(key)
-                self.buildHelperMenu()
+                # self.buildHelperMenu()
             else:
                 for k2, dic in self._helpers.items():
                     if key == dic['associateName']:
                         for k3 in ['associateName', 'associate', 'associatePath']:
                             dic[k3] = None
-                        self.buildHelperMenu()
+                        # self.buildHelperMenu()
 # end of IDE class definition
 
 # Starting application function
