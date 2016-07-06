@@ -73,12 +73,12 @@ class Log(LineTextWidget):
         # instantiate a timer in this LineTextWidget
         self.timer = QTimer(self)
         self._writing = False
-        self.timer.setInterval(20)   # set its timeout to 0.3s
+        self.timer.setInterval(20)  # set its timeout to 0.3s
         self.queuedStdoutText = ''  # initialize a Stdout queue to an empty string
         self.queuedStderrText = ''  # initialize a Stderr queue to an empty string
         self.connect(self.timer, SIGNAL('timeout()'), self.addQueuedText)
         # call addQueuedText() every timeout
-        self.timer.start()            # start the timer
+        self.timer.start()
         self.cnt = 0
         self._timeOfLastMessage = 0
         self._hasUnreadMessage = False
@@ -134,15 +134,21 @@ class IDE(QMainWindow, ObserverWidget):
     """
 
     def __init__(self, parent=None):
-        """
-        IDE's GUI definition and call of initialize
-        """
-        print "Defining IDE's GUI..."
         QMainWindow.__init__(self, parent)
         ObserverWidget.__init__(self)
-        # beginning of GUI definition  +
-        # MultiProcessCodeRunner,CodeEditorWindow, Log, and errorConsole
-        # instantiation
+        self._workingDirectory = None
+        # Global variable dictionary of Quantrolab, to be shared with its helpers and scripts.
+        self._gv = dict()
+        self.initializeGUI()            # initialize the GUI, codeEditor, codeRunner, errorConsole
+        self.initializeHelperManager()
+        self.loadSettingsAndProject()
+
+    def initializeGUI(self):
+        """
+        IDE's GUI definition
+        """
+        print "Defining IDE's GUI..."
+        # MultiProcessCodeRunner,CodeEditorWindow, Log, and errorConsole instantiation
         self._windowTitle = "QuantroLab python IDE\t"
         self.setWindowTitle(self._windowTitle)
         self.setDockOptions(QMainWindow.AllowTabbedDocks)
@@ -152,24 +158,17 @@ class IDE(QMainWindow, ObserverWidget):
         self.RightBottomDock.setWindowTitle("File Browser")
 
         self._timer = QTimer(self)
-        # self._runningCodeSessions = []
         self._timer.setInterval(500)
         self.connect(self._timer, SIGNAL("timeout()"), self.onTimer)
         self._timer.start()
 
         self.initializeIcons()
 
-        # this is the global variable dictionary of the Quantrolab application, to
-        # be shared with its helpers and scripts.
-        self._gv = dict()
-        # self._gv['from_main'] = 1   # test to be deleted
         print 'Starting editor...',
         self.editorWindow = CodeEditorWindow(parent=self, newEditorCallback=self.newEditorCallback)  # tab editor window
         print 'OK.'
         print 'starting MultiProcessCodeRunner...',
         # The sub-process(es) of MultiProcessCodeRunner will have only a copy of self._gv
-        # print '\n process running Main is', os.getpid()
-        # print '\n id(main._gv)=', id(self._gv)
         self._codeRunner = MultiProcessCodeRunner(gv=self._gv, lv=self._gv)
         print 'OK.'
         print 'Starting error console...',
@@ -237,15 +236,13 @@ class IDE(QMainWindow, ObserverWidget):
         self.initializeToolbars()
         print 'Future messages will be routed to GUI.'
         self.initializeLogs()
-
-        # end of GUI definition
-        self._workingDirectory = None
         self.showMaximized()
-        self.initialize()
 
     def initializeIcons(self):
+        """
+        Initializes the icons of the Quantrolab toolbar
+        """
         self._icons = dict()
-
         iconFilenames = {
             "newFile": 'filenew.png',
             "openFile": 'fileopen.png',
@@ -260,14 +257,14 @@ class IDE(QMainWindow, ObserverWidget):
             "executeCodeSelection": 'runselection.png',
             "logo": 'penguin.png',
         }
-
         iconPath = params['basePath'] + params['directories.icons']
-
         for key in iconFilenames:
             self._icons[key] = QIcon(iconPath + '/' + iconFilenames[key])
 
     def initializeMenus(self):
-
+        """
+        Initializes the menus of the Quantrolab application
+        """
         settings = QSettings()
         menuBar = self.menuBar()
 
@@ -317,23 +314,9 @@ class IDE(QMainWindow, ObserverWidget):
         self.connect(projectOpen, SIGNAL('triggered()'), self.openProject)
         self.connect(projectSave, SIGNAL('triggered()'), self.saveProject)
         self.connect(projectSaveAs, SIGNAL('triggered()'), self.saveProjectAs)
-
         fileMenu.addSeparator()
-
-        # self.editMenu = menuBar.addMenu("Edit")
-        # self.viewMenu = menuBar.addMenu("View")
-
         self.helpersMenu = menuBar.addMenu("&Helpers")
-        # self.buildHelperMenu()
-
         self.codeMenu = menuBar.addMenu("&Code")
-
-        # self.settingsMenu = menuBar.addMenu("Settings")
-        # self.runStartupGroup = self.settingsMenu.addAction("Run startup group at startup")
-        # self.runStartupGroup.setCheckable(True)
-        # self.connect(self.runStartupGroup, SIGNAL('triggered()'), self.toggleRunStartupGroup)
-        # if settings.contains('ide.runStartupGroup'):
-        # self.runStartupGroup.setChecked(settings.value('ide.runStartupGroup').toBool())
 
         self.windowMenu = menuBar.addMenu("&Window")
         self.connect(self.windowMenu, SIGNAL(
@@ -361,6 +344,9 @@ class IDE(QMainWindow, ObserverWidget):
         self.connect(runSelection, SIGNAL('triggered()'), self.runSelection)
 
     def initializeLogs(self):
+        """
+        Initializes the Quantrolab IDE logs
+        """
         # make the log out point to the new coderunner stdout Queue
         self.logTabs.widget(0).setQueue(self._codeRunner.stdoutQueue())
         # make the log error point to the new coderunner stderr Queue
@@ -370,7 +356,24 @@ class IDE(QMainWindow, ObserverWidget):
         # route the system stderr to the coderunner stderr proxy
         sys.stderr = self._codeRunner.stderrProxy()
 
-    def initialize(self):
+    def initializeHelperManager(self):
+        """
+        Loads the HelperManager QApplication in a thread of the Coderunner CodeProcess.
+        """
+        settings = QSettings()
+        print 'Loading HelperManager in codeRunner...',
+        self._helpersRootDir = _helpersDefaultDir
+        if settings.contains('ide.helpersRootDir'):
+            self._helpersRootDir = settings.value('ide.helpersRootDir').toString()
+        code = 'from application.ide.helpermanager2 import HelperManager\n'
+        code += "helperManager = HelperManager(helpersRootDir='%s')\n" % self._helpersRootDir
+        code += "global helpers\nhelpers = []\n"
+        self.executeCode(code, identifier='HelperManager', filename='IDE')
+        # rebuild menu because 'load helper' is added to the menu only if a _helperManager exists.
+        self.buildHelperMenu()
+        print 'done.'
+
+    def loadSettingsAndProject(self):
         """
         IDE initialization (after having defined the GUI).
         """
@@ -381,7 +384,6 @@ class IDE(QMainWindow, ObserverWidget):
         if settings.contains('ide.workingpath'):
             self.changeWorkingPath(settings.value('ide.workingpath').toString())
         print 'done.'
-        # self.logTabs.show()
 
         print 'Loading project...',
         self.setProject(Project())
@@ -393,18 +395,6 @@ class IDE(QMainWindow, ObserverWidget):
                 print 'done.'
             except:
                 print('Cannot open last project: %s.' % str(settings.value('ide.lastproject').toString()))
-
-        print 'Loading HelperManager...',
-        self._helpersRootDir = _helpersDefaultDir
-        if settings.contains('ide.helpersRootDir'):
-            self._helpersRootDir = settings.value('ide.helpersRootDir').toString()
-        code = 'from application.ide.helpermanager2 import HelperManager\n'
-        code += "helperManager = HelperManager(helpersRootDir='%s')\n" % self._helpersRootDir
-        code += "global helpers\nhelpers = []\n"
-        self.executeCode(code, identifier='HelperManager', filename='IDE')
-        # rebuild menu because 'load helper' is added to the menu only if a _helperManager exists.
-        self.buildHelperMenu()
-        print 'done.'
 
     def fileBrowser(self):
         """
@@ -631,7 +621,8 @@ class IDE(QMainWindow, ObserverWidget):
         question = 'All active threads will be lost. Are you sure?'
         if QMessageBox.warning(self, 'Warning', question, QMessageBox.Ok, QMessageBox.Cancel) == QMessageBox.Ok:
             self._codeRunner.startCodeProcess()         # restart a new code process of coderunner
-            self.initializeLogs()
+            self.initializeLogs()                       # does it execute with the new CodeProcess ?
+            self.initializeHelperManager()              # does it execute with the new CodeProcess ?
 
     def changeWorkingPath(self, path=None):
         """
@@ -641,13 +632,13 @@ class IDE(QMainWindow, ObserverWidget):
 
         if path is None:
             path = QFileDialog.getExistingDirectory(
-                self, "Change Working Diretory", directory=self.codeRunner().currentWorkingDirectory())
+                self, "Change Working Diretory", directory=self._codeRunner.currentWorkingDirectory())
 
         if not os.path.exists(path):
             return
 
         os.chdir(str(path))
-        self.codeRunner().setCurrentWorkingDirectory(str(path))
+        self._codeRunner.setCurrentWorkingDirectory(str(path))
 
         settings.setValue("ide.workingpath", path)
         self.workingPathLabel.setText("Working path:" + path)
@@ -661,12 +652,6 @@ class IDE(QMainWindow, ObserverWidget):
         """
         """
         pass
-
-    def codeRunner(self):
-        """
-        utility method returning the codeRunner object
-        """
-        return self._codeRunner
 
     def terminateCodeExecution(self):
         """
@@ -708,10 +693,9 @@ class IDE(QMainWindow, ObserverWidget):
         self.runStartupGroup.setChecked(self.runStartupGroup.isChecked())
 
     def debug(self):
-        print ''
-        self.executeCode('print "Writing 5 in global variables."\ngv.c=5', 1, 'debug')
-        print 'Reading in global variables c = ', self._codeRunner.gv('c')
-        print 'Reading global variable dictionay = ', self._codeRunner.gv()
+        print self._codeRunner.gv(keysOnly=True)
+        print self._codeRunner.lv(identifier='HelperManager', keysOnly=True)
+        print self._codeRunner.lv('helpers', identifier='HelperManager', keysOnly=True)
 
     def buildHelperMenu(self):
         """
@@ -751,6 +735,8 @@ class IDE(QMainWindow, ObserverWidget):
             """
 
     def loadHelpers(self):
+        # print self._codeRunner.lv(identifier='HelperManager', keysOnly=True)
+        # self.executeCode('print helperManager.loadHelpers\n', identifier='HelperManager')
         self.executeCode('helperManager.loadHelpers()\n', identifier='HelperManager', filename='IDE')
 
     def showHelper(self, action):

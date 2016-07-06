@@ -196,8 +196,8 @@ class CodeRunner(Reloadable, Subject):
         Subject.__init__(self)
         # initializes self._threads, self._exceptions, self._tracebacks
         self.clear(gv, lv)
-        print '\n process running CodeRunner is', os.getpid()
-        print '\n id(CodeRunner._gv)=', id(self._gv)
+        # print '\n process running CodeRunner is', os.getpid()
+        # print '\n id(CodeRunner._gv)=', id(self._gv)
 
     def clear(self, gv=dict(), lv=dict()):
         """
@@ -215,6 +215,8 @@ class CodeRunner(Reloadable, Subject):
         or the entire dictionary if varname is None and keysOnly is false,
         or the list of keys if varname is None and keysOnly is true.
         """
+        # print 'in codeRunner._varDic() with varDic=%s, identifier=%s,
+        # varname=%s, and keysOnly=%s' % (varDic, identifier, varname, keysOnly)
         if identifier is None or identifier not in self._threads:
             obj = self                          # target is  a codeRunner dictionnary
         else:
@@ -233,7 +235,7 @@ class CodeRunner(Reloadable, Subject):
         else:
             return None
 
-    def gv(self, identifier=None, varname=None, keysOnly=False):
+    def gv(self, varname=None, identifier=None, keysOnly=False):
         """
         Returns the value of variable varname
             - either in the coderunner global variables dictionary if identifier is None,
@@ -242,16 +244,16 @@ class CodeRunner(Reloadable, Subject):
             - either the corresponding entire dictionary if keysOnly is false,
             - or the list of all variable names (keys) if keysOnly is true.
         """
-        return self._varDic('gv', identifier=identifier, varname=varname, keysOnly=keysOnly)
+        return self._varDic('gv', varname=varname, identifier=identifier, keysOnly=keysOnly)
 
-    def lv(self, identifier=None, varname=None, keysOnly=False):
+    def lv(self, varname=None, identifier=None, keysOnly=False):
         """
         Returns the value of variable varname
             - either in the coderunner local variables dictionary if identifier is None,
             - or in the thread local variables dictionary with thread ID identifier,
         or the corresponding entire dictionary if varname is None.
         """
-        return self._varDic('lv', identifier=identifier, varname=varname, keysOnly=keysOnly)
+        return self._varDic('lv', varname=varname, identifier=identifier, keysOnly=keysOnly)
 
     def currentWorkingDirectory(self):
         """
@@ -491,9 +493,9 @@ class CodeProcess(Process):
         # Now for debugging purpose only, message to the console of main
         # self._gv['from CodeProcess'] = 3
         # print 'Sarting CodeProcess:  ', self._gv
-        print '\n process running CodeProcess is', os.getpid(), ' with os.getpid'
-        print '\n CodeProcess id is ', self.pid, ' with self.pid before start'
-        print '\n id(CodeProcess._gv)=', id(self._gv)
+        # print '\n process running CodeProcess is', os.getpid(), ' with os.getpid'
+        # print '\n CodeProcess id is ', self.pid, ' with self.pid before start'
+        # print '\n id(CodeProcess._gv)=', id(self._gv)
 
     def stdoutProxy(self):
         return self.StreamProxy(self._stdoutQueue)
@@ -566,12 +568,12 @@ class MultiProcessCodeRunner():
         self._codeProcess = None  # useful to test it in startCodeProcess
         # For debugging:
         self._gv['from_MultiProcessCodeRunner'] = 2  # test to be deleted
-        print '\n process running MultiProcessCodeRunner is', os.getpid()
-        print '\n id(MultiProcessCodeRunner._gv)=', id(self._gv)
+        # print '\n process running MultiProcessCodeRunner is', os.getpid()
+        # print '\n id(MultiProcessCodeRunner._gv)=', id(self._gv)
 
         self.startCodeProcess()
         # For debugging:
-        print '\n CodeProcess id is ', self._codeProcess.pid, ' with self.pid after start'
+        # print '\n CodeProcess id is ', self._codeProcess.pid, ' with self.pid after start'
 
     def startCodeProcess(self):
         """

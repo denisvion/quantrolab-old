@@ -41,6 +41,7 @@ class HelperManager():
     """
 
     def __init__(self, helpersRootDir=None):
+        #QApplication.__init__(self, None, None)
         if helpersRootDir is None:
             helpersRootDir = sys.gcwd()
         self._helpersRootDir = helpersRootDir
@@ -73,11 +74,12 @@ class HelperManager():
             8) the _helpers dictionary is saved in the QSettings, for automatic reloading of helpers at IDE starting.
             9) Finally, the helperMenu is rebuild from the _helpers dictionary.
         """
-
         # Build the .py filename of the helper module and read the module
+        print 'in loadHelpers'
         if filename is None:
             filename = str(QFileDialog.getOpenFileName(caption='Open Quantrolab helper',
                                                        filter="helper (*.pyh)", directory=self._helpersRootDir))
+        return
         if not filename:
             return
         if os.path.isfile(filename):
