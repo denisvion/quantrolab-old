@@ -6,10 +6,11 @@ It instantiates all helpers in a child thread with a single QApplication, using 
 Like this the helper manager, he helpers and the scripts exist in the same Code process and can talk to each other.
 
 """
+import os
+import os.path
 import sys
 import imp
 import inspect
-import os.path
 import pyclbr
 import time
 from PyQt4.QtGui import *
@@ -23,7 +24,7 @@ from PyQt4.QtGui import QMainWindow
 """
 
 
-class HelperManager():
+class HelperManager(QApplication):
     """
     The helper manager has
         - a default helper root directory,
@@ -41,9 +42,9 @@ class HelperManager():
     """
 
     def __init__(self, helpersRootDir=None):
-        #QApplication.__init__(self, None, None)
+        QApplication.__init__(self, sys.argv)
         if helpersRootDir is None:
-            helpersRootDir = sys.gcwd()
+            helpersRootDir = os.getcwd()
         self._helpersRootDir = helpersRootDir
         self._helpers = {}
 
@@ -147,3 +148,10 @@ class HelperManager():
         self._helpers.update({classname: helper})
         helpers.append(classname)
         print 'exiting startHelper with self._helpers = ', self._helpers
+
+
+def startHelperManager():
+    helperManager = HelperManager()
+
+if __name__ == '__main__':
+    startHelperManager()

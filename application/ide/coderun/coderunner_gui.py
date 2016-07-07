@@ -18,17 +18,17 @@ from PyQt4.QtCore import Qt, SIGNAL, QThread
 signalConnected = False
 
 
-def _runGuiCode(f):  # There are neihter input parameterts nor returned value, as recommneded for slots in Qt.
-    f()              # => use global variables
+def _runGuiCode(f):
+    f()
 
 
-def execInGui(f, nameIfNew=None):
+def execInGui(f):
     """
     execInGui(f,nameIfNew=None) is a public method that executes a function f() with no arguments in the current Qt application
     or in a new one created on the fly if it does not exist. In that case nameIfnew is the name of the new application.
     """
     # This tests the existence of the Qt application and creates it if needed.
-    _ensureGuiThreadIsRunning(nameIfNew)
+    _ensureGuiThreadIsRunning()
     global app
     if app is None:
         raise Exception('Invalid application handle!')
@@ -36,7 +36,7 @@ def execInGui(f, nameIfNew=None):
     app.emit(SIGNAL('runGuiCode(PyQt_PyObject)'), f)
 
 
-def _ensureGuiThreadIsRunning(nameIfNew=None):
+def _ensureGuiThreadIsRunning():
     """
     This private function
       - tests whether a QApplication instance is available;
@@ -48,8 +48,8 @@ def _ensureGuiThreadIsRunning(nameIfNew=None):
     app = QApplication.instance()
     if app is None:                                 # if no QApplication
         print 'No existing Qt application in current process => creating one...',
-        # creates a new thread with new application as target global app created here
-        thread = Thread(target=_createApplication, kwargs={'nameIfNew': nameIfNew})
+        # creates a child thread with new application as target global app created here
+        thread = Thread(target=_createApplication)
         thread.daemon = True
         thread.start()                                                  # starts it
         while thread.is_alive() and (app is None or app.startingUp()):  # and wait until it is started
@@ -66,7 +66,7 @@ def _ensureGuiThreadIsRunning(nameIfNew=None):
         print 'done.'
 
 
-def _createApplication(nameIfNew=None):
+def _createApplication():
     """
     This private function creates a QApplication thread and connects the signal "runGuiCode(PyQt_PyObject)"
     to the handler _runGuiCodeSignal in unique connection mode (multiple identical signals treated only once).
@@ -74,8 +74,6 @@ def _createApplication(nameIfNew=None):
     """
     global app, signalConnected, _runGuiCode
     app = QApplication(sys.argv)          # The Qt application is created here
-    if nameIfNew is not None:
-        app.setApplicationName(nameIfNew)
     app.setQuitOnLastWindowClosed(True)
     app.connect(app, SIGNAL('runGuiCode(PyQt_PyObject)'), _runGuiCode, Qt.QueuedConnection | Qt.UniqueConnection)
     signalConnected = True

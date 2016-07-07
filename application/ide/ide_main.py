@@ -358,18 +358,14 @@ class IDE(QMainWindow, ObserverWidget):
 
     def initializeHelperManager(self):
         """
-        Loads the HelperManager QApplication in a thread of the Coderunner CodeProcess.
+        Imports the HelperManager module in a thread of the Coderunner CodeProcess.
+        This will instantiate the HelperManager QApplication in which all helpers will run.
+        The helperManager and all its helpers will share the same global memory as the other threads of the coderunner
+        (i.e. those correspo ding to the scripts).
         """
-        settings = QSettings()
         print 'Loading HelperManager in codeRunner...',
-        self._helpersRootDir = _helpersDefaultDir
-        if settings.contains('ide.helpersRootDir'):
-            self._helpersRootDir = settings.value('ide.helpersRootDir').toString()
-        code = 'from application.ide.helpermanager2 import HelperManager\n'
-        code += "helperManager = HelperManager(helpersRootDir='%s')\n" % self._helpersRootDir
-        code += "global helpers\nhelpers = []\n"
+        code = 'from application.ide.helpermanager2 import *\nstartHelperManager()\n'
         self.executeCode(code, identifier='HelperManager', filename='IDE')
-        # rebuild menu because 'load helper' is added to the menu only if a _helperManager exists.
         self.buildHelperMenu()
         print 'done.'
 
