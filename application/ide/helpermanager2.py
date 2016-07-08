@@ -13,15 +13,10 @@ import imp
 import inspect
 import pyclbr
 import time
-from PyQt4.QtGui import *
-from PyQt4.QtCore import *
+from PyQt4.QtGui import QFileDialog, QApplication
 
 from ide.coderun.coderunner_gui import execInGui
 from application.lib.helper_classes import Helper, HelperGUI
-
-"""
-from PyQt4.QtGui import QMainWindow
-"""
 
 
 class HelperManager(QApplication):
@@ -47,6 +42,9 @@ class HelperManager(QApplication):
             helpersRootDir = os.getcwd()
         self._helpersRootDir = helpersRootDir
         self._helpers = {}
+
+    def helpersRootDir(self):
+        return self._helpersRootDir
 
     def helpers(self):
         return self._helpers			# return the helper directory

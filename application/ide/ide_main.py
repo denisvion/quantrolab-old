@@ -364,7 +364,8 @@ class IDE(QMainWindow, ObserverWidget):
         (i.e. those correspo ding to the scripts).
         """
         print 'Loading HelperManager in codeRunner...',
-        code = 'from application.ide.helpermanager2 import *\nstartHelperManager()\n'
+        code = 'from application.ide.helpermanager2 import *\n'
+        code += 'helperManager = HelperManager()\n'
         self.executeCode(code, identifier='HelperManager', filename='IDE')
         self.buildHelperMenu()
         print 'done.'
@@ -381,10 +382,10 @@ class IDE(QMainWindow, ObserverWidget):
             self.changeWorkingPath(settings.value('ide.workingpath').toString())
         print 'done.'
 
-        print 'Loading project...',
         self.setProject(Project())
         lastProjectOpened = False
         if settings.contains('ide.lastproject'):
+            print 'Loading project...',
             try:
                 self.openProject(str(settings.value('ide.lastproject').toString()))
                 lastProjectOpened = True
@@ -689,9 +690,11 @@ class IDE(QMainWindow, ObserverWidget):
         self.runStartupGroup.setChecked(self.runStartupGroup.isChecked())
 
     def debug(self):
-        print self._codeRunner.gv(keysOnly=True)
+        """print self._codeRunner.gv(keysOnly=True)
         print self._codeRunner.lv(identifier='HelperManager', keysOnly=True)
-        print self._codeRunner.lv('helpers', identifier='HelperManager', keysOnly=True)
+        print self._codeRunner.lv('helpers', identifier='HelperManager', keysOnly=True)"""
+        code = 'print dir()\nprint helperManager.loadHelpers\n'
+        self.executeCode(code, identifier='HelperManager', filename='IDE')
 
     def buildHelperMenu(self):
         """
@@ -710,8 +713,8 @@ class IDE(QMainWindow, ObserverWidget):
             loadHelpers.setShortcut(QKeySequence("Ctrl+h"))
             self.connect(loadHelpers, SIGNAL('triggered()'), self.loadHelpers)
             self.helpersMenu.addSeparator()
-            helpers = self._codeRunner.lv(identifier='HelperManager', varname='helpers')
             """
+            helpers = self._codeRunner.lv(identifier='HelperManager', varname='helpers')
             helpers = self._helperManager.helpers()
             ag1, ag2 = QActionGroup(self, exclusive=False,
                                     triggered=self.showHelper), QActionGroup(self, exclusive=False)
@@ -733,7 +736,13 @@ class IDE(QMainWindow, ObserverWidget):
     def loadHelpers(self):
         # print self._codeRunner.lv(identifier='HelperManager', keysOnly=True)
         # self.executeCode('print helperManager.loadHelpers\n', identifier='HelperManager')
-        self.executeCode('helperManager.loadHelpers()\n', identifier='HelperManager', filename='IDE')
+        code = 'helpersRootDir = helperManager.helpersRootDir()'
+        self.executeCode(code, identifier='HelperManager', filename='IDE')
+        helpersRootDir = self._codeRunner.lv(varname='helpersRootDir', identifier='HelperManager')
+        cap, fil, dire = 'Open Quantrolab helper(s)', 'helper (*.pyh)', helpersRootDir
+        filename = str(QFileDialog.getOpenFileName(caption=cap, filter=fil, directory=dire))
+        #self.executeCode('helperManager.loadHelpers()\n', identifier='HelperManager', filename='IDE')
+
 
     def showHelper(self, action):
         actionName = str(action.text())
