@@ -83,20 +83,18 @@ class CodeThread (KillableThread):
     A class representing a thread in which code is executed (instances are created by the CodeRunner class.)
     A CodeThread has a given code string, a global and a local variables dictionary,
     an optional callback function called when the code execution finishes,
-    and a filename of the code to be displayed in a stack trace.
+    and a name of the code to be displayed in a stack trace.
     Because CodeThread subclasses KillableThread, it can be stopped by calling its terminate() method.
     """
 
-    def __init__(self, code, gv=dict(), lv=dict(), callback=None, filename=''):
+    def __init__(self, code, gv=dict(), lv=dict(), callback=None, name=''):
         """
         Initializes the class.
         """
         KillableThread.__init__(self)
         self._gv, self._lv = gv, lv
-        self._code, self._callback, self._filename = code, callback, filename
+        self._code, self._callback, self._name = code, callback, name
         self._failed, self._stop, self._isBusy, self._restart = False, False, False, True
-        # self._traceback, self._exception_type, self._exception_value = None, None, None # created on error only
-        # self._gv['from_CodeThread']=4 # for debug
 
     def code(self):
         """
@@ -104,11 +102,11 @@ class CodeThread (KillableThread):
         """
         return self._code
 
-    def filename(self):
+    def name(self):
         """
-        Returns the filename of the code that is executed by the class.
+        Returns the name of the code that is executed by the class.
         """
-        return self._filename
+        return self._name
 
     def isRunning(self):
         """
@@ -122,13 +120,13 @@ class CodeThread (KillableThread):
         """
         return self._failed
 
-    def executeCode(self, code, filename="<my string>"):
+    def executeCode(self, code, name=''):
         """
-        Executes a code string with a given filename.
+        Executes a code string with a given name.
         """
         if self.isRunning():
             raise Exception("Thread is already executing code!")
-        self._code, self._filename, self._restart = code, filename, True
+        self._code, self._name, self._restart = code, name, True
 
     def exceptionInfo(self):
         """
@@ -157,8 +155,7 @@ class CodeThread (KillableThread):
             if self._restart:
                 try:
                     self._isBusy, self._failed = True, False
-
-                    code = compile(self._code, self._filename, 'exec')
+                    code = compile(self._code, self._name, 'exec')
                     exec(code, self._gv, self._lv)
                 except StopThread:
                     break
@@ -178,7 +175,7 @@ class CodeRunner(Reloadable, Subject):
 
     """
     A class that manages the execution of different pieces of code in different threads (of type CodeThread),
-    in a single Process (of type CodeProcess)
+    in a single Process (of type CodeProcess).
     """
 
     def getId(self):
@@ -216,11 +213,13 @@ class CodeRunner(Reloadable, Subject):
         or the list of keys if varname is None and keysOnly is true.
         """
         # print 'in codeRunner._varDic() with varDic=%s, identifier=%s,
-        # varname=%s, and keysOnly=%s' % (varDic, identifier, varname, keysOnly)
+        # varname=%s, and keysOnly=%s' % (varDic, identifier, varname,
+        # keysOnly)
         if identifier is None or identifier not in self._threads:
             obj = self                          # target is  a codeRunner dictionnary
         else:
-            obj = self._threads[identifier]     # target is  a thread dictionnary
+            # target is  a thread dictionnary
+            obj = self._threads[identifier]
         if varDic == 'lv':
             varDic = obj._lv
         else:
@@ -308,7 +307,6 @@ class CodeRunner(Reloadable, Subject):
             self._exceptions[thread._id] = thread.exceptionInfo()
             self._tracebacks[thread._id] = thread.tracebackInfo()
         lock.release()
-        # identifier=next(i for i in self._threads if self._threads[i].name == thread.name)
 
     def hasFailed(self, identifier):
         """
@@ -353,14 +351,14 @@ class CodeRunner(Reloadable, Subject):
         for identifier in self._threads:
             status[identifier] = dict()
             status[identifier]["isRunning"] = self.isExecutingCode(identifier)
-            status[identifier]["filename"] = self._threads[identifier].filename()
+            status[identifier]["name"] = self._threads[identifier].name()
             status[identifier]["failed"] = self._threads[identifier].failed()
         return status
 
-    def executeCode(self, code, identifier, filename=None, lv=None, gv=None):
+    def executeCode(self, code, identifier, name=None, lv=None, gv=None):
         """
         Executes a code string in an existing or new thread,
-        with a given identifier, filename and local and global variable dictionaries.
+        with a given identifier, name and local and global variable dictionaries.
         Returns the final thread id.
         """
         if identifier is not None and self.isExecutingCode(identifier):
@@ -375,12 +373,12 @@ class CodeRunner(Reloadable, Subject):
             # if a thread with that identifier exists and is alive
             ct = self._threads[identifier]
             # use it to execute the passed piece of code
-            ct.executeCode(code, filename)
-        else:                       # otherwise initiate a new thread
-            ct = self.createThread(code, identifier, filename, gv, lv)
+            ct.executeCode(code, name)
+        else:                                   # otherwise initiate a new thread
+            ct = self.createThread(code, identifier, name, gv, lv)
         return ct._id  # returns the thread ID.
 
-    def createThread(self, code, identifier, filename, gv, lv):
+    def createThread(self, code, identifier, name, gv, lv):
         """
         Creates and executes a codeThread with a given identifer and returns the created codeThread instance.
         Use with care !!!
@@ -391,11 +389,13 @@ class CodeRunner(Reloadable, Subject):
             in the dictionnary itself. It is not a copy of the passed dictionary.
             It allows users to get or set a variable var using the syntax gv.var instead of gv['var'].
             Printing the GlobalVariables prints its dictionary.
-            But syntax 'key' in gv does not work and has to be replaced by 'key' in gv.__dict__: (is there a solution ?)
+            But syntax <'key' in gv> does not work and has to be replaced by <'key' in gv.__dict__>.
+            (is there a solution?)
             """
 
             def __init__(self, gv, __coderunner__=None):
-                # the dictionary of properties of the object becomes the passed dictionary gv
+                # the dictionary of properties of the object becomes the passed
+                # dictionary gv
                 self.__dict__ = gv
                 # the coderunner property is added to (or overwritten in) gv
                 self.__coderunner__ = __coderunner__
@@ -411,16 +411,16 @@ class CodeRunner(Reloadable, Subject):
 
         # - making the GlobalVariables handle to gv accessible by 'gv' in the local variable namespace
         lv['gv'] = GlobalVariables(gv, self)
-        # - making the filename the code is originating from, available as a local variable _filename
-        lv['__file__'] = filename
-        ct = CodeThread(code, filename=filename, lv=lv, gv=lv, callback=self._threadCallback)
+        # - making the code name (filename the code is originating from for instance), available as a local variable _name
+        lv['__file__'] = name
+        ct = CodeThread(code, name=name, lv=lv, gv=lv, callback=self._threadCallback)
         # - instantiating a CodeThread with the passed or prepared variables
         if identifier is None:
             identifier = self.getId()
         ct._id = identifier
         # - adding the thread to the thread dictionary self._threads
         self._threads[identifier] = ct
-        ct.setDaemon(True)
+        ct.setDaemon(True)  # means "that the entire Python program exits when only daemon threads are left ."
         # - calling the start method of threading.Thread to run the piece of code in its thread.
         ct.start()
         return ct
@@ -445,7 +445,7 @@ class CodeProcess(Process):
     It subclasses Process from the multiprocessing python library and adds several queues for commands, responses,
     inputs, outputs, and errors.
     This implementation of Process does not use the simple target strategy;
-      instead, it uses a command queue managed by the overriden function run().
+    instead, it uses a command queue managed by the overriden function run().
     """
 
     class StreamProxy(object):
@@ -504,7 +504,8 @@ class CodeProcess(Process):
         return self.StreamProxy(self._stderrQueue)
 
     def commandQueue(self):
-        # print 'in CodeProcess.commandQueue with self._codeRunner = ', self._codeRunner
+        # print 'in CodeProcess.commandQueue with self._codeRunner = ',
+        # self._codeRunner
         return self._commandQueue
 
     def responseQueue(self):
@@ -562,7 +563,8 @@ class MultiProcessCodeRunner():
     """
 
     def __init__(self, gv=dict(), lv=dict(), logProxy=lambda x: False, errorProxy=lambda x: False):
-        # added by DV in may 2015 to get a handle to global variables for a possible code process restart
+        # added by DV in may 2015 to get a handle to global variables for a
+        # possible code process restart
         self._gv, self._lv = gv, lv
         self._timeout = 2
         self._codeProcess = None  # useful to test it in startCodeProcess
@@ -573,7 +575,8 @@ class MultiProcessCodeRunner():
 
         self.startCodeProcess()
         # For debugging:
-        # print '\n CodeProcess id is ', self._codeProcess.pid, ' with self.pid after start'
+        # print '\n CodeProcess id is ', self._codeProcess.pid, ' with self.pid
+        # after start'
 
     def startCodeProcess(self):
         """

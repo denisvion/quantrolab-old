@@ -30,7 +30,7 @@ class ThreadPanel(QWidget, ObserverWidget):
         self._editorWindow = editorWindow       # handle to coderunner
         self._threadView = QTreeWidget()
         self._threadView.setSelectionMode(QAbstractItemView.ExtendedSelection)
-        self._threadView.setHeaderLabels(['Identifier', 'Status', 'Filename'])
+        self._threadView.setHeaderLabels(['Identifier', 'Status', 'Name'])
 
         setupLayout = QBoxLayout(QBoxLayout.LeftToRight)
 
@@ -112,13 +112,13 @@ class ThreadPanel(QWidget, ObserverWidget):
         item.setText(headers.index('Identifier'), str(identifier))
         status = 'running' if thread['isRunning'] else 'failed' if thread['failed'] else 'finished'
         item.setText(headers.index('Status'), status)
-        filename = str(thread['filename'])
-        (di, shortname) = os.path.split(filename)
-        index = headers.index('Filename')
+        name = str(thread['name'])
+        (di, shortname) = os.path.split(name)  # in case name is a full filename with path
+        index = headers.index('Name')
         item.setText(index, shortname)
-        item.setToolTip(index, filename)
+        item.setToolTip(index, name)
         if self._editorWindow is not None:
-            editor = self._editorWindow.getEditorForFile(thread['filename'])
+            editor = self._editorWindow.getEditorForFile(thread['name'])
             if editor is not None:
                 editor.setTabText(' [-]' if thread['isRunning'] else ' [!]' if thread['failed'] else ' [.]')
                 self._editorWindow.updateTabText(editor)

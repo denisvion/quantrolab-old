@@ -734,15 +734,18 @@ class IDE(QMainWindow, ObserverWidget):
             """
 
     def loadHelpers(self):
-        # print self._codeRunner.lv(identifier='HelperManager', keysOnly=True)
-        # self.executeCode('print helperManager.loadHelpers\n', identifier='HelperManager')
-        code = 'helpersRootDir = helperManager.helpersRootDir()'
+        """
+        We do not use the helperManager.loadHelpers() method to prompt user since it run in
+        the  child process and the dialog box would not be displayed in the IDE application.
+        So we interrogate helperManager to
+        """
+        code = 'helpersRootDir = helperManager.helpersRootDir()\n'
         self.executeCode(code, identifier='HelperManager', filename='IDE')
         helpersRootDir = self._codeRunner.lv(varname='helpersRootDir', identifier='HelperManager')
-        cap, fil, dire = 'Open Quantrolab helper(s)', 'helper (*.pyh)', helpersRootDir
-        filename = str(QFileDialog.getOpenFileName(caption=cap, filter=fil, directory=dire))
+        print helpersRootDir
+        cap, fil = 'Open Quantrolab helper(s)', 'helper (*.pyh)'
+        #filename = str(QFileDialog.getOpenFileName(caption=cap, filter=fil, directory=helpersRootDir))
         #self.executeCode('helperManager.loadHelpers()\n', identifier='HelperManager', filename='IDE')
-
 
     def showHelper(self, action):
         actionName = str(action.text())
