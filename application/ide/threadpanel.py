@@ -106,21 +106,21 @@ class ThreadPanel(QWidget, ObserverWidget):
             item = threadIds[idr]
             self._threadView.takeTopLevelItem(self._threadView.indexOfTopLevelItem(item))
 
-    def _updateItemInfo(self, item, identifier, thread):
+    def _updateItemInfo(self, item, identifier, threadDict):
         headers = self._threadView.headerItem()
         headers = [str(headers.text(i)) for i in range(headers.columnCount())]
         item.setText(headers.index('Identifier'), str(identifier))
-        status = 'running' if thread['isRunning'] else 'failed' if thread['failed'] else 'finished'
+        status = 'running' if threadDict['isRunning'] else 'failed' if threadDict['failed'] else 'finished'
         item.setText(headers.index('Status'), status)
-        name = str(thread['name'])
+        name = str(threadDict['name'])
         (di, shortname) = os.path.split(name)  # in case name is a full filename with path
         index = headers.index('Name')
         item.setText(index, shortname)
         item.setToolTip(index, name)
         if self._editorWindow is not None:
-            editor = self._editorWindow.getEditorForFile(thread['name'])
+            editor = self._editorWindow.getEditorForFile(threadDict['name'])
             if editor is not None:
-                editor.setTabText(' [-]' if thread['isRunning'] else ' [!]' if thread['failed'] else ' [.]')
+                editor.setTabText(' [-]' if threadDict['isRunning'] else ' [!]' if threadDict['failed'] else ' [.]')
                 self._editorWindow.updateTabText(editor)
 
     def killThread(self):

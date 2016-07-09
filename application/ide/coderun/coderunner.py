@@ -174,29 +174,32 @@ class CodeThread (KillableThread):
 class CodeRunner(Reloadable, Subject):
 
     """
-    A class that manages the execution of different pieces of code in different threads (of type CodeThread),
-    in a single Process (of type CodeProcess).
+    A class that manages the execution of different pieces of code in different threads of type CodeThread
+    (in a single process).
+    The coderunner has the following dicitonnaries:
+        - a global and a local variables dictionnary,
+        - a dictionnary for the managed threads,
+        - a dictionnary for the exceptions,
+        - a dictionnary for the tracebacks.
+    The coderunner passes a private _callback function to each thread, which is called each time the thread
+    finishes executing a piece of code.
+    The coderunner has the following public methods:
+        - executeCode(code, identifier, name=None, lv=None, gv=None) to execute code in an existing or new thread;
+        - stopExecution(identifier) to stop an existing thread;
+        - status to return Returns a dictionary with information on all managed threads;
+        - gv(varname, identifier, keysOnly) to retrieve a global variable or the whole global variable
+        dictionnary of a thread with id identifier;
+        - lv(varname, identifier, keysOnly) to retrieve a local variable or the whole local variable
+        dictionnary of a thread with id identifier;
+        - getException, clearExceptions, getTraceback and formatException to manage thread errors;
     """
 
-    def getId(self):
-        """
-        Returns an integer ID not already present in self._threads, which can be used to identify a code thread.
-        """
-        id1 = 0
-        while id1 in self._threads:
-            id1 += 1
-        return id1
-
     def __init__(self, gv=dict(), lv=dict()):
-        # print 'in  CodeRunner._init with self = ',self
         Reloadable.__init__(self)
         Subject.__init__(self)
-        # initializes self._threads, self._exceptions, self._tracebacks
-        self.clear(gv, lv)
-        # print '\n process running CodeRunner is', os.getpid()
-        # print '\n id(CodeRunner._gv)=', id(self._gv)
+        self._clear(gv, lv)          # initializes self._threads, self._exceptions, self._tracebacks
 
-    def clear(self, gv=dict(), lv=dict()):
+    def _clear(self, gv=dict(), lv=dict()):
         """
         Reinitializes the class by
           - deleting all running threads,
@@ -205,6 +208,15 @@ class CodeRunner(Reloadable, Subject):
         """
         self._gv, self._lv = gv, dict()
         self._threads, self._exceptions, self._tracebacks = {}, {}, {}
+
+    def _newId(self):
+        """
+        Returns an integer ID not already present in self._threads, which can be used to identify a code thread.
+        """
+        id1 = 0
+        while id1 in self._threads:
+            id1 += 1
+        return id1
 
     def _varDic(self, varDic, identifier=None, varname=None, keysOnly=False):
         """
@@ -254,18 +266,6 @@ class CodeRunner(Reloadable, Subject):
         """
         return self._varDic('lv', varname=varname, identifier=identifier, keysOnly=keysOnly)
 
-    def currentWorkingDirectory(self):
-        """
-        Returns the current working directory.
-        """
-        return os.getcwd()
-
-    def setCurrentWorkingDirectory(self, directory):
-        """
-        Changes the current working directoy.
-        """
-        os.chdir(directory)
-
     def clearExceptions(self):
         """
         Clears all exceptions that are stored in the exception dictionary.
@@ -307,6 +307,7 @@ class CodeRunner(Reloadable, Subject):
             self._exceptions[thread._id] = thread.exceptionInfo()
             self._tracebacks[thread._id] = thread.tracebackInfo()
         lock.release()
+        # print thread._id, ' is calling back' # debugging
 
     def hasFailed(self, identifier):
         """
@@ -345,7 +346,8 @@ class CodeRunner(Reloadable, Subject):
 
     def status(self):
         """
-        Returns a dictionary containing information on all threads that are managed by the code runner.
+        Returns a dictionary containing information about all threads managed by the code runner.
+        Format is {'threadId1':{'isRunning':trueOrFalse,'nanme':name,'failed': trueOrFalse },...}.
         """
         status = {}
         for identifier in self._threads:
@@ -415,8 +417,8 @@ class CodeRunner(Reloadable, Subject):
         lv['__file__'] = name
         ct = CodeThread(code, name=name, lv=lv, gv=lv, callback=self._threadCallback)
         # - instantiating a CodeThread with the passed or prepared variables
-        if identifier is None:
-            identifier = self.getId()
+        if identifier is None:  # should never happen
+            identifier = self._newId()
         ct._id = identifier
         # - adding the thread to the thread dictionary self._threads
         self._threads[identifier] = ct
