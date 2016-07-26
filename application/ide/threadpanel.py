@@ -77,6 +77,7 @@ class ThreadPanel(QWidget, ObserverWidget):
         """
         # list of the current threads in the coderunner
         threadDict = self._codeRunner.status()
+        # print 'in updateThreadList with status = ', threadDict
         if threadDict is None or type(threadDict) != dict:
             return
         # list of identifiers of open editors

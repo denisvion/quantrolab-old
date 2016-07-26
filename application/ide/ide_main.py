@@ -512,12 +512,12 @@ class IDE(QMainWindow, ObserverWidget):
         """
         return self._codeRunner.gloVar(varname)
 
-    def executeCode(self, code, identifier=None, filename=''):
+    def executeCode(self, code, identifier=None, filename='', resultExpression=None):
         """
         This function executes code in the coderunner.
         """
         # this function returns when the code has started running in the coderunner
-        result = self._codeRunner.executeCode(code, identifier, filename)
+        result = self._codeRunner.executeCode(code, identifier, filename, resultExpression=resultExpression)
 
     def runCode(self, delimiter=""):
         """
@@ -693,8 +693,11 @@ class IDE(QMainWindow, ObserverWidget):
         """print self._codeRunner.gv(keysOnly=True)
         print self._codeRunner.lv(identifier='HelperManager', keysOnly=True)
         print self._codeRunner.lv('helpers', identifier='HelperManager', keysOnly=True)"""
-        code = 'print dir()\nprint helperManager.loadHelpers\n'
-        self.executeCode(code, identifier='HelperManager', filename='IDE')
+        code = 'a=1+1'
+        resultExpression = 'a'
+        self.executeCode(code, identifier='debug', filename='IDE', resultExpression=resultExpression)
+        result = self._codeRunner.getCallbackQueueItem()
+        # print result    # (threadID, failed, result
 
     def buildHelperMenu(self):
         """
@@ -744,8 +747,8 @@ class IDE(QMainWindow, ObserverWidget):
         helpersRootDir = self._codeRunner.lv(varname='helpersRootDir', identifier='HelperManager')
         print helpersRootDir
         cap, fil = 'Open Quantrolab helper(s)', 'helper (*.pyh)'
-        #filename = str(QFileDialog.getOpenFileName(caption=cap, filter=fil, directory=helpersRootDir))
-        #self.executeCode('helperManager.loadHelpers()\n', identifier='HelperManager', filename='IDE')
+        # filename = str(QFileDialog.getOpenFileName(caption=cap, filter=fil, directory=helpersRootDir))
+        # self.executeCode('helperManager.loadHelpers()\n', identifier='HelperManager', filename='IDE')
 
     def showHelper(self, action):
         actionName = str(action.text())
