@@ -137,8 +137,6 @@ class IDE(QMainWindow, ObserverWidget):
         QMainWindow.__init__(self, parent)
         ObserverWidget.__init__(self)
         self._workingDirectory = None
-        # Global variable dictionary of Quantrolab, to be shared with its helpers and scripts.
-        self._gv = dict()
         self.initializeGUI()            # initialize the GUI, codeEditor, codeRunner, errorConsole
         self.initializeHelperManager()
         self.loadSettingsAndProject()
@@ -168,8 +166,7 @@ class IDE(QMainWindow, ObserverWidget):
         self.editorWindow = CodeEditorWindow(parent=self, newEditorCallback=self.newEditorCallback)  # tab editor window
         print 'OK.'
         print 'starting MultiProcessCodeRunner...',
-        # The sub-process(es) of MultiProcessCodeRunner will have only a copy of self._gv
-        self._codeRunner = MultiProcessCodeRunner(gv=self._gv, lv=self._gv)
+        self._codeRunner = MultiProcessCodeRunner()
         print 'OK.'
         print 'Starting error console...',
         self.errorConsole = ErrorConsole(codeEditorWindow=self.editorWindow, codeRunner=self._codeRunner)
@@ -517,7 +514,7 @@ class IDE(QMainWindow, ObserverWidget):
         This function executes code in the coderunner.
         """
         # this function returns when the code has started running in the coderunner
-        result = self._codeRunner.executeCode(code, identifier, filename, resultExpression=resultExpression)
+        result = self._codeRunner.executeCode(code, identifier, name=filename, resultExpression=resultExpression)
 
     def runCode(self, delimiter=""):
         """
@@ -696,8 +693,6 @@ class IDE(QMainWindow, ObserverWidget):
         code = 'a=1+1'
         resultExpression = 'a'
         self.executeCode(code, identifier='debug', filename='IDE', resultExpression=resultExpression)
-        result = self._codeRunner.getCallbackQueueItem()
-        # print result    # (threadID, failed, result
 
     def buildHelperMenu(self):
         """
