@@ -363,7 +363,7 @@ class IDE(QMainWindow, ObserverWidget):
         print 'Loading HelperManager in codeRunner...',
         code = 'from application.ide.helpermanager2 import *\n'
         code += 'helperManager = HelperManager()\n'
-        self.executeCode(code, identifier='HelperManager', filename='IDE')
+        self.executeCode(code, threadId='HelperManager', filename='IDE')
         self.buildHelperMenu()
         print 'done.'
 
@@ -509,12 +509,18 @@ class IDE(QMainWindow, ObserverWidget):
         """
         return self._codeRunner.gloVar(varname)
 
-    def executeCode(self, code, identifier=None, filename='', resultExpression=None):
+    def executeCode(self, code, threadId=None, filename='', resultExpression=None, callbackFunc=None):
         """
-        This function executes code in the coderunner.
+        Asks for a code execution by the coderunner,
+        in a thread with identifier threadId,
+        with a given filename,
+        with an optional resultExpression to be evaluated at the end of the execution,
+        and with an optional callback function callbackFunc to be called with the result of resultExpression as arguments.
+        It returns a response when the code has started in the thread or None if there was a timeout.
+        The call to the callback function is asynchronous and happens after the thread has completed its evaluation.
         """
-        # this function returns when the code has started running in the coderunner
-        result = self._codeRunner.executeCode(code, identifier, name=filename, resultExpression=resultExpression)
+        return self._codeRunner.executeCode(code, threadId, name=filename,
+                                            resultExpression=resultExpression, callbackFunc=callbackFunc)
 
     def runCode(self, delimiter=""):
         """
@@ -543,7 +549,7 @@ class IDE(QMainWindow, ObserverWidget):
         else:
             poc = '???'
         print('Running ' + poc + ' in ' + shortname + ' (id=' + str(identifier) + ')')
-        self.executeCode(code, identifier=identifier, filename=filename)  # execute the code
+        self.executeCode(code, threadId=identifier, filename=filename)  # execute the code
         return True
 
     def runBlock(self):
@@ -692,7 +698,11 @@ class IDE(QMainWindow, ObserverWidget):
         print self._codeRunner.lv('helpers', identifier='HelperManager', keysOnly=True)"""
         code = 'a=1+1'
         resultExpression = 'a'
-        self.executeCode(code, identifier='debug', filename='IDE', resultExpression=resultExpression)
+
+        def callbackFunc(x):
+            print 'a=', x
+        self.executeCode(code, threadId='debug', filename='IDE',
+                         resultExpression=resultExpression, callbackFunc=callbackFunc)
 
     def buildHelperMenu(self):
         """
@@ -738,12 +748,12 @@ class IDE(QMainWindow, ObserverWidget):
         So we interrogate helperManager to
         """
         code = 'helpersRootDir = helperManager.helpersRootDir()\n'
-        self.executeCode(code, identifier='HelperManager', filename='IDE')
+        self.executeCode(code, threadId='HelperManager', filename='IDE')
         helpersRootDir = self._codeRunner.lv(varname='helpersRootDir', identifier='HelperManager')
         print helpersRootDir
         cap, fil = 'Open Quantrolab helper(s)', 'helper (*.pyh)'
         # filename = str(QFileDialog.getOpenFileName(caption=cap, filter=fil, directory=helpersRootDir))
-        # self.executeCode('helperManager.loadHelpers()\n', identifier='HelperManager', filename='IDE')
+        # self.executeCode('helperManager.loadHelpers()\n', threadId='HelperManager', filename='IDE')
 
     def showHelper(self, action):
         actionName = str(action.text())
