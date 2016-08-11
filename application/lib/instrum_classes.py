@@ -206,8 +206,8 @@ class Instrument(Debugger, ThreadedDispatcher, Reloadable, object):
 
 
 class CompositeInstrument(Instrument):
-    """ 
-    Instrument with a dictionary of children instruments, and possibly a handle to an instrument manager. 
+    """
+    Instrument with a dictionary of children instruments, and possibly a handle to an instrument manager.
     """
 
     def __init__(self, name, instrumentManager=None, childrenDict=None):
@@ -339,21 +339,39 @@ class VisaInstrument(Instrument):
     A class representing an instrument that can be interfaced via NI VISA protocol.
     """
 
-    def __init__(self, name='', visaAddress=None):
+    def __init__(self, name='', visaAddress=None, term_chars=None, testString='', **kwargs):
         """
         Initialization
         """
+        print '\tin VisaInstrument.__init__ with name, visaAddress and term_chars = ', (name, visaAddress, term_chars)
         Instrument.__init__(self, name)
-        self._handle = None
         self._visaAddress = visaAddress
+        self._handle = None
+        self._term_chars = term_chars
+        try:
+            self.getHandle()
+        except:
+            print '\tERROR: Could not get handle to Visa instrument %s at address %s' % (name, visaAddress)
+            return
+        try:
+            if self._handle is not None and self._term_chars is not None:
+                self._handle.term_chars = term_chars
+        except:
+            print '\tERROR: Could not set Visa instrument %s at address %s with termination characters %s' % (name, visaAddress, term_chars)
+        if testString != '':
+            try:
+                print '\t' + self.ask(testString)
+            except:
+                print '\tERROR: Could not get answer from Visa instrument %s at address %s when asking %s' % (name, visaAddress, testString)
 
     def getHandle(self, forceReload=False):
         """
         Return the VISA handle for this instrument.
+        If the VISA connection was lost, it reopens the VISA handle.
         """
         if forceReload or self._handle is None:
             try:
-                if self._handle != None:
+                if self._handle is not None:
                     try:
                         self._handle.close()
                     except:
@@ -367,7 +385,6 @@ class VisaInstrument(Instrument):
     def executeVisaCommand(self, method, *args, **kwargs):
         """
         This function executes a VISA command.
-        If the VISA connection was lost, it reopens the VISA handle.
         """
         try:
             returnValue = method(*args, **kwargs)
@@ -377,18 +394,19 @@ class VisaInstrument(Instrument):
             self._handle = None
             raise
 
-    def __getattr__(self, name):
+    def __getattr__(self, attr):
         """
-        Forward all unknown method calls to the VISA handle.
+        Forwards all unknown attribute calls to the VISA handle: instrument.attr becomes
         """
         handle = self.getHandle()
-        if hasattr(handle, name):
-            attr = getattr(handle, name)
+        if hasattr(handle, attr):
+            attr1 = getattr(handle, attr)
             if hasattr(attr, '__call__'):
-                return lambda *args, **kwargs: self.executeVisaCommand(attr, *args, **kwargs)
+                return lambda *args, **kwargs: self.executeVisaCommand(attr1, *args, **kwargs)
             else:
-                return attr
-        raise AttributeError('No such attribute: %s' % name)
+                return attr1
+        raise AttributeError('No such attribute: %s' % attr)
+
 
 import pickle
 # implements an algorithm for turning an arbitrary Python object into a
@@ -401,7 +419,7 @@ _DEBUG = False
 
 class Command:
     """
-    Class for a command to be sent as a string to a remote instrument through a server of instruments 
+    Class for a command to be sent as a string to a remote instrument through a server of instruments
     """
 
     def __init__(self, name=None, args=[], kwargs={}):

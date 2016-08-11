@@ -693,9 +693,8 @@ class IDE(QMainWindow, ObserverWidget):
         self.runStartupGroup.setChecked(self.runStartupGroup.isChecked())
 
     def debug(self):
-        """print self._codeRunner.gv(keysOnly=True)
-        print self._codeRunner.lv(identifier='HelperManager', keysOnly=True)
-        print self._codeRunner.lv('helpers', identifier='HelperManager', keysOnly=True)"""
+        # print self._codeRunner.lv(identifier='HelperManager', keysOnly=True)
+        # print self._codeRunner.lv('helpers', identifier='HelperManager', keysOnly=True)
         code = 'a=1+1'
         resultExpression = 'a'
 
