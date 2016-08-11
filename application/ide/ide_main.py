@@ -702,6 +702,7 @@ class IDE(QMainWindow, ObserverWidget):
             print 'a=', x
         self.executeCode(code, threadId='debug', filename='IDE',
                          resultExpression=resultExpression, callbackFunc=callbackFunc)
+        print self._codeRunner.gv('b')
 
     def buildHelperMenu(self):
         """
