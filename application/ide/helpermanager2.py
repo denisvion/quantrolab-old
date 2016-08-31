@@ -5,7 +5,7 @@ It is itself loaded in a dedicated thread of the coderunner with thread id 'Help
 It instantiates all helpers in a child thread with a single QApplication, using coderunner_gui.
 Like this the HelperManager, the helpers and the scripts loaded in Quantrolab exist in the same process,
 can talk to each other, and share the same global memory.
-(Read the docstring of application.lib.helper_classes to understand helpers design.)
+(Read the docstring of application.lib.helper_classes to understand helpers design in QuantroLab.)
 """
 import os
 import os.path
@@ -61,14 +61,14 @@ class HelperManager():
         """
         return self._helpersRootDir
 
-    def helpers(self, pickable=False):
+    def helpers(self, strRepr=False):
         """
         Returns a copy of the dictionnary of loaded helpers.
-        if pickable = True, the helper objects (helper and possibly its associate) are replaced by their string
+        if strRepr = True, the helper objects (helper and possibly its associate) are replaced by their string
         representation.
         """
         helpersCopy = dict(self._helpers)
-        if pickable:        # change the helpers object into their string representation
+        if strRepr:        # change the helpers object into their string representation
             for key, item in helpersCopy.iteritems():
                 item['helper'] = str(item['helper'])
                 if 'associate' in item:
@@ -183,7 +183,7 @@ class HelperManager():
                 helper.show()  # show it
             self._helpers[classname] = {'helper': helper, 'helperPath': filename, 'helperType': helperType}
             self._gv[classname] = helper             # keep a reference to the helper in gv and inform user
-            print 'Helper %s loaded and accessible as gv.%s.' % (classname, classname)
+            print 'Helper %s loaded and accessible as gv.%s.' % (classname, classname),
         except:
             print 'ERROR in loading ' + classname + '.'
             raise
@@ -195,7 +195,6 @@ class HelperManager():
                     associatePath = inspect.getfile(associate.__class__)  # get information about it
                     associateName = associate.__class__.__name__          # keep a reference to the associate in gv
                     self._gv[associateName] = associate                   # and inform user
-                    print 'Associate helper ' + associateName + ' loaded and accessible as gv.' + associateName + '.'
                     if isinstance(associate, HelperGUI):
                         associateType = 'HelperGUI'
                     elif isinstance(associate, Helper):
@@ -205,10 +204,12 @@ class HelperManager():
                     self._helpers[classname].update(info)
                     if associateName in self._helpers:
                         self._helpers.pop(associateName)
+                    print ' (associate helper ' + associateName + ' loaded and accessible as gv.' + associateName + ')'
+                else:
+                    print
         except:
             print "Error when looking for " + classname + "'s associate or when loading it."
             raise
-        print 'exiting startHelper with self._helpers = ', self._helpers
 
 
 def startHelperManager():

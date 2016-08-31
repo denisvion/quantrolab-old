@@ -261,7 +261,7 @@ class CodeRunner(Reloadable, Subject):
             - the whole dictionnary if varname is None and keysOnly is False;
             - only the key(s) if varname is None and keysOnly is True;
             - the value of variable varname if varname is a simple name;
-            - an attribute of the variable if varname 'var.attr.subattr...'
+            - an attribute of the variable if varname contains a dot (like 'var.attr.subattr' or 'var.attr(2,"toto")' )
             - the string representation of this variable or attribute if strRep is True (useful for non pickable result)
         Any error returns None.
         """
@@ -277,12 +277,12 @@ class CodeRunner(Reloadable, Subject):
             else:
                 return varDic
         else:
-            varnameSplit = varname.split('.')
-            varname0 = varnameSplit.pop(0)
+            varnameSplit = varname.split('.', 1)
+            varname0 = varnameSplit[0]
             if varname0 in varDic:
                 var = varDic[varname0]
-                if varnameSplit != []:
-                    varname = 'var.' + '.'.join(varnameSplit)
+                if len(varnameSplit) == 2:
+                    varname = 'var.' + varnameSplit[1]
                     exec('var = ' + varname)
                 if strRep:
                     var = str(var)

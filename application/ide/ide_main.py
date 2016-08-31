@@ -712,6 +712,7 @@ class IDE(QMainWindow, ObserverWidget):
         # self.executeCode('print gv', threadId='HelperManager', filename='IDE')
         # print self._codeRunner.lv('HelperManager', keysOnly=True)
         print self._codeRunner.lv('HelperManager', varname='helperManager._helpersRootDir')
+        print self._codeRunner.lv('HelperManager', varname='helperManager.helpers()', strRep=True)
 
     def buildHelperMenu(self):
         """
