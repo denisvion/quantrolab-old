@@ -79,16 +79,14 @@ class Subject:
                 return False
             self.isNotifying = True
             deadObservers = []
-            for observer in self._observers:
+            for observer in self._observers:  # observer is a weakref to the actual observer observer()
                 if observer() is None:
                     deadObservers.append(observer)
                     continue
                 if modifier != observer():
                     try:
                         if hasattr(observer(), 'updated'):
-                            # print 'calling updated'                  # The
-                            # present notifier calls directly the updated
-                            # method of the observer if it exists
+                            #  calls directly the updated method of the observer if it exists
                             observer().updated(self, property, value)
                     except:
                         print "An error occured when notifying observer %s." % str(observer())

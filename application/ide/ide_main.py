@@ -167,6 +167,7 @@ class IDE(QMainWindow, ObserverWidget):
         print 'OK.'
         print 'starting MultiProcessCodeRunner...',
         self._codeRunner = MultiProcessCodeRunner()
+        self._codeRunner.attach(self)  # make the IDE an ObserverWidget of _codeRunner
         print 'OK.'
         print 'Starting error console...',
         self.errorConsole = ErrorConsole(codeEditorWindow=self.editorWindow, codeRunner=self._codeRunner)
@@ -358,11 +359,10 @@ class IDE(QMainWindow, ObserverWidget):
         Imports the HelperManager module in a thread of the Coderunner CodeProcess.
         This will instantiate the HelperManager QApplication in which all helpers will run.
         The helperManager and all its helpers will share the same global memory as the other threads of the coderunner
-        (i.e. those correspo ding to the scripts).
+        (i.e. those corresponding to the scripts).
         """
         print 'Loading HelperManager in codeRunner...',
-        code = 'from application.ide.helpermanager2 import *\n'
-        code += 'helperManager = HelperManager()\n'
+        code = 'from application.ide.helpermanager2 import HelperManager\nhelperManager = HelperManager(gv=gv)'
         self.executeCode(code, threadId='HelperManager', filename='IDE')
         self.buildHelperMenu()
         print 'done.'
@@ -695,14 +695,23 @@ class IDE(QMainWindow, ObserverWidget):
     def debug(self):
         # print self._codeRunner.lv(identifier='HelperManager', keysOnly=True)
         # print self._codeRunner.lv('helpers', identifier='HelperManager', keysOnly=True)
-        code = 'a=1+1'
-        resultExpression = 'a'
+        def callbackFunc1(x='undefined'):
+            print 'x=', x
 
-        def callbackFunc(x):
-            print 'a=', x
-        self.executeCode(code, threadId='debug', filename='IDE',
-                         resultExpression=resultExpression, callbackFunc=callbackFunc)
-        print self._codeRunner.gv('b')
+        def callbackFunc2(x):
+            x.lower()
+        # self.executeCode('a=-1', threadId='debug', filename='IDE')
+        # self.executeCode('a=-1', threadId='debug', filename='IDE', resultExpression='a')
+        # self.executeCode('a=-1', threadId='debug', filename='IDE', callbackFunc=callbackFunc1)
+        # self.executeCode('a=-1', threadId='debug', filename='IDE', resultExpression='a', callbackFunc=callbackFunc1)
+        # self.executeCode('a=-1', threadId='debug', filename='IDE', resultExpression='a', callbackFunc=callbackFunc2)
+        # self.executeCode('a=-2', threadId='debug', filename='IDE', resultExpression='a', callbackFunc='notify')
+        # code = 'class A():\n\tx=1\na=A()'
+        # self.executeCode(code, threadId='debug', filename='IDE', resultExpression='a', callbackFunc=callbackFunc1)
+        # self.executeCode('print "toto"\n', threadId='HelperManager', filename='IDE')
+        # self.executeCode('print gv', threadId='HelperManager', filename='IDE')
+        # print self._codeRunner.lv('HelperManager', keysOnly=True)
+        print self._codeRunner.lv('HelperManager', varname='helperManager._helpersRootDir')
 
     def buildHelperMenu(self):
         """
@@ -743,17 +752,15 @@ class IDE(QMainWindow, ObserverWidget):
 
     def loadHelpers(self):
         """
-        We do not use the helperManager.loadHelpers() method to prompt user since it run in
-        the  child process and the dialog box would not be displayed in the IDE application.
-        So we interrogate helperManager to
+        The helperManager.loadHelpers() method is not used to prompt the user for a file name since it would run in
+        the child process and the openfile dialog box would not be displayed in the IDE application.
+        Instead
+            - the helperManager is asked for its helpersRootDir;
+            - the user is prompted for a file name in the ide;
+            - the file name is passed back to helperManager.
         """
-        code = 'helpersRootDir = helperManager.helpersRootDir()\n'
-        self.executeCode(code, threadId='HelperManager', filename='IDE')
-        helpersRootDir = self._codeRunner.lv(varname='helpersRootDir', identifier='HelperManager')
-        print helpersRootDir
-        cap, fil = 'Open Quantrolab helper(s)', 'helper (*.pyh)'
-        # filename = str(QFileDialog.getOpenFileName(caption=cap, filter=fil, directory=helpersRootDir))
-        # self.executeCode('helperManager.loadHelpers()\n', threadId='HelperManager', filename='IDE')
+        self.executeCode('', threadId='HelperManager', filename='IDE',
+                         resultExpression='helperManager.helpersRootDir()', callbackFunc='notify')
 
     def showHelper(self, action):
         actionName = str(action.text())
@@ -833,32 +840,22 @@ class IDE(QMainWindow, ObserverWidget):
         <FONT COLOR='black'> QuantroLab is a simple python<br>\
         integrated development environment<br>\
         for controlling a physics laboratory.<br><br>\
-        CEA-Saclay 2012-2015<br>\
+        CEA-Saclay 2012-2016<br>\
         <br><FONT COLOR='blue'>\
         Andreas Dewes<br>\
         Vivien Schmitt<br>\
         Denis Vion</p>"
         QMessageBox.about(self, 'About QuantroLab python IDE', QString(text))
 
-    def updatedGui(self, subject=None, property=None, value=None):
-
-        if property == 'deleted':
-            key = subject.__class__.__name__
-            if key in self._helpers and isinstance(self._helpers[key]['helper'], (Helper, HelperGUI)):
-                associateName = self._helpers[key]['associateName']
-                if associateName is not None:
-                    associate, associatePath = self._helpers[key][
-                        'associate'], self._helpers[key]['associatePath']
-                    self._helpers[associateName] = {
-                        'helper': associate, 'filepath': associatePath, 'associateName': None, 'associate': None, 'associatePath': None}
-                self._helpers.pop(key)
-                # self.buildHelperMenu()
-            else:
-                for k2, dic in self._helpers.items():
-                    if key == dic['associateName']:
-                        for k3 in ['associateName', 'associate', 'associatePath']:
-                            dic[k3] = None
-                        # self.buildHelperMenu()
+    def updatedGui(self, subject=None, propert=None, value=None):
+        if subject is self._codeRunner:
+            if propert == 'callback':
+                # print 'IDE notified of callback with value', value
+                if value[0] == 'HelperManager':
+                    cap, fil = 'Open Quantrolab helper(s)', 'helper (*.pyh)'
+                    filename = str(QFileDialog.getOpenFileName(caption=cap, filter=fil, directory=value[2]))
+                    code = 'helperManager.loadHelpers("%s")' % filename
+                    self.executeCode(code, threadId='HelperManager', filename="IDE")
 # end of IDE class definition
 
 # Starting application function

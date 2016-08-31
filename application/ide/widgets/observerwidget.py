@@ -26,8 +26,7 @@ class ObserverWidget(Observer):
             self.connect(self, SIGNAL("processUpdate(PyQt_PyObject)"),
                          self.processUpdate, Qt.QueuedConnection | Qt.UniqueConnection)
             self._connected = True
-        self.emit(SIGNAL("processUpdate(PyQt_PyObject)"),
-                  [subject, property, value])
+        self.emit(SIGNAL("processUpdate(PyQt_PyObject)"), [subject, property, value])
 
     def processUpdate(self, args):
         self.updatedGui(*args)

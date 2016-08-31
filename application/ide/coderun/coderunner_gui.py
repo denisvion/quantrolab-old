@@ -24,12 +24,12 @@ def _runGuiCode(f):
 
 def execInGui(f):
     """
-    execInGui(f,nameIfNew=None) is a public method that executes a function f() with no arguments in the current Qt application
-    or in a new one created on the fly if it does not exist. In that case nameIfnew is the name of the new application.
+    execInGui(f) is a public method that executes a function f() with no arguments in the current Qt application
+    or in a new one created on the fly if it does not exist.
     """
     # This tests the existence of the Qt application and creates it if needed.
-    _ensureGuiThreadIsRunning()
     global app
+    _ensureGuiThreadIsRunning()
     if app is None:
         raise Exception('Invalid application handle!')
     # This tells the application to run f
@@ -43,7 +43,7 @@ def _ensureGuiThreadIsRunning():
       - if it is not available, creates a new thread and a QApplication in this thread;
       - otherwise connects simply the handler _runGuiCode to the QtApplication signal "runGuiCode(PyQt_PyObject)".
     """
-    global app, signalConnected, _runGuiCode  # declares global variables
+    global app, signalConnected  # declares global variables
     # Gets a handle to an existing QApplication in the process
     app = QApplication.instance()
     if app is None:                                 # if no QApplication
@@ -54,16 +54,14 @@ def _ensureGuiThreadIsRunning():
         thread.start()                                                  # starts it
         while thread.is_alive() and (app is None or app.startingUp()):  # and wait until it is started
             time.sleep(0.01)
-        print 'done.'
     else:                                           # there is already a QApplication
         print 'Use existing Qt application of current process...',
-        # if we have not memorized in signalConnected that a conection to _runGuiCodeSignal exists
-        if not signalConnected:
-            print 'Adding signal handler to application...',
-            # defines the connection and memorize it
-            print app.connect(app, SIGNAL('runGuiCode(PyQt_PyObject)'), _runGuiCode, Qt.QueuedConnection | Qt.UniqueConnection)
-            signalConnected = True
-        print 'done.'
+    # if we have not memorized in signalConnected that a conection to _runGuiCodeSignal exists
+    if not signalConnected:
+        print 'Adding signal handler to application...',
+        # defines the connection and memorize it
+        _connectSignal()
+    print 'done.'
 
 
 def _createApplication():
@@ -72,12 +70,18 @@ def _createApplication():
     to the handler _runGuiCodeSignal in unique connection mode (multiple identical signals treated only once).
     The PyQt_PyObject argument means arbitrary type and works in particular for a function with no arguments like f.
     """
-    global app, signalConnected, _runGuiCode
+    global app
     app = QApplication(sys.argv)          # The Qt application is created here
     app.setQuitOnLastWindowClosed(True)
-    app.connect(app, SIGNAL('runGuiCode(PyQt_PyObject)'), _runGuiCode, Qt.QueuedConnection | Qt.UniqueConnection)
-    signalConnected = True
+    _connectSignal()
     if app.thread() != QThread.currentThread():
         message = 'Cannot start QT application from side thread! You will have to restart your process.'
         raise Exception(message)
-    app.exec_()                           # The event loop of the new application starts here
+    app.exec_()
+
+
+def _connectSignal():
+    global app, signalConnected
+    app.connect(app, SIGNAL('runGuiCode(PyQt_PyObject)'), _runGuiCode, Qt.QueuedConnection | Qt.UniqueConnection)
+    signalConnected = True
+    # The event loop of the new application starts here

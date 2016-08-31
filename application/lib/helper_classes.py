@@ -3,7 +3,7 @@ This module defines the Helper and HelperGUI classes for the Quantrolab applicat
 A Helper is a NON-GUI plugin that adds functionalities to the Quantrolab integrated development environment (IDE).
 A HelperGUI is a GUI plugin that adds functionalities to the Quantrolab IDE.
 Helpers and HelperGUIs can be either independant applications from the IDE, or be run inside the IDE to share the same global variables as the scripts.
-They can be Singletons (that exist in only one exemplary) or not
+They can be Singletons (that exist in only one exemplary) or not.
 A HelperGUI can be stand-alone or be the GUI layer of a Helper associated to it.
   In case of Helper-HelperGUI association,
     - both classes can be in the same or in different files.
@@ -13,11 +13,11 @@ The possible strategies of interaction with Helpers and HelperGUIs are the follo
   2) Stand alone HelperGUI
     2a) => User interacts with the HelperGUI only through the graphical user interface;
     2b) => User does not interact with the HelperGUI through the graphical user interface but through scripts and the GUI is only a display;
-    2) => User can interact with both the graphical user interface and scripts in the IDE (difficult to program in a reliable way)
+    2c) => User can interact from both the graphical user interface and from scripts in the IDE (difficult to program in a reliable way).
   3) Associated Helper and HelperGUI
     3a) User interacts only with Helper through scripts, HelperGUI receive messages from the Helper and is only a display.
     3b) => Both scripts of the IDE and the HelperGUI are clients and send commands to the Helper;
-        After both type of interaction, the HelperGUI receives messages from the Helper and update its GUI
+        After both types of interaction, the HelperGUI receives messages from the Helper and update its GUI
         This strategy is powerful but difficult to program.
 
 Example 1:  The DataMgr and DataManager form a couple of associated Helper-HelperGUI implementing strategy 3b to help
