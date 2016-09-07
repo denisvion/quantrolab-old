@@ -190,7 +190,7 @@ class Instr(Instrument):
 
     def calibrationData(self):
         """
-        Return calibration data as a dictionnary {'offsetCal':offsetCalCube,'sidebandCal':sidebandCalCube}
+        Return calibration data as a dictionary {'offsetCal':offsetCalCube,'sidebandCal':sidebandCalCube}
         """
         return({'offsetCal': self._offsetCalCube, 'sidebandCal': self._sidebandCalCube})
 

@@ -136,7 +136,7 @@ class Instr(Instrument):
 
     def generateShape(self):
         """
-        Use the folowing dictionnary to generate the shape:
+        Use the folowing dictionary to generate the shape:
         self._shapeParams["startingTime"] 
         self._shapeParams["risingTime"]    
         self._shapeParams["plateauLength"] 

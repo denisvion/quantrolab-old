@@ -63,13 +63,8 @@ class LoopManager(HelperGUI):
         """
         Creator of the loop manager panel.
         """
-        loopMgr = LoopMgr(
-            parent, globals)       # instantiates the backend manager
-        # inform the helper it has an associated gui by adding the gui as an
-        # attribute
-        loopMgr._gui = self
-        # init superClasses
-        HelperGUI.__init__(self, parent, globals, helper=loopMgr)
+        # instantiates the backend manager and init superClass HelperGUI
+        HelperGUI.__init__(self, parent, globals, helper=LoopMgr(parent, globals))
         self.debugPrint("in loopManagerGUI frontpanel creator")
 
         # Build GUI below
@@ -80,7 +75,7 @@ class LoopManager(HelperGUI):
             title += ' in tandem with ' + self._helper.__class__.__name__
         self.setWindowTitle(title)
         self.setWindowIcon(self._icons['loop'])
-        self.setAttribute(Qt.WA_DeleteOnClose, True)
+        # self.setAttribute(Qt.WA_DeleteOnClose, True) # now done at the HelperGUIlevel
         self.setMinimumHeight(200)
 
         layout = QGridLayout()
@@ -547,6 +542,6 @@ class LoopsTreeWidget(QTreeWidget):
 
     def loopRefItemDict(self):
         """
-        Builds the dictionnary {loopRef1: QTreeWidgetItem1, loopRef2: QTreeWidgetItem2}
+        Builds the dictionary {loopRef1: QTreeWidgetItem1, loopRef2: QTreeWidgetItem2}
         """
         return {item._loopRef: item for item in self.get_all_items()}

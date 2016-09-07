@@ -87,7 +87,7 @@ class InstrumentManager(HelperGUI):
         self.setWindowIcon(QIcon(iconPath + '/penguin.png'))
         self.setAttribute(Qt.WA_DeleteOnClose, True)
 
-        # preference dictionnary for automatic build of preferences dialog box
+        # preference dictionary for automatic build of preferences dialog box
         self.prefDict = {}
 
         menubar = self.menuBar()                            # menus

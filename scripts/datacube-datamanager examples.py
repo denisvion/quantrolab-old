@@ -27,8 +27,8 @@ myCube1.set(a=1,commit=True,**{myColName:2}) # dictionary at the end
 # Note that createColumn(name,values,offset = 0) is obsolete and replaced by createCol
 myCube1.createCol(name='c',values=[0,1,2,3,4,5,6,7,8,9,10])
 
-# Datacubes also store a dictionnary of parameters for conveniency.
-# To set this dictionary or add to it another dictionnary do:
+# Datacubes also store a dictionary of parameters for conveniency.
+# To set this dictionary or add to it another dictionary do:
 myCube1.setParameters({'param1':1.0,'param2':2.0,'param3':'toto'})
 myCube1.addParameters({'param4':4.0,'param5':'titi'})
 # To simply add or replace a single parameter do:

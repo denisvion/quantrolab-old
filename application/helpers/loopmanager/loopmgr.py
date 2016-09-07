@@ -1,4 +1,5 @@
 import sys
+import gc
 import getopt
 import os.path
 import traceback

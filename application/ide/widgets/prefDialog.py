@@ -16,8 +16,8 @@ from application.lib.instrum_classes import *  # DEBUGGER
 class PrefAutoDialog(QDialog, Debugger):
     """
     Class that builds automatically a simple Qt modal dialog for specifying application's preferences, from a preference dictionary passed to it.
-    if no dictionary is passed but parent is passed and has a prefDict attribute, this  prefDict is used as the preference dictionnary.
-    The syntax of the dictionnary should be {key:keyValue,...} where keyValue ={'label':label,'type':type,...} is type dependant:
+    if no dictionary is passed but parent is passed and has a prefDict attribute, this  prefDict is used as the preference dictionary.
+    The syntax of the dictionary should be {key:keyValue,...} where keyValue ={'label':label,'type':type,...} is type dependant:
         - boolean => keyValue ={'label':'my Boolean','type':bool,'value':True} => QCheckBox widget
         - int,long,double,complex,float => keyValue ={'label':'my Int','type':int,'value':5} => QLineEdit
         - 'multipleChoice' => keyValue ={'label':'my Choices','type':'multipleChoice','choices':[1,2,3],'value':1} => QComboBox widget
@@ -38,7 +38,7 @@ class PrefAutoDialog(QDialog, Debugger):
 
         self._widgetDict = {}
 
-        # buid a simple representation of the preference dictionnary with
+        # buid a simple representation of the preference dictionary with
         # Qwidgets
         if self._prefDict:
             for key in self._prefDict:
@@ -78,7 +78,7 @@ class PrefAutoDialog(QDialog, Debugger):
         self.setLayout(l)
 
     def ok(self):
-        # modify here the preference dictionnary from the widgets' states
+        # modify here the preference dictionary from the widgets' states
         for key in self._widgetDict:
             widget, dicti = self._widgetDict[key], self._prefDict[key]
             typ = dicti['type']

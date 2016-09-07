@@ -48,7 +48,7 @@ class Instrument(Debugger, ThreadedDispatcher, Reloadable, object):
         ThreadedDispatcher.__init__(self)
         # the only name of the instrument that the instrument knows.
         self._name = name
-        self._states = dict()   # Dictionnary of states of the instrument.
+        self._states = dict()   # dictionary of states of the instrument.
         # self._stateCount=0     # Removed by DV on March 2015.
         self._params = dict()
         self.daemon = True
@@ -160,7 +160,7 @@ class Instrument(Debugger, ThreadedDispatcher, Reloadable, object):
     def restoreState(self, state):
         """
         Restores the instrument to the given state.
-        If the state has been stored in the state dictionnary, programmer should get it first by calling the state(stateName) method.
+        If the state has been stored in the state dictionary, programmer should get it first by calling the state(stateName) method.
         (Overide this empty method in each particular instrument subclass).
         """
         pass
@@ -266,7 +266,7 @@ class CompositeInstrument(Instrument):
 
     def childrenNames(self):
         """
-        CompositeInstrument method that returns the names (also dictionnary keys) of its children instruments.
+        CompositeInstrument method that returns the names (also dictionary keys) of its children instruments.
         """
         return self._children.keys()
 
@@ -282,7 +282,7 @@ class CompositeInstrument(Instrument):
 
     def addChildren(self, dictionary):
         '''
-        CompositeInstrument method that adds a dictionnary of children instrument to its children instruments dictionary.
+        CompositeInstrument method that adds a dictionary of children instrument to its children instruments dictionary.
         dictionary has the form {"instrument_name_1": instr1,"instrument_name_2": instr2,...} where
           instri is an instrument object or None.
           In case instri is None, addChildren first tries to use its instrument manager if it is defined,
@@ -293,7 +293,7 @@ class CompositeInstrument(Instrument):
 
     def addChild(self, name, instrument=None, baseClass=None):
         """
-        CompositeInstrument method that adds an instrument to the dictionnary of its children instruments (if child not already present).
+        CompositeInstrument method that adds an instrument to the dictionary of its children instruments (if child not already present).
           - name is the name of the instrument to be added
           - instrument is an instrument object or None.
             In case instrument is None, addChild tries to load the child instrument:

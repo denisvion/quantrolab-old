@@ -38,7 +38,7 @@ class Instr(Instrument):
 
         manager = Manager()
         if not hasattr(self, '_params'):
-            print("reseting self._params dictionnary")
+            print("reseting self._params dictionary")
             self._params = dict()
             self._params['jba'] = jba
             self._jba = manager.getInstrument(jba)
@@ -49,8 +49,8 @@ class Instr(Instrument):
 
     def measureT1(self, delays, data=None, t1Parameters=None, dataParameters=None):
         """
-        Measure a T1, will use what is in dictionnary if power/frequency/useCalibration/nLoops are not set
-        Fit and save the period in the Qubit dictionnary under T1
+        Measure a T1, will use what is in dictionary if power/frequency/useCalibration/nLoops are not set
+        Fit and save the period in the Qubit dictionary under T1
         Return data and T1
         """
         if dataParameters is None:
@@ -119,8 +119,8 @@ class Instr(Instrument):
 
     def measureRabi(self, durations, data=None, rabiParameters=None, dataParameters=None):
         """
-        Measure a rabi, will use what is in dictionnary if power/frequency/useCalibration/nLoops are not set
-        Fit and save the period in the Qubit dictionnary under piRabiTime
+        Measure a rabi, will use what is in dictionary if power/frequency/useCalibration/nLoops are not set
+        Fit and save the period in the Qubit dictionary under piRabiTime
         Return the datacube and rabiPeriod
         """
 
@@ -188,8 +188,8 @@ class Instr(Instrument):
 
     def measureRabiArea(self, areas, data=None, rabiParameters=None, dataParameters=None):
         """
-        Measure a rabi, will use what is in dictionnary if power/frequency/useCalibration/nLoops are not set
-        Fit and save the period in the Qubit dictionnary under piRabiTime
+        Measure a rabi, will use what is in dictionary if power/frequency/useCalibration/nLoops are not set
+        Fit and save the period in the Qubit dictionary under piRabiTime
         Return the datacube and rabiPeriod
         """
 

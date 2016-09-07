@@ -13,6 +13,7 @@ import timeit
 import sys
 import copy
 import weakref
+import gc
 
 
 class Singleton(object):
@@ -57,7 +58,13 @@ class Reloadable(object):
 class Debugger:
     """
     Class Debugger.
-    Allows to set a derived class in debugging mode so that it prints messages using debugPrint()
+    Allows to set a derived class in debugging mode so that it prints messages using debugPrint().
+    Methods are
+        - debugOn():    switches on debug mode
+        - debugOff():   switches off in debug mode
+        - isDebugOn():  returns True if debug mode is on
+        - debugPrint(message):   prints a message if debug mode is on
+        - referrers():    returns the list of all python object having a reference to the class instance.
     """
 
     def __init__(self):
@@ -77,6 +84,15 @@ class Debugger:
             for arg in args:
                 print arg,
             print
+
+    def referrers(self, doPrint=False):
+        refs = gc.get_referrers(self)
+        if doPrint:
+            print self, ' has %i references: ' % len(refs)
+            for ref in refs:
+                print ref
+                print
+        return refs
 
 
 class StopThread(Exception):

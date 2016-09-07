@@ -62,7 +62,7 @@ class InstrumentHandle:
 
     def handleDict(self):
         """
-        Returns a dictionnary of the handle properties 'name','baseClass','instrument','module','remote','remoteServer','args','kwargs'.
+        Returns a dictionary of the handle properties 'name','baseClass','instrument','module','remote','remoteServer','args','kwargs'.
         """
         return {'name': self._name, 'baseClass': self._baseClass, 'instrument': self._instrument, 'module': self._module, 'remote': self._remote, 'remoteServer': self._remoteServer, 'args': self._args, 'kwargs': self._kwargs}
 
@@ -74,7 +74,7 @@ class InstrumentMgr(Singleton, Helper):
     1) loads or reloads instruments from python modules on a local machine with or without local instrument server.
     2) loads a remote instrument, either through the HTTP XML-RPC protocol or through the custom Remote Instrument Protocol (RIP) .
     3) maintains a dictionary with the handles of class InstrumentHandle for each loaded instruments.
-    The public methods instrumentHandles(), instrumentNames() and instruments() return this dictionnary, the instrument names, and the instruments, respectively. 
+    The public methods instrumentHandles(), instrumentNames() and instruments() return this dictionary, the instrument names, and the instruments, respectively. 
     4) It can load frontpanels associated to a local or remote instruments if a frontpanel module can be found.
       Frontpanels can be loaded but are not managed by the instrument manager.
 

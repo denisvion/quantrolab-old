@@ -64,12 +64,12 @@ class Instr(Instrument):
     Each sub-instrument is defined at class initilization, or later using methods setBiasGen, setPumpGen, setTestVNA, or setTestFSA (see doc strings).
     Its specification is given as a tuple (instr,dict) where:
       - instr is the instrument object or its name in the instrument manager;
-      - dict is a dictionnary with keys 
+      - dict is a dictionary with keys 
         * 'setBias' and 'bias' for the flux dc bias generator,
         * 'setPumpFreq', 'pumpFreq','setPumpPow','pumpPow' for the pump microwave generator,
         * 'setVNAFreq','VNAFreq','setVNASpan','VNASpan','setVNAPow','VNAPow','getVNASpectrum' for the test vectorial network analyzer,
         * 'setFSAFreq','FSAFreq','setFSASpan','FSASpan','setFSAPow','FSAPow','getFSASpectrum' for the test frequency spectrum analyzer;
-        The dictionnary values are the the corresponding method names of the sub-instruments.
+        The dictionary values are the the corresponding method names of the sub-instruments.
     """
 
     ###################################
@@ -106,7 +106,7 @@ class Instr(Instrument):
 
     def saveState(self, directory=None):
         """
-        Saves the _param dictionnary of the instrument in a file 
+        Saves the _param dictionary of the instrument in a file 
         """
         self.debugPrint('saveState with directory = ', directory)
         if directory is None or not os.path.isdir(directory):
@@ -131,7 +131,7 @@ class Instr(Instrument):
 
     def restoreState(self, directory=None, create=False):
         """
-        Restores the state of the instrument by loading _param dictionnary.
+        Restores the state of the instrument by loading _param dictionary.
         """
         if directory is None or not os.path.isdir(directory):
             try:
@@ -170,7 +170,7 @@ class Instr(Instrument):
         """
         if instrum is None:
             return
-        # separate reference to sub-instrument from dictionnary of
+        # separate reference to sub-instrument from dictionary of
         # sub-instrument methods
         inst, instDict = instrum
         print inst, insDict
@@ -187,7 +187,7 @@ class Instr(Instrument):
             # otherwise assume that inst is the sub-instrument object
             else:
                 inst = instr
-            # save the sub-instrument object in the sub-instrument dictionnary
+            # save the sub-instrument object in the sub-instrument dictionary
             self._subInstruments[name] = inst
 
             # for all expected methods of sub-instrument
@@ -206,13 +206,13 @@ class Instr(Instrument):
 
     def subInstruments(self):
         """
-        Return the dictionnary of sub-instruments.
+        Return the dictionary of sub-instruments.
         """
         return self._subInstruments
 
     def methods(self):
         """
-        Return the dictionnary of methods.
+        Return the dictionary of methods.
         """
         return self._methods
 
