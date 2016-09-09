@@ -61,9 +61,10 @@ class HelperManager(Observer):
         """
         return self._helpersRootDir
 
-    def helpers(self, strRepr=False):
+    def helpers(self, update=False, strRepr=False):
         """
         Returns a copy of the dictionary of loaded helpers.
+        if update=true, calls the _updateHelperDic function to remove helpers that are no longer in memory;
         if strRepr = True, the helper objects (helper and possibly its associate) are replaced by their string
         representation (interesting for interprocess communication).
         """
@@ -75,12 +76,41 @@ class HelperManager(Observer):
                     item['associate'] = str(item['associate'])
         return helpersCopy
 
+    def _updateHelperDic(self):
+        """
+        Removes from the _helpers dictionary helpers and associates that are no longer present in memory.
+        """
+        for helperName in self._helpers:
+            helperDic = self._helpers[helperName]
+            try:
+                x = helperDic['helper']
+                # no error occured => keep the helper and check the associate
+                if 'associate' in helperDic:            # check for associate
+                    try:
+                        y = helperDic['associate']
+                    except:                             # error occured => associate no longer in memeory
+                        helperDic['associate'] = None
+            except:                                     # an eror occured because the helper is no longer in memory
+                if 'associate' in helperDic:            # check for associate
+                    try:
+                        y = helperDic['associate']
+                        # no error occured => there is an associate to the helper => copy it before deleting
+                        newName = helperDic['associateName']
+                        helper = helperDic['associate']
+                        filename = helperDic['associatePath']
+                        helperType = helperDic['associateType']
+                        # copy to a new item in the top dictionnary
+                        self._helpers[newName] = {'helper': helper, 'helperPath': filename, 'helperType': helperType}
+                # removal of absent helper
+                self._helpers.pop(helperName)
+
     def updated(self, subject=None, property=None, value=None):
         print 'in HelperManager.updated() with (subject, property, value) = ', (subject, property, value)
         if property == 'closing':
-            print sys.getrefcount(subject), 'references:'
+            pass
+            """print sys.getrefcount(subject), 'references:'
             for ref in gc.get_referrers(subject):
-                print ref
+                print ref"""
 
     def loadHelpers(self, filename=None):
         """

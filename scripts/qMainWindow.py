@@ -42,10 +42,11 @@ class Singleton(object):
     """
     _instance = None
 
-    def delete(self):
-    	print 'in delete'
+    def _delete(self):
+    	print 'in _delete'
         self._instance = None
-        print _instance
+        print self._instance
+        del self._Singleton__instance
 
     def __new__(cls, *args, **kwargs):
         if not cls._instance:

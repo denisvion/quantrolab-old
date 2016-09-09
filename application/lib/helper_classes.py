@@ -118,7 +118,6 @@ class HelperGUI(Debugger, Reloadable, Subject, ObserverWidget, QMainWindow, obje
                 self.debugPrint('detaching', self._helper, 'from', self)
                 self._helper.detach(self)   # remove the two references to this gui
                 self._helper._gui = None
-            self.__del__()
             event.accept()
         else:
             event.ignore()
