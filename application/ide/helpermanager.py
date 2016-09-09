@@ -19,13 +19,14 @@ import gc
 import threading
 from threading import Thread
 
+from application.lib.base_classes1 import Debugger
 from application.lib.helper_classes import Helper, HelperGUI
-from application.lib.com_classes import Subject, Observer
+from application.lib.com_classes import Observer
 from PyQt4.QtGui import QMainWindow
 from ide.coderun.coderunner_gui import execInGui
 
 
-class HelperManager(Observer):
+class HelperManager(Observer, Debugger):
     """
     The HelperManager runs a set of GUI and non-GUI helpers in a separate and single Qt thread.
     (This choice is made because only one Qt application is allowed per process).
@@ -49,6 +50,11 @@ class HelperManager(Observer):
     """
 
     def __init__(self, helpersRootDir=None, gv=None):
+        """
+        HelperManager creator
+        """
+        Observer.__init__(self)
+        Debugger.__init__(self)
         if helpersRootDir is None:
             helpersRootDir = os.getcwd()
         self._gv = gv
@@ -101,16 +107,22 @@ class HelperManager(Observer):
                         helperType = helperDic['associateType']
                         # copy to a new item in the top dictionnary
                         self._helpers[newName] = {'helper': helper, 'helperPath': filename, 'helperType': helperType}
-                # removal of absent helper
-                self._helpers.pop(helperName)
+                    except:
+                        pass
+                self._helpers.pop(helperName)           # removes absent helper
+        self.debugPrint('exiting _updateHelperDic with _helpers = ', self._helpers)
 
     def updated(self, subject=None, property=None, value=None):
-        print 'in HelperManager.updated() with (subject, property, value) = ', (subject, property, value)
+        """
+        Function called when receiving notificatons from a Subject.
+        """
+        self.debugPrint('in HelperManager.updated() with (subject, property, value) = ', (subject, property, value))
         if property == 'closing':
-            pass
+            self._updateHelperDic()
             """print sys.getrefcount(subject), 'references:'
             for ref in gc.get_referrers(subject):
-                print ref"""
+                print ref
+            """
 
     def loadHelpers(self, filename=None):
         """

@@ -119,9 +119,6 @@ class HelperGUI(Debugger, Reloadable, Subject, ObserverWidget, QMainWindow, obje
                 self._helper.detach(self)   # remove the two references to this gui
                 self._helper._gui = None
             event.accept()
+            self.notify(property='closing',)
         else:
             event.ignore()
-
-    def __del__(self):
-        # print sys.getrefcount(self)
-        self.notify(property='closing',)

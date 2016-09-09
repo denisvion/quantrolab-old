@@ -362,7 +362,7 @@ class IDE(QMainWindow, ObserverWidget):
         (i.e. those corresponding to the scripts).
         """
         print 'Loading HelperManager in codeRunner...',
-        code = 'from application.ide.helpermanager import HelperManager\nhelperManager = HelperManager(gv=gv)'
+        code = 'from application.ide.helpermanager import HelperManager\nhelperManager = HelperManager(gv=gv)\nhelperManager.debugOn()'
         self.executeCode(code, threadId='HelperManager', filename='IDE')
         self.buildHelperMenu()
         print 'done.'
