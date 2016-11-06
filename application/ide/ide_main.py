@@ -28,9 +28,6 @@ from application.ide.threadpanel import *
 from application.ide.project import Project, ProjectModel, ProjectView
 # Code runner of the IDE
 from application.ide.coderun.coderunner import MultiProcessCodeRunner
-# from application.ide.coderun.coderunner_gui import execInGui           #
-# Utility function to run a Qt helper in the coderunner process
-# QtWidget being notified in its Qt event queue
 from application.ide.widgets.observerwidget import ObserverWidget
 
 # important directories
@@ -489,7 +486,7 @@ class IDE(QMainWindow, ObserverWidget):
         else:
             settings.remove("ide.lastproject")
         settings.setValue("ide.runStartupGroup", self.runStartupGroup.isChecked())
-        settings.sync()
+        settings.sync()  # commit immediately (in case of unexpected future error and freezing)
         self._codeRunner.terminate()
 
     def closing0k(self, editor):
@@ -642,6 +639,7 @@ class IDE(QMainWindow, ObserverWidget):
 
         settings.setValue("ide.workingpath", path)
         self.workingPathLabel.setText("Working path:" + path)
+        settings.sync()  # commit immediately (in case of unexpected future error and freezing)
 
     def setupCodeEnvironmentCallback(self, thread):
         """
@@ -691,28 +689,6 @@ class IDE(QMainWindow, ObserverWidget):
         obsolete
         """
         self.runStartupGroup.setChecked(self.runStartupGroup.isChecked())
-
-    def debug(self):
-        # print self._codeRunner.lv(identifier='HelperManager', keysOnly=True)
-        # print self._codeRunner.lv('helpers', identifier='HelperManager', keysOnly=True)
-        def callbackFunc1(x='undefined'):
-            print 'x=', x
-
-        def callbackFunc2(x):
-            x.lower()
-        # self.executeCode('a=-1', threadId='debug', filename='IDE')
-        # self.executeCode('a=-1', threadId='debug', filename='IDE', resultExpression='a')
-        # self.executeCode('a=-1', threadId='debug', filename='IDE', callbackFunc=callbackFunc1)
-        # self.executeCode('a=-1', threadId='debug', filename='IDE', resultExpression='a', callbackFunc=callbackFunc1)
-        # self.executeCode('a=-1', threadId='debug', filename='IDE', resultExpression='a', callbackFunc=callbackFunc2)
-        # self.executeCode('a=-2', threadId='debug', filename='IDE', resultExpression='a', callbackFunc='notify')
-        # code = 'class A():\n\tx=1\na=A()'
-        # self.executeCode(code, threadId='debug', filename='IDE', resultExpression='a', callbackFunc=callbackFunc1)
-        # self.executeCode('print "toto"\n', threadId='HelperManager', filename='IDE')
-        # self.executeCode('print gv', threadId='HelperManager', filename='IDE')
-        # print self._codeRunner.lv('HelperManager', keysOnly=True)
-        print self._codeRunner.lv('HelperManager', varname='helperManager._helpersRootDir')
-        print self._codeRunner.lv('HelperManager', varname='helperManager.helpers()', strRep=True)
 
     def buildHelperMenu(self):
         """
@@ -857,6 +833,30 @@ class IDE(QMainWindow, ObserverWidget):
                     filename = str(QFileDialog.getOpenFileName(caption=cap, filter=fil, directory=value[2]))
                     code = 'helperManager.loadHelpers("%s")' % filename
                     self.executeCode(code, threadId='HelperManager', filename="IDE")
+
+    def debug(self):
+        # print self._codeRunner.lv(identifier='HelperManager', keysOnly=True)
+        # print self._codeRunner.lv('helpers', identifier='HelperManager', keysOnly=True)
+        def callbackFunc1(x='undefined'):
+            print 'x=', x
+
+        def callbackFunc2(x):
+            x.lower()
+        # self.executeCode('a=-1', threadId='debug', filename='IDE')
+        # self.executeCode('a=-1', threadId='debug', filename='IDE', resultExpression='a')
+        # self.executeCode('a=-1', threadId='debug', filename='IDE', callbackFunc=callbackFunc1)
+        # self.executeCode('a=-1', threadId='debug', filename='IDE', resultExpression='a', callbackFunc=callbackFunc1)
+        # self.executeCode('a=-1', threadId='debug', filename='IDE', resultExpression='a', callbackFunc=callbackFunc2)
+        # self.executeCode('a=-2', threadId='debug', filename='IDE', resultExpression='a', callbackFunc='notify')
+        # code = 'class A():\n\tx=1\na=A()'
+        # self.executeCode(code, threadId='debug', filename='IDE', resultExpression='a', callbackFunc=callbackFunc1)
+        # self.executeCode('print "toto"\n', threadId='HelperManager', filename='IDE')
+        # self.executeCode('print gv', threadId='HelperManager', filename='IDE')
+        # print self._codeRunner.lv('HelperManager', keysOnly=True)
+        print self._codeRunner.lv('HelperManager', varname='helperManager._helpersRootDir')
+        print self._codeRunner.lv('HelperManager', varname='helperManager.helpers()', strRep=True)
+
+
 # end of IDE class definition
 
 # Starting application function

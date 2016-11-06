@@ -54,7 +54,7 @@ def execInGui(f, *args, **kwargs):
     app.emit(SIGNAL('runGuiCode(PyQt_PyObject)'), [f, args, kwargs])
 
 
-def _ensureGuiThreadIsRunning():
+def _ensureGuiThreadIsRunning(silent=True):
     """
     This private function
       - tests whether a QApplication instance is available;
@@ -65,7 +65,8 @@ def _ensureGuiThreadIsRunning():
     # Gets a handle to an existing QApplication in the process
     app = QApplication.instance()
     if app is None:                                                     # if no QApplication
-        print 'No existing Qt application in current process => creating one...',
+        if not silent:
+            print 'No existing Qt application in current process => creating one...',
         # creates a child thread with new application as target global app created here
         thread = Thread(target=_createApplication)
         thread.daemon = True
@@ -73,13 +74,16 @@ def _ensureGuiThreadIsRunning():
         while thread.is_alive() and (app is None or app.startingUp()):  # and wait until it is started
             time.sleep(0.01)
     else:                                                               # there is already a QApplication
-        print 'Use existing Qt application of current process...',
+        if not silent:
+            print 'Use existing Qt application of current process...',
     # if we have not memorized in signalConnected that a conection to _runGuiCodeSignal exists
     if not signalConnected:
-        print 'Adding signal handler to application...',
+        if not silent:
+            print 'Adding signal handler to application...',
         # defines the connection and memorize it
         _connectSignal()
-    print 'done.'
+    if not silent:
+        print 'done.'
 
 
 def _createApplication():

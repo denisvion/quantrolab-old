@@ -5,6 +5,14 @@ tree:
 - - - File
     - {url: 'L:/lab_control/quantrolab/scripts/welcome.py'}
     - []
-  - - File
-    - {url: 'L:/lab_control/quantrolab/scripts/trial1.py'}
-    - []
+  - - Folder
+    - {name: Examples}
+    - - - File
+        - {url: 'L:/lab_control/quantrolab/scripts/smartloop examples.py'}
+        - []
+      - - File
+        - {url: 'L:/lab_control/quantrolab/scripts/matplotlib plot examples.py'}
+        - []
+      - - File
+        - {url: 'L:/lab_control/quantrolab/scripts/datacube-datamanager examples.py'}
+        - []

@@ -23,7 +23,10 @@ from application.lib.base_classes1 import Debugger
 from application.lib.helper_classes import Helper, HelperGUI
 from application.lib.com_classes import Observer
 from PyQt4.QtGui import QMainWindow
-from ide.coderun.coderunner_gui import execInGui
+from PyQt4.QtCore import *
+from ide.coderun.coderunner_gui import execInGui, _ensureGuiThreadIsRunning
+
+__version__ = '1.0'    # version
 
 
 class HelperManager(Observer, Debugger):
@@ -31,7 +34,7 @@ class HelperManager(Observer, Debugger):
     The HelperManager runs a set of GUI and non-GUI helpers in a separate and single Qt thread.
     (This choice is made because only one Qt application is allowed per process).
     In Quantrolab, this HelperManager is run in the CodeProcess of the MultiProcessCodeRunner, so that all helpers share
-     the same memory as the scripts' threads.
+     the same global memory as the scripts' threads.
     Although the thread running the HelperManager is visible in Quantrolab, the Qt thread beside is invisible.
     The HelperManager properties are
         - a default helper root directory, returned by the method helpersRootDir()
@@ -55,11 +58,24 @@ class HelperManager(Observer, Debugger):
         """
         Observer.__init__(self)
         Debugger.__init__(self)
+        _ensureGuiThreadIsRunning()  # create immediately the Qt GUI application to benefit from QSsttings
+        QCoreApplication.setOrganizationName("CEA-Quantronics")
+        QCoreApplication.setOrganizationDomain("cea.fr")
+        QCoreApplication.setApplicationName("QuantroLab's helper manager")
+        QCoreApplication.setApplicationVersion(QString(__version__))
+        settings = QSettings()
         if helpersRootDir is None:
-            helpersRootDir = os.getcwd()
+            if settings.contains('helperManager.helpersRootDir'):
+                helpersRootDir = settings.value('helperManager.helpersRootDir').toString()
+            else:
+                helpersRootDir = os.getcwd()
         self._gv = gv
         self._helpersRootDir = helpersRootDir
         self._helpers = {}
+        if settings.contains('helperManager.helperFiles'):
+            filenames = settings.value('helperManager.helperFiles').toStringList()
+            for filename in filenames:
+                self.loadHelpers(filename=str(filename))
 
     def helpersRootDir(self):
         """
@@ -193,6 +209,14 @@ class HelperManager(Observer, Debugger):
                 if load:
                     params = (modulename, pyFilename, classname, associateAttr, associateTypeName)
                     execInGui(lambda: self._startHelper(*params))
+                    settings = QSettings()
+                    if settings.contains('helperManager.helperFiles'):
+                        files = settings.value('helperManager.helperFiles').toStringList()
+                    else:
+                        files = []
+                    if pyFilename not in files:
+                        files.append(pyFilename)
+                        settings.setValue('helperManager.helperFiles', files)
                 else:
                     print 'WARNING: Helper ' + key + ' already loaded. Close before reloading if necessary.'
         # print 'helpers dic = ', self._helpers
