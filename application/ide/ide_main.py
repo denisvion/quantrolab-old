@@ -260,7 +260,7 @@ class IDE(QMainWindow, ObserverWidget):
         """
         Initializes the menus of the Quantrolab application
         """
-        settings = QSettings()
+        # settings = QSettings()
         menuBar = self.menuBar()
 
         fileMenu = menuBar.addMenu("&File")
@@ -311,14 +311,13 @@ class IDE(QMainWindow, ObserverWidget):
         self.connect(projectSaveAs, SIGNAL('triggered()'), self.saveProjectAs)
         fileMenu.addSeparator()
         self.helpersMenu = menuBar.addMenu("&Helpers")
+        self.connect(self.helpersMenu, SIGNAL('aboutToShow()'), self.buildHelperMenu)
         self.codeMenu = menuBar.addMenu("&Code")
 
         self.windowMenu = menuBar.addMenu("&Window")
-        self.connect(self.windowMenu, SIGNAL(
-            'aboutToShow()'), self.buildWindowMenu)
+        self.connect(self.windowMenu, SIGNAL('aboutToShow()'), self.buildWindowMenu)
         # Only menu is connected and will pass the action to selectTab.
-        self.connect(self.windowMenu, SIGNAL(
-            'triggered(QAction*)'), self.selectTab)
+        self.connect(self.windowMenu, SIGNAL('triggered(QAction*)'), self.selectTab)
         self.helpMenu = menuBar.addMenu("Help")
         about = self.helpMenu.addAction('&About')
         self.connect(about, SIGNAL('triggered()'), self.showAbout)
@@ -361,7 +360,6 @@ class IDE(QMainWindow, ObserverWidget):
         print 'Loading HelperManager in codeRunner...',
         code = 'from application.ide.helpermanager import HelperManager\nhelperManager = HelperManager(gv=gv)\nhelperManager.debugOn()'
         self.executeCode(code, threadId='HelperManager', filename='IDE')
-        self.buildHelperMenu()
         print 'done.'
 
     def loadSettingsAndProject(self):
@@ -707,25 +705,21 @@ class IDE(QMainWindow, ObserverWidget):
             loadHelpers.setShortcut(QKeySequence("Ctrl+h"))
             self.connect(loadHelpers, SIGNAL('triggered()'), self.loadHelpers)
             self.helpersMenu.addSeparator()
-            """
-            helpers = self._codeRunner.lv(identifier='HelperManager', varname='helpers')
-            helpers = self._helperManager.helpers()
+            helpers = self._codeRunner.lv('HelperManager', varname='helperManager.helpers(strRepr=True)')
             ag1, ag2 = QActionGroup(self, exclusive=False,
                                     triggered=self.showHelper), QActionGroup(self, exclusive=False)
-            for key, dic in helpers.items():
-                helperType, associate, associateType = dic['helperType'], dic['associate'], dic['associateType']
+            for key, dic in helpers.iteritems():
+                helperType, associateName, associateType = dic['helperType'], dic['associateName'], dic['associateType']
                 if helperType == 'HelperGUI':
                     ag1.addAction(QAction(key, self, checkable=False))
-                    if associate is not None:
+                    if associateName is not None:
                         ag1.addAction(
-                            QAction(QString('  -  ' + associate), self, checkable=False, enabled=False))
+                            QAction(QString('  -  ' + associateName), self, checkable=False, enabled=False))
                 elif helperType == 'Helper':
-                    ag2.addAction(
-                        QAction(key, self, checkable=False, enabled=False))
+                    ag2.addAction(QAction(key, self, checkable=False, enabled=False))
             self.helpersMenu.addActions(ag1.actions())
             self.helpersMenu.addSeparator()
             self.helpersMenu.addActions(ag2.actions())
-            """
 
     def loadHelpers(self):
         """
@@ -740,10 +734,13 @@ class IDE(QMainWindow, ObserverWidget):
                          resultExpression='helperManager.helpersRootDir()', callbackFunc='notify')
 
     def showHelper(self, action):
+        """
+        Attemps to show the helper window in front.
+        (But it is forbidden to switch from a first QApplication to a second one in Micrososft Windows)
+        """
         actionName = str(action.text())
-        if actionName in self._helpers:
-            code = 'gv.%s.window2Front()' % actionName
-            self.executeCode(code, identifier=actionName, filename="IDE", editor=None)
+        code = 'gv.%s.window2Front()' % actionName
+        self.executeCode(code, threadId='helperManager', filename="IDE", )
 
     def buildWindowMenu(self):
         self.windowMenu.clear()
@@ -880,7 +877,7 @@ def startIDE(qApp=None):
     QCoreApplication.setApplicationVersion(QString(__version__))
 
     qApp.setStyle(QStyleFactory.create("QMacStyle"))
-    qApp.setStyleSheet("""QTreeWidget:Item {padding:6;}QTreeView:Item {padding:6;}""")
+    qApp.setStyleSheet("""QTreeWidget: Item {padding: 6; }QTreeView: Item {padding: 6; }""")
     qApp.connect(qApp, SIGNAL('lastWindowClosed()'), qApp, SLOT('quit()'))
     myIDE = IDE()
     myIDE.showMaximized()

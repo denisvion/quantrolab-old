@@ -396,7 +396,7 @@ class CodeRunner(Reloadable, Subject):
 
     def executeCode(self, code, threadId, name=None, resultExpression=None, gv=None, lv=None):
         """
-        Public mehtod to execute a code string and resultExpression string in an existing or new thread, with
+        Public method to execute a code string and resultExpression string in an existing or new thread, with
         - a given identifier,
         - a given name,
         - and new global and local variable dictionaries if the thread does not exist yet.

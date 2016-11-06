@@ -1,8 +1,8 @@
 """
 Welcome to Quantrolab!
 
-Quantrolab is a simple integrated development environment (IDE) to control a physics laboratory in Python. 
-It is itself programmed in Python (and Qt for the GUI interface). It was originally developped as an open source project by the quantum electronics group of CEA Saclay: Quantronics.
+Quantrolab is a simple integrated development environment (IDE) to control a physics laboratory with Python scripts. 
+It is itself programmed in Python (and Qt for the GUI interface). It was originally developped as an open source project by the quantum electronics (Quantronics) group of CEA Saclay (France).
 The main Quantrolab application is a general mutlithread script runner that can manage several scripts organised in a project, print results in a log, and logout and traceback errors.
 In addition, the IDE can run helpers (or plugins) dedicated to laboratory management.
 All the helpers and scripts are run in a code process separated from the main QT application; this code process involves a single secondary QT application (making possible to use GUI helpers for instance).
