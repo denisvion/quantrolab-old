@@ -24,7 +24,7 @@ iconPath = os.path.dirname(__file__) + '/resources/icons'
 # *******************************************
 
 # Global module dictionary defining the helper
-helperDic = {'name': 'Loop Manager', 'version': '1.1', 'authors': 'A. Dewes-V. Schmitt - D. Vion',
+helperDic = {'name': 'Loop Manager', 'version': '1.0', 'authors': 'A. Dewes-V. Schmitt - D. Vion',
              'mail': 'denis.vion@cea.fr', 'start': 'startHelperGui', 'stop': None}
 
 

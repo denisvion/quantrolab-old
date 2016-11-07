@@ -29,13 +29,13 @@ from application.helpers.instrumentmanager.instrumentmgr import InstrumentMgr
 #*******************************************
 
 # Global module dictionary defining the helper
-helperDic = {'name': 'Instrument Manager', 'version': '0.2', 'authors': 'A. Dewes-V. Schmitt - D. Vion',
+helperDic = {'name': 'Instrument Manager', 'version': '1.0', 'authors': 'A. Dewes-V. Schmitt - D. Vion',
              'mail': 'denis.vion@cea.fr', 'start': 'startHelperGui', 'stop': None}
 
 iconPath = os.path.dirname(__file__) + '/resources/icons'
 
 
-# 3) Start the dataManger
+# 3) Start the instrumentManager
 def startHelperGui(exitWhenClosed=False, parent=None, globals={}):
     global instrumentManager
     instrumentManager = InstrumentManager(parent, globals)
@@ -230,7 +230,7 @@ class InstrumentManager(HelperGUI):
         self.debugPrint("in InstrumentManagerPanel.openList()")
         # choose the file
         filename = str(QFileDialog.getOpenFileName(caption='Open instrument list file',
-                                                   filter="Instrument list file (*.py)", directory=self.workingDirectory()))
+                                                   filter="Instrument list file (*.inl)", directory=self.workingDirectory()))
         if filename != '':
             # import the file that should define an attribute instruments, and
             # call the instrument manager initInstruments method
@@ -255,7 +255,19 @@ class InstrumentManager(HelperGUI):
         Opens ...
         """
         self.debugPrint("in InstrumentManagerPanel.openInst()")
-        pass
+        # choose the file
+        filename = str(QFileDialog.getOpenFileName(caption='Open instrument file',
+                                                   filter="Instrument list file (*.py)", directory=self.workingDirectory()))
+        if filename != '':
+            # import the file that should define an attribute instruments, and
+            # call the instrument manager initInstruments method
+            self.setWorkingDirectory(filename)
+            basename = os.path.basename(filename)
+            fn = imp.load_source(basename, filename)
+            if hasattr(fn, 'instruments') and isinstance(fn.instruments, list):
+                self._helper.initInstruments(fn.instruments, globalParameters={'forceReload': True})
+            else:
+                raise 'No list with name instruments defined in file ' + filename + '.'
 
     def closeInst(self):
         """

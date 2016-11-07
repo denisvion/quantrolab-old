@@ -41,7 +41,7 @@ import numpy
 # *******************************************
 
 # Global module dictionary defining the helper
-helperDic = {'name': 'Data Manager', 'version': '0.4', 'authors': 'A. Dewes-V. Schmitt - D. Vion',
+helperDic = {'name': 'Data Manager', 'version': '1.0', 'authors': 'A. Dewes-V. Schmitt - D. Vion',
              'mail': 'denis.vion@cea.fr', 'start': 'startHelperGui', 'stop': None}
 # splash screen
 splashFile = QString(os.path.dirname(__file__) + '/resources/quantrolab.png')
