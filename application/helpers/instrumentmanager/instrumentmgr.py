@@ -15,6 +15,8 @@ from functools import wraps
 from application.lib.instrum_classes import *
 from application.lib.helper_classes import Helper
 
+__instrumentsRootDir__ = 'lab/instruments'
+
 
 class InstrumentHandle:
 
@@ -69,12 +71,12 @@ class InstrumentHandle:
 
 class InstrumentMgr(Singleton, Helper):
 
-    """ 
+    """
     The InstrumentManager manages a pull of instruments of class Instr:
     1) loads or reloads instruments from python modules on a local machine with or without local instrument server.
     2) loads a remote instrument, either through the HTTP XML-RPC protocol or through the custom Remote Instrument Protocol (RIP) .
     3) maintains a dictionary with the handles of class InstrumentHandle for each loaded instruments.
-    The public methods instrumentHandles(), instrumentNames() and instruments() return this dictionary, the instrument names, and the instruments, respectively. 
+    The public methods instrumentHandles(), instrumentNames() and instruments() return this dictionary, the instrument names, and the instruments, respectively.
     4) It can load frontpanels associated to a local or remote instruments if a frontpanel module can be found.
       Frontpanels can be loaded but are not managed by the instrument manager.
 
@@ -83,7 +85,7 @@ class InstrumentMgr(Singleton, Helper):
 
     _initialized = False
 
-    def __init__(self, parent=None, globals={}, instrumentsRootDir="instruments", frontpanelsRootDir="instruments"):
+    def __init__(self, parent=None, globals={}, instrumentsRootDir=__instrumentsRootDir__, frontpanelsRootDir=__instrumentsRootDir__):
         """
         Initialize the instrument manager.
         """
@@ -122,28 +124,28 @@ class InstrumentMgr(Singleton, Helper):
         instrumentModuleName is a  dotted module name string possibly including '.' chars; it is NOT a filename string.
         The instrument module is considered as valid when it has the specified name and contains a definition for the class Instr.
         """
+        found = None
         for (dirpath, dirnames, filenames) in os.walk(self._instrumentsRootDir):  # start walking down the directory tree and at each step
-            found = None
-            # builds a list of all python file names (but _init__.py)
+            # builds a list of all python file names (except _init__.py)
             pyFilenames = [filename for filename in filenames if (
                 os.path.splitext(filename)[1] == '.py' and filename != '__init__.py')]
-            pyFilenames = [os.path.splitext(filename)[0]
-                           for filename in pyFilenames]
+            pyFilenames = [os.path.splitext(filename)[0] for filename in pyFilenames]
             if instrumentModuleName in pyFilenames:
                 try:
-                    # build the class dictgionary with the pyclbr python class
-                    # browser
-                    dic = pyclbr.readmodule(str(filename), [dirpath])
-                    # check that the module contains a class definition Instr
-                    # in the file and not through an import.
-                    if 'Instr' in dic and dic['Instr'].file == os.path.join(os.path.realpath(dirpath), filename + '.py'):
-                        found = (dic['Instr'].module, dic['Instr'].file)
-                        break  # stop the walk
+                    # build the class dictionary with the pyclbr python class browser
+                    dic = pyclbr.readmodule(instrumentModuleName, [dirpath])
+                    # check that the module contains a class definition Instr in the file and not through an import.
+                    if 'Instr' in dic:
+                        path1 = os.path.realpath(dic['Instr'].file)
+                        path2 = os.path.join(os.path.realpath(dirpath), instrumentModuleName + '.py')
+                        if path1 == path2:
+                            found = (dic['Instr'].module, path1)
+                            break  # stop the walk
                 except:
                     print 'an error occured when trying to read the module.'
                 finally:
                     pass
-            return found
+        return found
 
     def findPanelModule(self, instrument):
         """
@@ -170,7 +172,9 @@ class InstrumentMgr(Singleton, Helper):
         Returns the instrument object, or None if the initialization fails.
         """
         try:
-            moduleName, fileName = self.findInstrumentModule(instrumentModule)
+            found = self.findInstrumentModule(instrumentModule)
+            if found is not None:
+                modulename, filename = found
             #module = __import__(moduleName,globals(),globals(),["Instr"],0)
             (path, name) = os.path.split(filename)
             (name, ext) = os.path.splitext(name)
@@ -251,8 +255,12 @@ class InstrumentMgr(Singleton, Helper):
             self.notify("instruments", self._instrumentHandles)
             return handle.instrument()
         else:                                                     # local instrument
-            reload(handle._module)
-            newClass = handle._module.Instr
+            module = handle._module
+            path1 = os.path.split(module.__file__)[0]
+            if path1 not in sys.path:
+                sys.path.insert(0, path1)
+            reload(module)
+            newClass = module.Instr
             handle.instrument().__class__ = newClass
             handle.instrument().initialize(*passedArgs, **passedKwArgs)
             self.notify("instruments", self._instrumentHandles)
@@ -260,7 +268,7 @@ class InstrumentMgr(Singleton, Helper):
 
     def _isUrl(self, name):
         """
-        Private method that determines if an instrument name is an URL for a remote instrument. 
+        Private method that determines if an instrument name is an URL for a remote instrument.
         """
         if re.match(r'^rip\:\/\/', name) or re.match(r'^http\:\/\/', name):
             return True
