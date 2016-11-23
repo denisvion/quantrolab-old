@@ -51,7 +51,7 @@ instruments = [
 ]
 
 InstMgr=gv.InstrumentMgr
-InstMgr.initInstruments(instruments,globalParameters = {'forceReload' : True} )
+InstMgr.loadInstruments(instruments,globalParameters = {'forceReload' : True} )
 print 
 print 'LOADED INSTRUMENTS ARE:\n', InstMgr.instrumentNames()
 for name in InstMgr.instrumentNames():

@@ -24,9 +24,9 @@ from application.ide.editor.codeeditor import CodeEditor
 
 from application.helpers.instrumentmanager.instrumentmgr import InstrumentMgr
 
-#*******************************************
+# *******************************************
 #  Helper initialization                   *
-#*******************************************
+# *******************************************
 
 # Global module dictionary defining the helper
 helperDic = {'name': 'Instrument Manager', 'version': '1.0', 'authors': 'A. Dewes-V. Schmitt - D. Vion',
@@ -52,9 +52,9 @@ def startHelperGuiInGui(exitWhenClosed=False, parent=None, globals={}):
 if __name__ == '__main__':                               # 1) starts here in the module
     startHelperGuiInGui(True)
 
-#********************************************
+# ********************************************
 #  InstrumentManager GUI  class             *
-#********************************************
+# ********************************************
 
 
 class InstrumentManager(HelperGUI):
@@ -66,10 +66,8 @@ class InstrumentManager(HelperGUI):
         """
         Creator of the instrument manager panel.
         """
-        instrumentMgr = InstrumentMgr(
-            parent, globals)         # instantiates a InstrumentMgr
-        # inform the helper it has an associated gui by adding the gui as an
-        # attribute
+        instrumentMgr = InstrumentMgr(parent, globals)         # instantiates a InstrumentMgr
+        # inform the helper it has an associated gui by adding the gui as an attribute
         instrumentMgr._gui = self
         # init superClasses
         # defines it as the associated helper of the present HelperGUI
@@ -77,9 +75,7 @@ class InstrumentManager(HelperGUI):
         self.debugPrint("in InstrumentManagerPanel.creator")
 
         # Build GUI below
-        self.setStyleSheet(
-            """QTreeWidget:Item {padding:6;} QTreeView:Item {padding:6;}""")
-
+        self.setStyleSheet("""QTreeWidget:Item {padding:6;} QTreeView:Item {padding:6;}""")
         title = helperDic['name'] + " version " + helperDic["version"]
         if self._helper is not None:
             title += ' in tandem with ' + self._helper.__class__.__name__
@@ -92,13 +88,13 @@ class InstrumentManager(HelperGUI):
 
         menubar = self.menuBar()                            # menus
         filemenu = menubar.addMenu("File")
-        openList = filemenu.addAction("Open instrument list...")
-        saveList = filemenu.addAction("Save instrument list as...")
-        filemenu.addSeparator()
         openInst = filemenu.addAction("Open instrument file...")
         closeInst = filemenu.addAction("Close instrument")
         filemenu.addSeparator()
         openPanel = filemenu.addAction("Open frontpanel")
+        filemenu.addSeparator()
+        openList = filemenu.addAction("Open instrument list...")
+        saveList = filemenu.addAction("Save instrument list as...")
         filemenu.addSeparator()
         preferences = filemenu.addAction("Preferences...")
         menubar.addMenu(filemenu)
@@ -233,12 +229,12 @@ class InstrumentManager(HelperGUI):
                                                    filter="Instrument list file (*.inl)", directory=self.workingDirectory()))
         if filename != '':
             # import the file that should define an attribute instruments, and
-            # call the instrument manager initInstruments method
+            # call the instrument manager loadInstruments method
             self.setWorkingDirectory(filename)
             basename = os.path.basename(filename)
             fn = imp.load_source(basename, filename)
             if hasattr(fn, 'instruments') and isinstance(fn.instruments, list):
-                self._helper.initInstruments(
+                self._helper.loadInstruments(
                     fn.instruments, globalParameters={'forceReload': True})
             else:
                 raise 'No list with name instruments defined in file ' + filename + '.'
@@ -252,22 +248,15 @@ class InstrumentManager(HelperGUI):
 
     def openInst(self):
         """
-        Opens ...
+        Prompt for an instrument file and opens it.
         """
         self.debugPrint("in InstrumentManagerPanel.openInst()")
         # choose the file
-        filename = str(QFileDialog.getOpenFileName(caption='Open instrument file',
+        filePath = str(QFileDialog.getOpenFileName(caption='Open instrument file',
                                                    filter="Instrument list file (*.py)", directory=self.workingDirectory()))
-        if filename != '':
-            # import the file that should define an attribute instruments, and
-            # call the instrument manager initInstruments method
-            self.setWorkingDirectory(filename)
-            basename = os.path.basename(filename)
-            fn = imp.load_source(basename, filename)
-            if hasattr(fn, 'instruments') and isinstance(fn.instruments, list):
-                self._helper.initInstruments(fn.instruments, globalParameters={'forceReload': True})
-            else:
-                raise 'No list with name instruments defined in file ' + filename + '.'
+        if filePath != '':
+            self.setWorkingDirectory(filePath)
+            self._helper.loadInstrumentFromFilePath(None, filePath, args=[], kwargs={})
 
     def closeInst(self):
         """
@@ -357,7 +346,7 @@ class InstrumentManager(HelperGUI):
         if name not in self._frontpanels:
             return
         frontpanel = self._frontpanels[name]
-        index = self._tabs.indexOf(frontpanel)
+        loadInstrumentsabs.indexOf(frontpanel)
         if index != -1:                                           # instrument panel is already in a tab
             if show:
                 # => make active this tab if show is True
@@ -797,7 +786,7 @@ class InstrHelpWidget(QWidget):
             color = 'Red'
         self.log.setTextColor(QColor(color))
         self.log.append(QString(str(returned)))
-        #if error is not None: raise error
+        # if error is not None: raise error
 
 
 class InstrSCPIWidget(QWidget):
