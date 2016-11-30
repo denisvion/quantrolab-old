@@ -24,8 +24,8 @@ instruments = [
     },
     {
       'name' : 'tabor',
-      'load':False,
-      'class' : 'taborv3',
+      'load':True,
+      'class' : 'awg_taborv4',
       'kwargs' : {'visaAddress' : 'TCPIP0::192.168.0.75::5025::SOCKET', 'term_chars':'\n','testString':'*IDN?'}
     },
     {'name' : 'acqiris34',

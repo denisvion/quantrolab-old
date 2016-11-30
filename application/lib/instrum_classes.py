@@ -29,7 +29,8 @@ class Instrument(Debugger, ThreadedDispatcher, Reloadable, object):
     The generic Insrument class (also ThreadedDispatcher):
       - has access to its class (getClass()), its module (getModule), and its source file (getSourceFile())
       - has a name given at creation (name())
-      - has a dictionary of parameters (parameters()). This dictionary may be used to store the current state of the instrument, or other parameters.
+      - has a dictionary of parameters (parameters()).
+        This dictionary may be used to store the current state of the instrument, or other parameters.
       - has a current state (currentState())
       - has a dictionary of states stored by saveState(stateName), accessed by state(stateName), and removed by removeState(stateName).
       - can save to a file the current state by saveStateInFile(filename) or a stored state by saveStateInFile(filename,stateName=stateName)
@@ -48,18 +49,19 @@ class Instrument(Debugger, ThreadedDispatcher, Reloadable, object):
         ThreadedDispatcher.__init__(self)
         # the only name of the instrument that the instrument knows.
         self._name = name
-        self._states = dict()   # dictionary of states of the instrument.
-        # self._stateCount=0     # Removed by DV on March 2015.
+        self._states = dict()      # dictionary of states of the instrument.
         self._params = dict()
         self.daemon = True
+        self.initialized = False  # boolean value indicating that the initialize function was run without error
 
     def initialize(self, *args, **kwargs):
         """
         Instrument initialization.
         (Overide this function in each particular instrument sub-class.
-        WARNING: Avoid changing the instrument name self._name in this function).
+        WARNING 1: Avoid changing the instrument name self._name in this function).
+        WARNING 2: Always keep the self._initialized = True line at the end
         """
-        pass
+        self.initialized = True  # boolean value indicating that the initialize function was run without error
 
     def __str__(self):
         return "Instrument \"%s\"" % self.name()
@@ -68,7 +70,7 @@ class Instrument(Debugger, ThreadedDispatcher, Reloadable, object):
         """
         An instrument instr is callable with instr(requestString) = eval('instr.'+requestString)
         Example: instr.methodLeve1().methodLevel2() can be replaced by instr('methodLeve1().methodLevel2()')
-        This possibility happens to be useful in code editors.
+        This alternative syntax happens to be useful in code editors.
         """
         return eval('self.' + request)
 
@@ -88,13 +90,7 @@ class Instrument(Debugger, ThreadedDispatcher, Reloadable, object):
         # insert code here to fill self._params() if necessary
         return self._params
 
-    # Access to class, module, and source code.
-
-    def getClass(self):
-        """
-        Returns the class of the instrument.
-        """
-        return self.__class__
+    # Access to class, module, filename, and source code.
 
     def getModule(self):
         """
@@ -102,20 +98,17 @@ class Instrument(Debugger, ThreadedDispatcher, Reloadable, object):
         """
         return inspect.getmodule(self)
 
+    def getClass(self):
+        """
+        Returns the class of the instrument.
+        """
+        return self.__class__
+
     def getSourceFile(self):
-        """
-        Returns the py or pyc file containing the instrument's code.
-        """
-        file = inspect.getmodule(self).__file__
-        if not os.path.isfile(file):
-            return None
-        path, fullName = os.path.dirname(file), os.path.basename(file)
-        name, extension = os.path.splitext(fullName)
-        if extension != '.py':
-            possiblePyFile = path + '\\' + name + '.py'
-            if os.path.isfile(possiblePyFile):
-                file = possiblePyFile
-        return file
+        return inspect.getsourcefile(self.getClass())
+
+    def getsource(self):
+        return inspect.getsource(self.getClass())
 
     # Management of instrument states.
 
@@ -203,6 +196,12 @@ class Instrument(Debugger, ThreadedDispatcher, Reloadable, object):
         state = self.loadStateFromFile(filename)
         self.restoreState(state)
         return state
+
+    def states():
+        return self._states
+
+    def stateNames():
+        return self._states.keys()
 
 
 class CompositeInstrument(Instrument):
@@ -409,8 +408,7 @@ class VisaInstrument(Instrument):
 
 
 import pickle
-# implements an algorithm for turning an arbitrary Python object into a
-# series of bytes (or chars) or vice and versa.
+# implements an algorithm for turning an arbitrary Python object into a series of bytes (or chars) or vice and versa.
 import cPickle
 from struct import pack, unpack
 

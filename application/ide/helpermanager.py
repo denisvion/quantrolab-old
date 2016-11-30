@@ -240,7 +240,8 @@ class HelperManager(Observer, Debugger):
             print 'ERROR loading %s.' % filename
             raise
         try:
-            helper = getattr(module, classname)()       # instantiate the helper with class name classname
+            # instantiate the helper with class name classname
+            helper = getattr(module, classname)(globals=self._gv)
             helper.attach(self)                         # the helper will notify when it closes
             if isinstance(helper, HelperGUI):
                 helperType = 'HelperGUI'

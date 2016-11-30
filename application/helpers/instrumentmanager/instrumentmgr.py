@@ -76,8 +76,8 @@ class InstrumentMgr(Singleton, Helper):
     1) loads or reloads instruments from python modules on a local machine with or without local instrument server.
     2) loads a remote instrument, either through the HTTP XML-RPC protocol or through the custom Remote Instrument Protocol (RIP) .
     3) maintains a dictionary with the handles of class InstrumentHandle for each loaded instruments.
-    The public methods instrumentHandles(), instrumentNames() and instruments() return this dictionary, the instrument names, and the instruments, respectively.
-    4) It can load frontpanels associated to a local or remote instruments if a frontpanel module can be found.
+      The public methods instrumentHandles(), instrumentNames() and instruments() return this dictionary, the instrument names, and the instruments, respectively.
+    4) loads frontpanels associated to a local or remote instruments if a frontpanel module can be found.
       Frontpanels can be loaded but are not managed by the instrument manager.
 
     Note that there can be only one instance of the InstrumentManager per python shell (it is a singleton).
@@ -121,7 +121,7 @@ class InstrumentMgr(Singleton, Helper):
         and returns:
           - a tuple (module name,filename) if a valid module was found
           - or None if no valid module was found.
-        instrumentModuleName is a  dotted module name string possibly including '.' chars; it is NOT a filename string.
+        instrumentModuleName is a dotted module name string possibly including '.' chars; it is NOT a filename string.
         The instrument module is considered as valid when it has the specified name and contains a definition for the class Instr.
         """
         found = None
@@ -173,12 +173,11 @@ class InstrumentMgr(Singleton, Helper):
         or raises an error if the module was not found.
         """
         try:
-            found = self.findInstrumentModule(moduleName)
-            if found is not None:
-                modulename, filePath = found
-            instrument = self.loadInstrumentFromFilePath(name, filePath, args=args, kwargs=kwargs)
+            moduleName, filePath = self.findInstrumentModule(moduleName)
         except:
+            print 'Module %s not found' % moduleName
             raise
+        instrument = self.loadInstrumentFromFilePath(name, filePath, args=args, kwargs=kwargs)
         return instrument
 
     def loadInstrumentFromFilePath(self, name, filePath, args=[], kwargs={}):
@@ -215,9 +214,14 @@ class InstrumentMgr(Singleton, Helper):
             instrument = module.Instr(name=name)  # instantiation
         except:
             raise 'No instrument of class Instr defined in file ' + filePath + '.'
+        self._globals[name] = instrument
+        print 'instrument %s in global memory and available as gv.%s.' % (name, name)
         if isinstance(instrument, CompositeInstrument):
             instrument.setManager(self)
-        instrument.initialize(*args, **kwargs)  # initialization with the passed arguments
+        try:
+            instrument.initialize(*args, **kwargs)  # try initialization with the passed arguments
+        except:
+            print 'initialization of instrument %s failed.' % name
         # Creates the instrument handle and notifies possible observers
         handle = InstrumentHandle(name, moduleName, instrument, module, args=args, kwargs=kwargs)
         self._instrumentHandles[name] = handle
@@ -308,8 +312,7 @@ class InstrumentMgr(Singleton, Helper):
         - args and kwargs are the arguments to be passed to the initialization function at instantiation of the instrument.
         - forceReload indicates if  reloading should be forced in case the remote instrument already exists.
         """
-        self.debugPrint(
-            'in InstrumentManager.initRemoteInstrument(', address, ',', baseclass, ')')
+        self.debugPrint('in InstrumentManager.initRemoteInstrument(', address, ',', baseclass, ')')
         result = re.match(r'^rip\:\/\/(.*)\:(\d+)\/(.*)$', address)
         # open the connection to server first
         if result:
@@ -411,7 +414,8 @@ class InstrumentMgr(Singleton, Helper):
                 else:
                     args = []
                 try:
-                    self.loadInstrument(name=url, baseclass=baseclass, args=args, kwargs=kwargs, **globalParameters)
+                    self.loadInstrument(name=url, baseclass=baseclass, args=args,
+                                        kwargs=kwargs, **globalParameters)
                 except:
                     print "Could not initialize instrument: %s" % url
                     traceback.print_exc()
@@ -567,11 +571,11 @@ class InstrumentMgr(Singleton, Helper):
             module = self._frontpanelsRootDir + moduleName
             self.debugPrint('module=', module, ' moduleName=', moduleName)
             frontpanelModule = __import__(module, globals(), globals(), [
-                                          moduleName], -1)  # gets the module
+                moduleName], -1)  # gets the module
             # reloads it in case it has changed
             reload(frontpanelModule)
             frontpanelModule = __import__(module, globals(), globals(), [
-                                          moduleName], -1)  # and re import the new code
+                moduleName], -1)  # and re import the new code
             self.debugPrint('frontpanelModule=', frontpanelModule)
             # all instrument frontpanel should be of the Panel() class.
             # Instantiates the frontPanel and lets it know its associated
