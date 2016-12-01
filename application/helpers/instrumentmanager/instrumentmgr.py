@@ -221,7 +221,7 @@ class InstrumentMgr(Singleton, Helper):
         try:
             instrument.initialize(*args, **kwargs)  # try initialization with the passed arguments
         except:
-            print 'initialization of instrument %s failed.' % name
+            print 'ERROR: initialization of instrument %s failed.' % name
         # Creates the instrument handle and notifies possible observers
         handle = InstrumentHandle(name, moduleName, instrument, module, args=args, kwargs=kwargs)
         self._instrumentHandles[name] = handle
@@ -570,12 +570,10 @@ class InstrumentMgr(Singleton, Helper):
         try:
             module = self._frontpanelsRootDir + moduleName
             self.debugPrint('module=', module, ' moduleName=', moduleName)
-            frontpanelModule = __import__(module, globals(), globals(), [
-                moduleName], -1)  # gets the module
+            frontpanelModule = __import__(module, globals(), globals(), [moduleName], -1)  # gets the module
             # reloads it in case it has changed
             reload(frontpanelModule)
-            frontpanelModule = __import__(module, globals(), globals(), [
-                moduleName], -1)  # and re import the new code
+            frontpanelModule = __import__(module, globals(), globals(), [moduleName], -1)  # and re import the new code
             self.debugPrint('frontpanelModule=', frontpanelModule)
             # all instrument frontpanel should be of the Panel() class.
             # Instantiates the frontPanel and lets it know its associated
@@ -585,7 +583,7 @@ class InstrumentMgr(Singleton, Helper):
             return frontpanel
         except:
             print 'No frontPanel could be loaded for instrument ' + name + '.'
-            print traceback.print_exc()
+            # print traceback.print_exc()
 
 
 class RemoteInstrumentManager():

@@ -11,5 +11,4 @@ class Instr(Instrument):
         """
         Initializes the dummy instrument.
         """
-        duc
         self.initialized = True

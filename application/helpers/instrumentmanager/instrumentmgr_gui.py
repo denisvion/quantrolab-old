@@ -112,8 +112,7 @@ class InstrumentManager(HelperGUI):
         self._instrList.setSelectionMode(QAbstractItemView.ExtendedSelection)
         self._instrList.setHeaderLabels(['Instrument name'])
         self._instrList.setSortingEnabled(True)
-        self.connect(self._instrList, SIGNAL(
-            "loadShowFrontpanels()"), self.loadShowFrontpanels)
+        self.connect(self._instrList, SIGNAL("loadShowFrontpanels()"), self.loadShowFrontpanels)
         self.setupList = QComboBox()
         self.setupList.setEditable(True)
         restoreSetup = QPushButton("Restore setup")
@@ -125,8 +124,7 @@ class InstrumentManager(HelperGUI):
         reloadButton = QPushButton("Reload instrument(s)")
         frontPanelButton = QPushButton("Load/show frontpanel(s)")
         self.connect(reloadButton, SIGNAL("clicked()"), self.reloadInstrument)
-        self.connect(frontPanelButton, SIGNAL(
-            "clicked()"), self.loadShowFrontpanels)
+        self.connect(frontPanelButton, SIGNAL("clicked()"), self.loadShowFrontpanels)
 
         self.connect(restoreSetup, SIGNAL("clicked()"), self.restoreSetup)
         self.connect(saveSetup, SIGNAL("clicked()"), self.saveSetup)
@@ -327,8 +325,7 @@ class InstrumentManager(HelperGUI):
         """
         Ask the instrument manager to load the frontpanel with name name (if not already loaded) and adds it to the frontpanel dictionary self._frontpanels.
         """
-        self.debugPrint(
-            "in InstrumentManagerPanel.loadFrontpanel(name) with name=", name)
+        self.debugPrint("in InstrumentManagerPanel.loadFrontpanel(name) with name=", name)
         frontpanel = self._helper.frontpanel(name)
         if frontpanel is not None:
             self._frontpanels[name] = frontpanel
@@ -341,8 +338,7 @@ class InstrumentManager(HelperGUI):
         The frontpanel can be initially in an independant QMainWindow, in a flotting DockToTabWidget, or already be docked.
         Makes the tab active
         """
-        self.debugPrint(
-            "in InstrumentManagerPanel.dockFrontpanel(name) with name=", name)
+        self.debugPrint("in InstrumentManagerPanel.dockFrontpanel(name) with name=", name)
         if name not in self._frontpanels:
             return
         frontpanel = self._frontpanels[name]
@@ -368,8 +364,7 @@ class InstrumentManager(HelperGUI):
         """
         Show the frontpanel with name name.
         """
-        self.debugPrint(
-            "in InstrumentManagerPanel.showFrontpanel(name) with name=", name)
+        self.debugPrint("in InstrumentManagerPanel.showFrontpanel(name) with name=", name)
         frontpanel = self._frontpanels[name]
         frontpanel.show()
         frontpanel.activateWindow()
@@ -390,9 +385,15 @@ class InstrumentManager(HelperGUI):
         selected = self._instrList.selectedItems()
         for instrument in selected:
             name = str(instrument.text(0))
-            if name not in self._frontpanels:
-                self.loadFrontpanel(name, show=False)
-            self.dockFrontpanel(name)
+            self.loadShowFrontpanel(name, forceReload=forceReload)
+
+    def loadShowFrontpanel(self, name, forceReload=False):
+        """
+        Show the frontpanel of instrument name.
+        """
+        if name not in self._frontpanels or forceReload:
+            self.loadFrontpanel(name, show=False)
+        self.dockFrontpanel(name)
 
     def restoreSetup(self):
         """
@@ -948,3 +949,27 @@ class InstrumentList(QTreeWidget):
         QTreeWidget.mouseDoubleClickEvent(self, e)  # propagate
         # emit signal showFrontPanel
         self.emit(SIGNAL("loadShowFrontpanels()"))
+
+    def contextMenuEvent(self, event):
+        menu = QMenu(self)
+        renameAction = menu.addAction("Rename instrument...")
+        initializeAction = menu.addAction("(Re-)Initialize instrument")
+        loadPanelAction = menu.addAction("Load instrument panel")
+        menu.addSeparator()
+        setStateAction = menu.addAction("Set instrument state...")
+        saveStateAction = menu.addAction("Save instrument state as...")
+        menu.addSeparator()
+        removeAction = menu.addAction("Remove instrument")
+        action = menu.exec_(self.viewport().mapToGlobal(event.pos()))
+        if action == renameAction:
+            pass
+        elif action == initializeAction:
+            pass
+        elif action == loadPanelAction:
+            self.emit(SIGNAL("loadShowFrontpanels()"))
+        elif action == setStateAction:
+            pass
+        elif action == saveStateAction:
+            pass
+        elif action == removeAction:
+            pass

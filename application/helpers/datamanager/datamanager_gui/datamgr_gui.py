@@ -508,8 +508,7 @@ class CubeTreeView(QTreeWidget, ObserverWidget, Debugger):
                 self._parent.markAsBad()
 
     def selectCube(self, cube):
-        self.debugPrint(
-            "in CubeTreeView.selectCube(datacube) with datacube =", cube)
+        self.debugPrint("in CubeTreeView.selectCube(datacube) with datacube =", cube)
         if self.ref(cube) in self._items:
             item = self._items[self.ref(cube)]
             self.setCurrentItem(item)
