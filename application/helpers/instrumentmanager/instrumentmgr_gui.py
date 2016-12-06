@@ -91,8 +91,6 @@ class InstrumentManager(HelperGUI):
         openInst = filemenu.addAction("Open instrument file...")
         closeInst = filemenu.addAction("Close instrument")
         filemenu.addSeparator()
-        openPanel = filemenu.addAction("Open frontpanel")
-        filemenu.addSeparator()
         openList = filemenu.addAction("Open instrument list...")
         saveList = filemenu.addAction("Save instrument list as...")
         filemenu.addSeparator()
@@ -112,6 +110,7 @@ class InstrumentManager(HelperGUI):
         self._instrList.setSelectionMode(QAbstractItemView.ExtendedSelection)
         self._instrList.setHeaderLabels(['Instrument name'])
         self._instrList.setSortingEnabled(True)
+        self.connect(self._instrList, SIGNAL("reloadInstrument()"), self.reloadInstrument)
         self.connect(self._instrList, SIGNAL("loadShowFrontpanels()"), self.loadShowFrontpanels)
         self.setupList = QComboBox()
         self.setupList.setEditable(True)
@@ -149,19 +148,19 @@ class InstrumentManager(HelperGUI):
         splitter.addWidget(widgetLeft)
 
         self._tabs = DockingTabWidget()
-        self._instProp = InstrProperty()
-        self._tabs.addTab(self._instProp, 'Properties')
-        self._instHelp = InstrHelpWidget()
-        self._tabs.addTab(self._instHelp, 'Help')
+        self._instProp = InstrProperty(instrumentMgr=instrumentMgr)
+        self._tabs.addTab(self._instProp, 'Parameters')
         self._instCode = InstrCodeWidget()
         self._instCode.setReadOnly(True)
         styleSheet = """CodeEditor{color:#000;background:#FFF;font-family:Consolas,Courier New,Courier;font-size:12px;font-weight:normal;}"""
         self._instCode.setStyleSheet(styleSheet)
         self._instCode.number_bar.setStyleSheet(styleSheet)
         self._tabs.addTab(self._instCode, 'Code')
+        self._instHelp = InstrHelpWidget()
+        self._tabs.addTab(self._instHelp, 'Methods')
         self._instVisa = InstrSCPIWidget()
         self._tabs.addTab(self._instVisa, 'Visa SCPI')
-        for tabName in ['Properties', 'Help', 'Code', 'Visa SCPI']:
+        for tabName in ['Parameters', 'Code', 'Methods', 'Visa SCPI']:
             self._tabs.setNotClosable(tabName)
             self._tabs.setNotFloatable(tabName)
         self._tabs.setMinimumWidth(550)
@@ -286,12 +285,11 @@ class InstrumentManager(HelperGUI):
         Removes obsolete instrument names and add new ones from the QTreeWidget instrument list.
         """
         self.debugPrint("in InstrumentManagerPanel.updateInstrumentsList()")
-        self._instrList.setSortingEnabled(False)
         li = self._instrList
+        li.setSortingEnabled(False)
         newNames = self._helper.instrumentNames()
         indices = range(li.topLevelItemCount())
         oldNames = [str(li.topLevelItem(i).text(0)) for i in indices]
-        # self._instrList.clear()
         for index, oldName in zip(indices, oldNames):
             if oldName not in newNames:
                 li.takeTopLevelItem(index)
@@ -318,7 +316,6 @@ class InstrumentManager(HelperGUI):
         self.debugPrint("in InstrumentManagerPanel.reloadInstrument()")
         selected = self._instrList.selectedItems()
         for instrument in selected:
-            print "Reloading %s" % instrument.text(0)
             self._helper.reloadInstrument(str(instrument.text(0)))
 
     def loadFrontpanel(self, name, show=True):
@@ -488,7 +485,7 @@ class InstrumentManager(HelperGUI):
 
     def selectInstr(self, new, previous):
         """
-        Set current instrument handle self._instr to the handle of the selected instrument.
+        Set current instrument handle self._instrHandle to the handle of the selected instrument.
         Called when a new item is selected in the QTreeWidget of instruments.
         """
         self.debugPrint('in InstrumentManagerPanel.selectInstr() with current instr =',
@@ -496,17 +493,59 @@ class InstrumentManager(HelperGUI):
         if new is None:
             return
         handle = self._helper.instrumentHandles()[str(new.text(0))]
-        self._instr = handle
+        self._instrHandle = handle
         for obj in [self._instProp, self._instHelp, self._instCode, self._instVisa]:
-            obj.setInstr(handle)
+            obj.setInstrHandle(handle)
+
+
+class InstrumentList(QTreeWidget):
+    """
+    This is the QWidget to display/load instrumzents in the Instrument Manager GUI.
+    """
+
+    def mouseDoubleClickEvent(self, e):
+        QTreeWidget.mouseDoubleClickEvent(self, e)  # propagate
+        # emit signal showFrontPanel
+        self.emit(SIGNAL("loadShowFrontpanels()"))
+
+    def contextMenuEvent(self, event):
+        menu = QMenu(self)
+        renameAction = menu.addAction("Rename instrument...")
+        reloadAction = menu.addAction("Reload instrument(s)")
+        loadPanelAction = menu.addAction("Load instrument panel(s)")
+        menu.addSeparator()
+        setStateAction = menu.addAction("Set instrument state...")
+        saveStateAction = menu.addAction("Save instrument state as...")
+        menu.addSeparator()
+        removeAction = menu.addAction("Remove instrument")
+        action = menu.exec_(self.viewport().mapToGlobal(event.pos()))
+        if action == renameAction:
+            pass
+        elif action == reloadAction:
+            self.emit(SIGNAL("reloadInstrument()"))
+        elif action == loadPanelAction:
+            self.emit(SIGNAL("loadShowFrontpanels()"))
+        elif action == setStateAction:
+            pass
+        elif action == saveStateAction:
+            pass
+        elif action == removeAction:
+            pass
 
 
 class InstrProperty(QWidget):
+    """
+    This is the QWidget for displaying/managing the parameters of an instrument in the Instrument Manager GUI
+    """
 
-    def __init__(self):
+    def __init__(self, instrumentMgr=None):
+        """
+        Creator. Sets up the GUI.
+        """
         QWidget.__init__(self)
 
-        self._instr = None
+        self._instrumentMgr = instrumentMgr
+        self._instrHandle = None
 
         lineEditList = ['_instrName', '_baseClass', '_serverAdress']
         for lineEdit in lineEditList:
@@ -514,34 +553,42 @@ class InstrProperty(QWidget):
             getattr(self, lineEdit).setReadOnly(True)
         self._remote = QCheckBox('remote')
         self._remote.setEnabled(False)
-        self._params = QTableWidget(50, 2)
-        self._params.setHorizontalHeaderLabels(['Param. name', 'Value'])
-        self._params.setColumnWidth(0, 100)
-        self._params.horizontalHeader().setStretchLastSection(True)
-
+        tables = self._args, self._kwargs, self._params = (
+            QTableWidget(0, 2), QTableWidget(0, 2), QTableWidget(50, 2))
+        for table in tables:
+            table.setHorizontalHeaderLabels(['Param. name', 'Value'])
+            table.setColumnWidth(0, 100)
+            table.horizontalHeader().setStretchLastSection(True)
+            table.setMaximumHeight(250)
         subLayout1 = QGridLayout()
         subLayout1.setSpacing(4)
-        subLayout1.addWidget(QLabel("Instrument name:"), 0, 0)
+        subLayout1.addWidget(QLabel('Instrument name:'), 0, 0)
         subLayout1.addWidget(self._instrName, 0, 1)
-        subLayout1.addWidget(QLabel("Base class:"), 0, 2)
+        subLayout1.addWidget(QLabel('Base class:'), 0, 2)
         subLayout1.addWidget(self._baseClass, 0, 3)
-        subLayout1.addWidget(QLabel("server adress:"), 1, 0)
+        subLayout1.addWidget(QLabel('server adress:'), 1, 0)
         subLayout1.addWidget(self._serverAdress, 1, 1)
         subLayout1.addWidget(self._remote, 1, 2)
 
-        self._args, self._kwargs = QTextEdit(), QTextEdit()
         subLayout2 = QGridLayout()
         subLayout2.setSpacing(4)
-        subLayout2.addWidget(QLabel("Initialization arguments:"), 0, 0)
-        self._args.setMaximumHeight(100)
+        subLayout2.addWidget(QLabel('Initialization arguments:'), 0, 0)
         subLayout2.addWidget(self._args, 1, 0)
-        subLayout2.addWidget(QLabel("Initialization keyword arguments:"), 2, 0)
-        self._kwargs.setMaximumHeight(100)
+        subLayout2.addWidget(QLabel('Initialization keyword arguments:'), 2, 0)
         subLayout2.addWidget(self._kwargs, 3, 0)
+
+        subLayout3 = QHBoxLayout()
+        initializeButton = QPushButton('(Re-)Initialize')
+        self.connect(initializeButton, SIGNAL('clicked()'), self.initialize)
+        subLayout3.addWidget(initializeButton)
+        self._initialized = QCheckBox('initialized')
+        self._initialized.setEnabled(False)
+        subLayout3.addWidget(self._initialized)
 
         layout1 = QVBoxLayout()
         layout1.addLayout(subLayout1)
         layout1.addLayout(subLayout2)
+        layout1.addLayout(subLayout3)
         self.initParamGBox = QGroupBox('Initialization parameters')
         self.initParamGBox.setLayout(layout1)
 
@@ -555,30 +602,94 @@ class InstrProperty(QWidget):
         layout.addWidget(self.instrParamGBox)
         self.setLayout(layout)
 
-    def setInstr(self, instr):
-        self._instr = instr  # this is an InstrumentHandle
+    def setInstrHandle(self, instrHandle):
+        """
+        Sets the _instrHandle attribute
+        """
+        self._instrHandle = instrHandle  # this is an InstrumentHandle
         self.update()
 
     def update(self):
-        self._instrName.setText(QString(self._instr.name()))
-        self._baseClass.setText(QString(self._instr.baseClass()))
-        self._remote.setChecked(self._instr.remote())
-        if self._instr.remote():
+        """
+        update all gui elements using the instrument handle and the intrument's code.
+        """
+        handle = self._instrHandle
+        instrument = handle.instrument
+        self._instrName.setText(handle.name())
+        self._baseClass.setText(QString(handle.baseClass))
+        self._remote.setChecked(handle.remote)
+        if handle.remote:
             self._serverAdress.setVisible(True)
-            server = self._instr.remoteServer()
-            self._serverAdress.setText(
-                QString(server.ip() + ':' + str(server.port())))
+            server = handle.remoteServer
+            self._serverAdress.setText(QString(server.ip() + ':' + str(server.port())))
         else:
             self._serverAdress.clear()
             self._serverAdress.setVisible(False)
-        self._args.setText(QString(str(self._instr.args())))
-        self._kwargs.setText(QString(str(self._instr.kwargs())))
+
+        args, kwargs = [], {}
+        if instrument.initialized:
+            args = handle.args
+            kwargs = handle.kwargs
+        argNames, kwargsCode = instrument.getInitializationArgs()
+
+        self._args.clearContents()
+        self._args.setRowCount(len(argNames))
+        for index, argName in enumerate(argNames):
+            value = '?'
+            if instrument.initialized:
+                value = args[index]
+            item = QTableWidgetItem(argName)
+            item.setFlags(Qt.ItemIsEnabled)
+            self._args.setItem(index, 0, item)
+            self._args.setItem(index, 1, QTableWidgetItem(str(value)))
+
+        self._kwargs.clearContents()
+        self._kwargs.setRowCount(len(kwargsCode))
+        index = 0
+        for key, value in kwargsCode.iteritems():
+            if instrument.initialized:
+                value = kwargs[key]
+            valueString = str(value)
+            if isinstance(value, str):
+                valueString = "'" + valueString + "'"
+            item = QTableWidgetItem(key)
+            item.setFlags(Qt.ItemIsEnabled)
+            self._kwargs.setItem(index, 0, item)
+            self._kwargs.setItem(index, 1, QTableWidgetItem(valueString))
+            index += 1
+
+        self._initialized.setChecked(instrument.initialized)
+
         self._params.clearContents()
+
+    def initialize(self):
+        """
+        Propagates an initialize() signal upwards.
+        """
+        if self._instrHandle is not None and self._instrumentMgr is not None:
+            args, kwargs = self.buildArgsKwargs()
+            self._instrumentMgr.initializeInstrument(self._instrHandle, args=args, kwargs=kwargs)
+            self.update()
+
+    def buildArgsKwargs(self):
+        """
+        Builds the args and kwargs functional arguments from the QTableWidget
+        """
+        args = [eval(str(self._args.item(i, 1).text())) for i in range(self._args.rowCount())]
+        kwargs = {}
+        for i in range(self._kwargs.rowCount()):
+            kwargs[str(self._kwargs.item(i, 0).text())] = eval(str(self._kwargs.item(i, 1).text()))
+        # print args, [type(arg) for arg in args]
+        # print kwargs, [type(arg) for key, arg in kwargs.iteritems()]
+        return args, kwargs
 
 
 class InstrHelpWidget(QWidget):
-
+    """
+    This is the QWidget for displaying/calling the methods and help of an instrument in the Instrument Manager GUI
+    """
     # Initializes the widget.
+
     def __init__(self, parent=None):
         QWidget.__init__(self)
 
@@ -608,18 +719,14 @@ class InstrHelpWidget(QWidget):
         self.connect(self.methodCall, SIGNAL(
             "editingFinished()"), self.executeCommand)
         self.connect(self.execute, SIGNAL('clicked()'), self.executeCommand)
-        self.connect(self.clearLog, SIGNAL(
-            'clicked()'), lambda: self.log.clear())
+        self.connect(self.clearLog, SIGNAL('clicked()'), lambda: self.log.clear())
 
         classGroupBox = QGroupBox('Class information')
         layout1 = QGridLayout()
-        layout1.addWidget(QLabel('Class:'), layout1.rowCount(),
-                          0, 1, 1, Qt.AlignLeft)
+        layout1.addWidget(QLabel('Class:'), layout1.rowCount(), 0, 1, 1, Qt.AlignLeft)
         layout1.setColumnStretch(layout1.columnCount() - 1, 0)
-        layout1.addWidget(self.myClass, layout1.rowCount() -
-                          1, layout1.columnCount())
-        layout1.addWidget(QLabel('Source:'),
-                          layout1.rowCount(), 0, 1, 1, Qt.AlignLeft)
+        layout1.addWidget(self.myClass, layout1.rowCount() - 1, layout1.columnCount())
+        layout1.addWidget(QLabel('Source:'), layout1.rowCount(), 0, 1, 1, Qt.AlignLeft)
         layout1.addWidget(self.sourceFile, layout1.rowCount() - 1, 1)
         layout1.setColumnStretch(layout1.columnCount() - 1, 4)
         layout1.addWidget(QLabel('Doc string:'), layout1.rowCount(), 0)
@@ -661,16 +768,16 @@ class InstrHelpWidget(QWidget):
         layout.addWidget(methodsGroupBox)
         self.setLayout(layout)
 
-        self._instr = None
+        self._instrHandle = None
 
-    def setInstr(self, instr):
-        self._instr = instr
+    def setInstrHandle(self, instrHandle):
+        self._instrHandle = instrHandle
         self.update()
 
     def update(self):
         for item in [self.myClass, self.sourceFile, self.generalHelp, self.methods, self.methodCall, self.methodHelp]:
             item.clear()
-        if self._instr.remote():
+        if self._instrHandle.remote:
             # self.myClass.setTextColor(QColor('Red'))
             self.myClass.setText(QString('Remote Instrument'))
             # self.myClass.setTextColor(QColor('Black'))
@@ -679,29 +786,27 @@ class InstrHelpWidget(QWidget):
         self.fillMethods()
 
     def fillClassSourceDoc(self):
-        ins = self._instr.instrument()
+        ins = self._instrHandle.instrument
         clas = ins.getClass()
         if clas is None:
             clas = 'None'
         self.myClass.setText(QString(str(clas)))
         sourceFile = ins.getSourceFile()
         self.sourceFile.setText(QString(str(sourceFile)))
-        # doc=ins.__doc__
         doc = inspect.getdoc(ins)
         if doc is None:
             doc = 'No documentation string.'
         self.generalHelp.setText(QString(doc))
 
     def fillMethods(self):
-        ins = self._instr.instrument()
+        ins = self._instrHandle.instrument
         clas = ins.getClass()
         publicMethods = [method[0] for method in inspect.getmembers(
             clas, predicate=inspect.ismethod) if method[0][0] != '_']
         for method in publicMethods:
             item = QTreeWidgetItem()
             item.setText(0, method)
-            self.methods.insertTopLevelItem(
-                self.methods.topLevelItemCount(), item)
+            self.methods.insertTopLevelItem(self.methods.topLevelItemCount(), item)
             self.methods.sortItems(0, Qt.AscendingOrder)
 
     def help(self, new, previous):
@@ -710,7 +815,7 @@ class InstrHelpWidget(QWidget):
         if new is None:
             return
         methodName = str(new.text(0))
-        method = getattr(self._instr.instrument(), methodName)
+        method = getattr(self._instrHandle.instrument, methodName)
         if inspect.ismethod(method):
             # helpString=method.__doc__
             helpString = inspect.getdoc(method)
@@ -734,11 +839,11 @@ class InstrHelpWidget(QWidget):
                     nArgs -= nKwargs
                 if nArgs != 0:                                # add arguments but self
                     if args[0] != 'self':
-                        methodCall += ','.join(args[0:nArgs])
+                        methodCall += ','.join(args[0: nArgs])
                         if nKwargs != 0:
                             methodCall += ','
                     elif nArgs > 1:
-                        methodCall += ','.join(args[1:nArgs])
+                        methodCall += ','.join(args[1: nArgs])
                         if nKwargs != 0 or varargs is not None or keywords is not None:
                             methodCall += ','
                 if nKwargs != 0:                              # add keyword arguments
@@ -772,7 +877,7 @@ class InstrHelpWidget(QWidget):
                 self.methods.setCurrentItem(found[0])
 
     def executeCommand(self):
-        ins = self._instr.instrument()
+        ins = self._instrHandle.instrument
         commandQString = self.methodCall.text()
         error = None
         self.log.setTextColor(QColor('Black'))
@@ -790,13 +895,40 @@ class InstrHelpWidget(QWidget):
         # if error is not None: raise error
 
 
-class InstrSCPIWidget(QWidget):
-
+class InstrCodeWidget(CodeEditor):
+    """
+    This is the QWidget for displaying the code of an instrument in the Instrument Manager GUI
+    """
     # Initializes the widget.
+
+    def __init__(self, parent=None):
+        CodeEditor.__init__(self)
+        self._instrHandle = None
+
+    def setInstrHandle(self, instrHandle):
+        self._instrHandle = instrHandle
+        self.update()
+
+    def update(self):
+        if not self._instrHandle.remote:
+            name = self._instrHandle.module.__file__
+            path, basename = os.path.dirname(name), os.path.splitext(os.path.basename(name))[0]
+            filename = path + '\\' + basename + '.py'
+            self.openFile(filename)
+        else:
+            self.setPlainText('')
+
+
+class InstrSCPIWidget(QWidget):
+    """
+    This is the QWidget for making SCPI calls in the Instrument Manager GUI
+    """
+    # Initializes the widget.
+
     def __init__(self, parent=None):
         QWidget.__init__(self)
 
-        self._instr = None
+        self._instrHandle = None
 
         self.visaAddress = QLineEdit()
         self.timeout = QDoubleSpinBox()
@@ -811,8 +943,7 @@ class InstrSCPIWidget(QWidget):
         askButton = QPushButton('Ask')
         self.connect(askButton, SIGNAL('clicked()'), self.myAsk)
         clearButton = QPushButton('Clear')
-        self.connect(clearButton, SIGNAL('clicked()'),
-                     lambda: self.log.clear())
+        self.connect(clearButton, SIGNAL('clicked()'), lambda: self.log.clear())
         self.messageOut = QLineEdit()
         self.messageOut.setText(QString('*IDN?'))
         self.log = QTextEdit()
@@ -841,19 +972,18 @@ class InstrSCPIWidget(QWidget):
         layout.addLayout(subLayout2, 1, 1, 1, 4)
         self.setLayout(layout)
 
-    def setInstr(self, instrumentHandle):
-        self._instr = instrumentHandle
+    def setInstrHandle(self, instrumentHandle):
+        self._instrHandle = instrumentHandle
         self.update()
 
     def update(self):
         for item in [self.visaAddress, self.messageOut, self.log]:
             item.clear()
-        if self._instr.remote():
-            self.visaAddress.setText(
-                'Remote instrument: dialog will work only if it is a VisaInstrument')
+        if self._instrHandle.remote:
+            self.visaAddress.setText('Remote instrument: dialog will work only if it is a VisaInstrument')
             self.messageOut.setText('*IDN?')
-        elif isinstance(self._instr.instrument(), VisaInstrument):
-            visaAddress = self._instr.instrument()._visaAddress
+        elif isinstance(self._instrHandle.instrument, VisaInstrument):
+            visaAddress = self._instrHandle.instrument._visaAddress
             self.timeout.setValue(10.)
             if visaAddress is not None:
                 self.visaAddress.setText(str(visaAddress))
@@ -861,17 +991,14 @@ class InstrSCPIWidget(QWidget):
         self.setTimeout()
 
     def myWrite(self):
-        ins = self._instr.instrument()
-        commandQString = self.messageOut.text()
-        ins.write(str(commandQString))
+        self._instrHandle.instrument.write(str(self.messageOut.text()))
         self.log.setTextColor(QColor('black'))
         self.log.append(commandQString)
         # self.messageOut.clear() # user might want send twice the same
         # commmand
 
     def myRead(self):
-        ins = self._instr.instrument()
-        str1 = ins.read()
+        str1 = self._instrHandle.instrument.read()
         self.log.setTextColor(QColor('Blue'))
         self.log.append(QString(str1))
 
@@ -880,36 +1007,16 @@ class InstrSCPIWidget(QWidget):
         self.myRead()
 
     def setTimeout(self):
-        self._instr.timeout = 1000. * self.timeout.value()
+        self._instrHandle.timeout = 1000. * self.timeout.value()
 
     def clearDevice(self):
-        ins = self._instr.instrument()
-        ins.clear()
-
-
-class InstrCodeWidget(CodeEditor):
-
-    # Initializes the widget.
-    def __init__(self, parent=None):
-        CodeEditor.__init__(self)
-        self._instr = None
-
-    def setInstr(self, instr):
-        self._instr = instr
-        self.update()
-
-    def update(self):
-        if not self._instr.remote():
-            name = self._instr.module().__file__
-            path, basename = os.path.dirname(
-                name), os.path.splitext(os.path.basename(name))[0]
-            filename = path + '\\' + basename + '.py'
-            self.openFile(filename)
-        else:
-            self.setPlainText('')
+        self._instrHandle.instrument.clear()
 
 
 class InstrumentsArea(QMainWindow, ObserverWidget):
+    """
+    This is the QWindow to display a frontpanel intrument in the instrument Manager (in a tab or a separate window).
+    """
 
     def __init__(self, parent=None):
         QMainWindow.__init__(self, parent)
@@ -941,35 +1048,3 @@ class InstrumentsArea(QMainWindow, ObserverWidget):
         self._windows[frontPanel] = widget
         widget.setWindowFlags(Qt.WindowSystemMenuHint | Qt.WindowTitleHint |
                               Qt.CustomizeWindowHint | Qt.WindowCloseButtonHint)
-
-
-class InstrumentList(QTreeWidget):
-
-    def mouseDoubleClickEvent(self, e):
-        QTreeWidget.mouseDoubleClickEvent(self, e)  # propagate
-        # emit signal showFrontPanel
-        self.emit(SIGNAL("loadShowFrontpanels()"))
-
-    def contextMenuEvent(self, event):
-        menu = QMenu(self)
-        renameAction = menu.addAction("Rename instrument...")
-        initializeAction = menu.addAction("(Re-)Initialize instrument")
-        loadPanelAction = menu.addAction("Load instrument panel")
-        menu.addSeparator()
-        setStateAction = menu.addAction("Set instrument state...")
-        saveStateAction = menu.addAction("Save instrument state as...")
-        menu.addSeparator()
-        removeAction = menu.addAction("Remove instrument")
-        action = menu.exec_(self.viewport().mapToGlobal(event.pos()))
-        if action == renameAction:
-            pass
-        elif action == initializeAction:
-            pass
-        elif action == loadPanelAction:
-            self.emit(SIGNAL("loadShowFrontpanels()"))
-        elif action == setStateAction:
-            pass
-        elif action == saveStateAction:
-            pass
-        elif action == removeAction:
-            pass

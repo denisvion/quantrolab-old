@@ -40,7 +40,7 @@ class Instrument(Debugger, ThreadedDispatcher, Reloadable, object):
     Note 2: an instrument does not own any GUI frontpanel. A single or several frontpanels, local or distant, can be used to interact with the instrument as any other piece of python code.
     """
 
-    def __init__(self, name=''):  # One should always pass a name to create an instrument
+    def __init__(self, name=None):  # One should always pass a name to instantiate an instrument
         """
         Private class creator initializing the name and an empty list of states.
         """
@@ -48,7 +48,7 @@ class Instrument(Debugger, ThreadedDispatcher, Reloadable, object):
         Debugger.__init__(self)
         ThreadedDispatcher.__init__(self)
         # the only name of the instrument that the instrument knows.
-        self._name = name
+        self.setName(name)
         self._states = dict()      # dictionary of states of the instrument.
         self._params = dict()
         self.daemon = True
@@ -59,7 +59,7 @@ class Instrument(Debugger, ThreadedDispatcher, Reloadable, object):
         Instrument initialization.
         (Overide this function in each particular instrument sub-class.
         WARNING 1: Avoid changing the instrument name self._name in this function).
-        WARNING 2: Always keep the self._initialized = True line at the end
+        WARNING 2: Always keep the 'self._initialized = True' line at the end.
         """
         self.initialized = True  # boolean value indicating that the initialize function was run without error
 
@@ -81,6 +81,12 @@ class Instrument(Debugger, ThreadedDispatcher, Reloadable, object):
         Returns the name of the instrument.
         """
         return self._name
+
+    def setName(self, name):
+        """
+        Sets the name or renames the instrument
+        """
+        self._name = name
 
     def parameters(self):
         """
@@ -105,10 +111,42 @@ class Instrument(Debugger, ThreadedDispatcher, Reloadable, object):
         return self.__class__
 
     def getSourceFile(self):
+        """
+        Returns the file coding the instrument.
+        """
         return inspect.getsourcefile(self.getClass())
 
     def getsource(self):
+        """
+        Returns the python code of the instrument.
+        """
         return inspect.getsource(self.getClass())
+
+    def getInitializationArgs(self):
+        """
+        Returns the tuple (argnames, kwargs) with the list of argument names and the dictionary of the keyword arguments.
+        Example: (['arg1', 'arg2'],{kword1:'toto', kword2: 2, kword3: [1,2,3]})
+        """
+        argNames, kwargs = [], {}
+        try:
+            args, varargs, keywords, defaults = argspec = inspect.getargspec(self.initialize)
+            try:
+                args.remove('self')
+            except:
+                pass
+            l1, l2 = 0, 0
+            if args is not None:
+                l1 = len(args)
+            if defaults is not None:
+                l2 = len(defaults)
+            if args is not None:
+                argNames = args[:l1 - l2]
+            if defaults is not None:
+                kwargNames = args[- l2:]
+                kwargs = dict(zip(kwargNames, defaults))
+        except Exception as e:
+            print "Could not determine initialization arguments from instrument's code: " + str(e)
+        return (argNames, kwargs)
 
     # Management of instrument states.
 
@@ -342,7 +380,7 @@ class VisaInstrument(Instrument):
         """
         Initialization
         """
-        print '\tin VisaInstrument.__init__ with name, visaAddress and term_chars = ', (name, visaAddress, term_chars)
+        # print '\tin VisaInstrument.__init__ with name, visaAddress and term_chars = ', (name, visaAddress, term_chars)
         Instrument.__init__(self, name)
         self._visaAddress = visaAddress
         self._handle = None
