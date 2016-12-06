@@ -66,11 +66,9 @@ class InstrumentManager(HelperGUI):
         """
         Creator of the instrument manager panel.
         """
-        instrumentMgr = InstrumentMgr(parent, globals)         # instantiates a InstrumentMgr
-        # inform the helper it has an associated gui by adding the gui as an attribute
-        instrumentMgr._gui = self
-        # init superClasses
-        # defines it as the associated helper of the present HelperGUI
+        instrumentMgr = InstrumentMgr(parent, globals)      # instantiates a InstrumentMgr
+        instrumentMgr._gui = self                           # inform the helper it has an associated gui by adding the gui as an attribute
+        # init superClasses and defines it as the associated helper of the present HelperGUI
         HelperGUI.__init__(self, parent, globals, helper=instrumentMgr)
         self.debugPrint("in InstrumentManagerPanel.creator")
 
@@ -103,8 +101,7 @@ class InstrumentManager(HelperGUI):
         splitter = QSplitter(Qt.Horizontal)
 
         widgetLeft = QWidget()
-        # left layout contains the instrument list (QTreeWidget) and a few
-        # buttons
+        # left layout contains the instrument list (QTreeWidget) and a few buttons
         layoutLeft = QGridLayout()
         self._instrList = InstrumentList()
         self._instrList.setSelectionMode(QAbstractItemView.ExtendedSelection)
@@ -186,12 +183,10 @@ class InstrumentManager(HelperGUI):
         self._picklePath = setupPath + r"\config\setups.pickle"
         self.loadStates()
 
-        # create dictionary of frontpanels because the backend instrument
-        # manager does not manage them
+        # create a dictionary of frontpanels because the backend instrument manager does not manage them
         self._frontpanels = dict()
 
-        self.connect(self._instrList, SIGNAL(
-            "currentItemChanged(QTreeWidgetItem *,QTreeWidgetItem *)"), self.selectInstr)
+        self.connect(self._instrList, SIGNAL("currentItemChanged(QTreeWidgetItem *,QTreeWidgetItem *)"), self.selectInstr)
         self.updateInstrumentsList()
         self.updateStateList()
 
@@ -231,8 +226,7 @@ class InstrumentManager(HelperGUI):
             basename = os.path.basename(filename)
             fn = imp.load_source(basename, filename)
             if hasattr(fn, 'instruments') and isinstance(fn.instruments, list):
-                self._helper.loadInstruments(
-                    fn.instruments, globalParameters={'forceReload': True})
+                self._helper.loadInstruments(fn.instruments, globalParameters={'forceReload': True})
             else:
                 raise 'No list with name instruments defined in file ' + filename + '.'
 

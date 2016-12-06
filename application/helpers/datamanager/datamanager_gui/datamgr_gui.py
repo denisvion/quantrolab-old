@@ -95,14 +95,12 @@ class DataManager(HelperGUI):
         # init superClasses
         HelperGUI.__init__(self, parent, globals, helper=dataMgr)
         self.debugPrint("in dataManagerGUI frontpanel creator")
-        # inform the helper it has an associated gui by adding the gui as an
-        # attribute
+        # inform the helper it has an associated gui by adding the gui as an attribute
         dataMgr._gui = self
 
         self._workingDirectory = None
 
-        self.setStyleSheet(
-            """QTreeWidget:Item {padding:6;} QTreeView:Item {padding:6;}""")
+        self.setStyleSheet("""QTreeWidget:Item {padding:6;} QTreeView:Item {padding:6;}""")
 
         title = helperDic['name'] + " version " + helperDic["version"]
         if self._helper is not None:

@@ -138,6 +138,32 @@ class InstrumentMgr(Singleton, Helper):
 
     # Loading and initializing local and remote instruments
 
+    def loadInstrumentFromName(self, name, baseclass=None, args=[], kwargs={}, forceReload=False):
+        """
+        Loads an instrument from its name if not already loaded or if forceReload is true.
+        - name is the name of the instrument to be initialized.
+        It can be a simple plain name (e.g. "vna1"), meaning that the instrument is to be loaded directly in local memory,
+        or an URL (e.g. "rip://localhost:8000/vna1"), meaning that it is to be loaded through a server.
+        - baseclass is the name of the python module containing the Instr class definition of the instrument;
+        it is by default set to name if not specified.
+        - args and kwargs are the arguments to be passed to the initialization function at instantiation of the instrument.
+
+        Returns the instrument object, or None if the initialization fails.
+        """
+        print "Initializing instrument %s" % name
+        if name in self._instrumentHandles:
+            if forceReload:
+                return self.reloadInstrument(name, args=args, kwargs=kwargs)
+            else:
+                return self._instrumentHandles[name].instrument
+        else:
+            if self._isUrl(name):
+                return self.initRemoteInstrument(name, baseclass, args, kwargs, forceReload)
+            if baseclass is None:
+                baseclass = name
+            baseclass = baseclass.lower()
+            return self.loadInstrumentFromModuleName(name, baseclass, args=args, kwargs=kwargs)
+
     def loadInstrumentFromModuleName(self, name, moduleName, args=[], kwargs={}):
         """
         Loads an instrument from a python module name.
@@ -163,7 +189,7 @@ class InstrumentMgr(Singleton, Helper):
         - filePath is the full path to the python module containing the Instr class definition of the instrument.
         - args and kwargs are the arguments to be passed to the initialization function at instantiation of the instrument.
 
-        Returns the instrument object, return None if the initialization fails,
+        Returns the instrument object, returns None if the initialization fails,
         or raises an error if the module was not found.
         """
         (path, fname) = os.path.split(filePath)
@@ -174,11 +200,11 @@ class InstrumentMgr(Singleton, Helper):
         module = imp.load_module(fname, file, filename, data)
         if file:
             file.close()
-        return self.loadInstrumentFromModule(name, fname, module, args=args, kwargs=kwargs)
+        return self.instantiateInstrument(name, fname, module, args=args, kwargs=kwargs)
 
-    def loadInstrumentFromModule(self, name, moduleName, module, args=[], kwargs={}):
+    def instantiateInstrument(self, name, moduleName, module, args=[], kwargs={}):
         """
-        Loads an instrument from a python module.
+        Instantiates an instrument from a python module.
         - name is the name of the instrument to be initialized.
         - moduleName is the name of the python module
         - module is the module containing the Instr class definition of the instrument.
@@ -211,48 +237,27 @@ class InstrumentMgr(Singleton, Helper):
         instrument = handle.instrument
         if hasattr(instrument, 'initialize'):
             try:
-                instrument.initialized = False
+                instrument.initialized = False          # resets initialized to false
                 instrument.initialize(*args, **kwargs)  # try initialization with the passed arguments
-                instrument.initialized = True           # adds the initialized attribute in case it is not already defined
-                # update handle cause there was no error
-                handle.args = args
+                instrument.initialized = True           # sets initialized to True if there was no error
+                handle.args = args                      # then update handle cause there was no error
                 handle.kwargs = kwargs
-            except Exception as e:
+            except Exception as e:                      # in case of error build a clear message including the syntax used for the call
                 code = instrument.name() + '.initialize('
-                for arg in args:
-                    code += str(arg) + ','
+                l1 = len(args)
+                for index, arg in enumerate(args):
+                    code += str(arg)
+                    if index < l1 - 1:
+                        code += ','
                 if kwargs != {}:
                     code += ','
-                for key, value in kwargs.iteritems():
-                    code += str(key) + '=' + str(value) + ','
+                    l1 = len(kwargs)
+                    for index, key in enumerate(kwargs):
+                        code += str(key) + '=' + str(kwargs[key])
+                        if index < l1 - 1:
+                            code += ','
                 code += ')'
-                print 'ERROR when initializing instrument ' + code + ': ' + str(e)
-
-    def loadInstrument(self, name, baseclass=None, args=[], kwargs={}, forceReload=False):
-        """
-        Loads an instrument from its name if not already loaded or if forceReload is true.
-        - name is the name of the instrument to be initialized.
-        It can be a simple plain name (e.g. "vna1"), meaning that the instrument is to be loaded directly in local memory,
-        or an URL (e.g. "rip://localhost:8000/vna1"), meaning that it is to be loaded through a server.
-        - baseclass is the name of the python module containing the Instr class definition of the instrument;
-        it is by default set to name if not specified.
-        - args and kwargs are the arguments to be passed to the initialization function at instantiation of the instrument.
-
-        Returns the instrument object, or None if the initialization fails.
-        """
-        print "Initializing instrument %s" % name
-        if name in self._instrumentHandles:
-            if forceReload:
-                return self.reloadInstrument(name, args=args, kwargs=kwargs)
-            else:
-                return self._instrumentHandles[name].instrument
-        else:
-            if self._isUrl(name):
-                return self.initRemoteInstrument(name, baseclass, args, kwargs, forceReload)
-            if baseclass is None:
-                baseclass = name
-            baseclass = baseclass.lower()
-            return self.loadInstrumentFromModuleName(name, baseclass, args=args, kwargs=kwargs)
+                print 'ERROR when initializing instrument with ' + code + ': ' + str(e)
 
     def reloadInstrument(self, name, baseclass=None, args=[], kwargs={}):
         """
@@ -280,7 +285,7 @@ class InstrumentMgr(Singleton, Helper):
             if handle.remoteServer.hasInstrument(name):
                 handle.remoteServer.reloadInstrument(name, handle.baseClass, passedArgs, passedKwArgs)
             else:
-                handle.remoteServer.loadInstrument(name, handle.baseClass, passedArgs, passedKwArgs)
+                handle.remoteServer.loadInstrumentFromName(name, handle.baseClass, passedArgs, passedKwArgs)
             self.notify("instruments", self._instrumentHandles)
             return handle.instrument
         else:                                                     # local instrument
@@ -414,7 +419,8 @@ class InstrumentMgr(Singleton, Helper):
                 else:
                     args = []
                 try:
-                    self.loadInstrument(name=url, baseclass=baseclass, args=args, kwargs=kwargs, **globalParameters)
+                    self.loadInstrumentFromName(name=url, baseclass=baseclass, args=args,
+                                                kwargs=kwargs, **globalParameters)
                 except:
                     print "Could not initialize instrument: %s" % url
                     traceback.print_exc()
