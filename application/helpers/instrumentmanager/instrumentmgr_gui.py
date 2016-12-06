@@ -170,7 +170,7 @@ class InstrumentManager(HelperGUI):
         ##################
 
         self._workingDirectory = None
-        self._instr = None   # current instrument
+        self._instrHandle = None   # current instrument handle
 
         # load persistent platform-independent application settings if any
         settings = QSettings()
@@ -270,9 +270,13 @@ class InstrumentManager(HelperGUI):
         self.debugPrint("in InstrumentManagerPanel.updatedGui() with subject=",
                         subject, " property=", property, " and value=", value)
         if subject == self._helper:
-            if property == "instruments":
+            if property == "new_instrument":        # value is the instrument handle
                 self.updateInstrumentsList()
-            pass
+                if self._instrHandle is value:
+                    self.propagateInstrHandle(value)
+            elif property == "initialized":          # value is the instrument handle
+                if self._instrHandle is value:
+                    self._instProp.setInstrHandle(value)
 
     def updateInstrumentsList(self):
         """
@@ -300,7 +304,6 @@ class InstrumentManager(HelperGUI):
                     for childName in instrument.childrenNames():  # add children at level of the tree
                         childItem = QTreeWidgetItem(item)
                         childItem.setText(0, childName)
-
         self._instrList.setSortingEnabled(True)
 
     def reloadInstrument(self):
@@ -485,9 +488,13 @@ class InstrumentManager(HelperGUI):
         self.debugPrint('in InstrumentManagerPanel.selectInstr() with current instr =',
                         new, ' and last instr=', previous)
         if new is None:
-            return
-        handle = self._helper.instrumentHandles()[str(new.text(0))]
+            handle = None
+        else:
+            handle = self._helper.instrumentHandles()[str(new.text(0))]
         self._instrHandle = handle
+        self.propagateInstrHandle(handle)
+
+    def propagateInstrHandle(self, handle):
         for obj in [self._instProp, self._instHelp, self._instCode, self._instVisa]:
             obj.setInstrHandle(handle)
 
@@ -608,6 +615,13 @@ class InstrProperty(QWidget):
         update all gui elements using the instrument handle and the intrument's code.
         """
         handle = self._instrHandle
+        for table in [self._args, self._kwargs, self._params]:
+            table.clearContents()
+        for table in [self._args, self._kwargs]:
+            table.setRowCount(0)
+        if handle is None:
+            return
+
         instrument = handle.instrument
         self._instrName.setText(handle.name())
         self._baseClass.setText(QString(handle.baseClass))
@@ -626,7 +640,6 @@ class InstrProperty(QWidget):
             kwargs = handle.kwargs
         argNames, kwargsCode = instrument.getInitializationArgs()
 
-        self._args.clearContents()
         self._args.setRowCount(len(argNames))
         for index, argName in enumerate(argNames):
             value = '?'
@@ -654,16 +667,14 @@ class InstrProperty(QWidget):
 
         self._initialized.setChecked(instrument.initialized)
 
-        self._params.clearContents()
-
     def initialize(self):
         """
-        Propagates an initialize() signal upwards.
+        Calls the initializeInstrument() method of the instrument manager with the current instrument.
+        (self.update() will be called back through a notification)
         """
         if self._instrHandle is not None and self._instrumentMgr is not None:
             args, kwargs = self.buildArgsKwargs()
             self._instrumentMgr.initializeInstrument(self._instrHandle, args=args, kwargs=kwargs)
-            self.update()
 
     def buildArgsKwargs(self):
         """
@@ -771,6 +782,8 @@ class InstrHelpWidget(QWidget):
     def update(self):
         for item in [self.myClass, self.sourceFile, self.generalHelp, self.methods, self.methodCall, self.methodHelp]:
             item.clear()
+        if self._instrHandle is None:
+            return
         if self._instrHandle.remote:
             # self.myClass.setTextColor(QColor('Red'))
             self.myClass.setText(QString('Remote Instrument'))
@@ -904,7 +917,7 @@ class InstrCodeWidget(CodeEditor):
         self.update()
 
     def update(self):
-        if not self._instrHandle.remote:
+        if self._instrHandle is not None and not self._instrHandle.remote:
             name = self._instrHandle.module.__file__
             path, basename = os.path.dirname(name), os.path.splitext(os.path.basename(name))[0]
             filename = path + '\\' + basename + '.py'
@@ -973,6 +986,8 @@ class InstrSCPIWidget(QWidget):
     def update(self):
         for item in [self.visaAddress, self.messageOut, self.log]:
             item.clear()
+        if self._instrHandle is None:
+            return
         if self._instrHandle.remote:
             self.visaAddress.setText('Remote instrument: dialog will work only if it is a VisaInstrument')
             self.messageOut.setText('*IDN?')

@@ -226,7 +226,7 @@ class InstrumentMgr(Singleton, Helper):
         # initialize with the passed args and kwargs. Handle will be update in the
         # initializeInstrument function if no error
         self.initializeInstrument(handle, args=args, kwargs=kwargs)
-        self.notify("instruments", self._instrumentHandles)         # and notifies possible observers
+        self.notify("new_instrument", handle)         # and notifies possible observers
         return handle.instrument
 
     def initializeInstrument(self, handle, args=[], kwargs={}):
@@ -236,12 +236,15 @@ class InstrumentMgr(Singleton, Helper):
         """
         instrument = handle.instrument
         if hasattr(instrument, 'initialize'):
+            success = False
             try:
                 instrument.initialized = False          # resets initialized to false
                 instrument.initialize(*args, **kwargs)  # try initialization with the passed arguments
                 instrument.initialized = True           # sets initialized to True if there was no error
                 handle.args = args                      # then update handle cause there was no error
                 handle.kwargs = kwargs
+                success = True
+                print 'instrument %s initialyzed successfully.' % instrument.name()
             except Exception as e:                      # in case of error build a clear message including the syntax used for the call
                 code = instrument.name() + '.initialize('
                 l1 = len(args)
@@ -258,6 +261,7 @@ class InstrumentMgr(Singleton, Helper):
                             code += ','
                 code += ')'
                 print 'ERROR when initializing instrument with ' + code + ': ' + str(e)
+            self.notify("initialized", handle)
 
     def reloadInstrument(self, name, baseclass=None, args=[], kwargs={}):
         """
@@ -286,8 +290,7 @@ class InstrumentMgr(Singleton, Helper):
                 handle.remoteServer.reloadInstrument(name, handle.baseClass, passedArgs, passedKwArgs)
             else:
                 handle.remoteServer.loadInstrumentFromName(name, handle.baseClass, passedArgs, passedKwArgs)
-            self.notify("instruments", self._instrumentHandles)
-            return handle.instrument
+            self.notify("new_instrument", handle)
         else:                                                     # local instrument
             module = handle.module
             path1 = os.path.split(module.__file__)[0]
@@ -295,11 +298,10 @@ class InstrumentMgr(Singleton, Helper):
                 sys.path.insert(0, path1)
             reload(module)
             newClass = module.Instr
-            instrument = handle.instrument
-            instrument.__class__ = newClass
+            handle.instrument.__class__ = newClass
             self.initializeInstrument(handle, args=passedArgs, kwargs=passedKwArgs)
-            self.notify("instruments", self._instrumentHandles)
-            return instrument
+        self.notify("new_instrument", handle)
+        return handle.instrument
 
     def _isUrl(self, name):
         """
@@ -359,7 +361,7 @@ class InstrumentMgr(Singleton, Helper):
             handle = InstrumentHandle(instrument, baseclass, remote=True, remoteServer=remoteServer, args=args,
                                       kwargs=kwargs,)
             self._instrumentHandles[name] = handle
-            self.notify("instruments", self._instrumentHandles)
+            self.notify("new_instrument", handle)
             # and return this handle
             return handle.instrument
 
