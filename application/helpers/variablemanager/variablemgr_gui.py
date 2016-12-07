@@ -65,10 +65,10 @@ iconPath = os.path.dirname(__file__) + '/resources/icons'
 
 class VarManager(HelperGUI):
 
-    def __init__(self, parent=None, globals={}):
+    def __init__(self, name=None, parent=None, globals={}):
 
         # init superClasses
-        HelperGUI.__init__(self, parent, globals, helper=None)
+        HelperGUI.__init__(self, name, parent, globals, helper=None)
         self.debugPrint("in variable Manager creator")
 
         self._workingDirectory = None

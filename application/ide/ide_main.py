@@ -46,7 +46,7 @@ except:
 
 # splash screen
 splashFile = QString(_applicationDir + '\quantrolab.png')
-minSplashDuration = 1.5
+minSplashDuration = 2.
 
 
 class Log(LineTextWidget):
@@ -853,7 +853,6 @@ class IDE(QMainWindow, ObserverWidget):
         print self._codeRunner.lv('HelperManager', varname='helperManager._helpersRootDir')
         print self._codeRunner.lv('HelperManager', varname='helperManager.helpers()', strRep=True)
 
-
 # end of IDE class definition
 
 # Starting application function
@@ -889,6 +888,7 @@ def startIDE(qApp=None):
     # and terminates the display when the IDE is fully displayed.
     splash.finish(myIDE)
     qApp.exec_()                        # Start the application main event loop
+
 
 if __name__ == '__main__':
     startIDE()

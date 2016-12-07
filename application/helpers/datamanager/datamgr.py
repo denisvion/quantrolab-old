@@ -33,11 +33,11 @@ class DataMgr(Singleton, ThreadedDispatcher, Helper):
       - clear to empty the list of managed datacubes.
     """
 
-    def __init__(self, parent=None, globals={}):
+    def __init__(self, name=None, parent=None, globals={}):
         if hasattr(self, "_initialized"):
             return
         Singleton.__init__(self)
-        Helper.__init__(self, parent, globals)
+        Helper.__init__(self, name, parent, globals)
         ThreadedDispatcher.__init__(self)
         self._datacubes = []
         self._initialized = True

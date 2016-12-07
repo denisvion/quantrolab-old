@@ -62,14 +62,14 @@ class InstrumentManager(HelperGUI):
     Instrument manager GUI
     """
 
-    def __init__(self, parent=None, globals={}):
+    def __init__(self, name=None, parent=None, globals={}):
         """
         Creator of the instrument manager panel.
         """
         instrumentMgr = InstrumentMgr(parent, globals)      # instantiates a InstrumentMgr
         instrumentMgr._gui = self                           # inform the helper it has an associated gui by adding the gui as an attribute
         # init superClasses and defines it as the associated helper of the present HelperGUI
-        HelperGUI.__init__(self, parent, globals, helper=instrumentMgr)
+        HelperGUI.__init__(self, name, parent, globals, helper=instrumentMgr)
         self.debugPrint("in InstrumentManagerPanel.creator")
 
         # Build GUI below

@@ -375,7 +375,7 @@ class VisaInstrument(Instrument):
     A class representing an instrument that can be interfaced via NI VISA protocol.
     """
 
-    def __init__(self, name='', visaAddress=None, term_chars=None, testString='', **kwargs):
+    def __init__(self, name='', visaAddress=None, term_chars=None, scpi=False, testString='', **kwargs):
         """
         Initialization
         """
@@ -384,6 +384,7 @@ class VisaInstrument(Instrument):
         self._visaAddress = visaAddress
         self._handle = None
         self._term_chars = term_chars
+        self.scpi = scpi
         try:
             self.getHandle()
         except:
@@ -429,6 +430,28 @@ class VisaInstrument(Instrument):
             print 'Visa call error => Invalidating Visa handle.'
             self._handle = None
             raise
+
+    def isSCPI(self):
+        """
+        Checks if an instruments is SCPI by asking *IDN? and checking whether the answer is not empty.
+        """
+        answer = None
+        self.scpi = False
+        try:
+            answer = self.ask('*IDN')
+            self.scpi = (isinstance(answer, str) and len(answer) > 2)
+        except:
+            pass
+
+    def waitForOperationComplete(self, checkSCPI=True):
+        """
+        Wait for operation complete of a SCPI instrument.
+        """
+        if not self.scpi and checkSCPI:
+            print 'WARNING: %s is not necessarily a SCPI instrument.\nRun %s.isSCPI() to check and avoid this warning.' % (self.name()) * 2
+        if not checkSCPI or self.scpi:
+            self.write('*WAI')
+            self.ask('*OPC?')
 
     def __getattr__(self, attr):
         """

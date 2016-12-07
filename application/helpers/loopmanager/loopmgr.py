@@ -23,11 +23,11 @@ class LoopMgr(Singleton, ThreadedDispatcher, Helper):
     Just call addLoop() or removeLoop() to add or remove a loop to the loop manager.
     """
 
-    def __init__(self, parent=None, globals={}):
+    def __init__(self, name=None, parent=None, globals={}):
         if hasattr(self, "_initialized"):
             return
         Singleton.__init__(self)
-        Helper.__init__(self, parent, globals)
+        Helper.__init__(self, name, parent, globals)
         ThreadedDispatcher.__init__(self)
         self._loops = []                    # the list of managed loops
         self._initialized = True

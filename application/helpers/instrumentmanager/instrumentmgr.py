@@ -18,7 +18,7 @@ from application.lib.helper_classes import Helper
 __instrumentsRootDir__ = 'lab/instruments'
 
 
-class InstrumentHandle:
+class InstrumentHandle(dict):
 
     """
     Contains all information about an instrument, in a 'handle' used by the instruments manager.
@@ -27,22 +27,31 @@ class InstrumentHandle:
     """
 
     def __init__(self, instrument, baseClass=None, module=None, remote=False, remoteServer=None, args=[], kwargs={}):
-        self.instrument = instrument
-        self.baseClass = baseClass
-        self.module = module
-        self.remote = remote
-        self.remoteServer = remoteServer
-        self.args = args
-        self.kwargs = kwargs
+        dict.__init__(self)
+        self .update({'instrument': instrument, 'baseClass': baseClass, 'module': module,
+                      'remote': remote, 'remoteServer': remoteServer, 'args': args, 'kwargs': kwargs})
 
     def name(self):
-        return self.instrument.name()
+        return self['instrument'].name()
 
-    def handleDict(self):
-        """
-        Returns a dictionary of the handle properties 'instrument','baseClass','module','remote','remoteServer','args','kwargs'.
-        """
-        return {'instrument': self.instrument, 'baseClass': self.baseClass, 'module': self.module, 'remote': self.remote, 'remoteServer': self.remoteServer, 'args': self.args, 'kwargs': self.kwargs}
+
+class InstrumentHandleList(list):
+
+    """
+    List of InstrumentHandles with methods to access names
+    """
+
+    def __init__(self):
+        list.__init__(self)
+
+    def names(self):
+        return [handle.name() for handle in self]
+
+    def withName(self, name):
+        return [handle for handle in self if handle.name() == name]
+
+    def instruments(self):
+        return [handle['instrument'] for handle in self]
 
 
 class InstrumentMgr(Singleton, Helper):
@@ -61,7 +70,7 @@ class InstrumentMgr(Singleton, Helper):
 
     _initialized = False
 
-    def __init__(self, parent=None, globals={}, instrumentsRootDir=__instrumentsRootDir__, frontpanelsRootDir=__instrumentsRootDir__):
+    def __init__(self, name=None, parent=None, globals={}, instrumentsRootDir=__instrumentsRootDir__, frontpanelsRootDir=__instrumentsRootDir__):
         """
         Initialize the singleton instrument manager if not done yet.
         """
@@ -69,12 +78,12 @@ class InstrumentMgr(Singleton, Helper):
             return
 
         Singleton.__init__(self)
-        Helper.__init__(self, parent, globals)
+        Helper.__init__(self, name, parent, globals)
 
         self._instrumentsRootDir = instrumentsRootDir  # directory for intrument modules
         self._frontpanelsRootDir = frontpanelsRootDir  # directory for frontpanel modules
 
-        self._instrumentHandles = dict()
+        self._instrumentHandles = InstrumentHandleList()
         self._initialized = True
 
     # Locating instrument and frontpanel modules
@@ -141,21 +150,23 @@ class InstrumentMgr(Singleton, Helper):
     def loadInstrumentFromName(self, name, baseclass=None, args=[], kwargs={}, forceReload=False):
         """
         Loads an instrument from its name if not already loaded or if forceReload is true.
+        (If several instruments have the same name, only the first will be reloaded.)
         - name is the name of the instrument to be initialized.
         It can be a simple plain name (e.g. "vna1"), meaning that the instrument is to be loaded directly in local memory,
         or an URL (e.g. "rip://localhost:8000/vna1"), meaning that it is to be loaded through a server.
         - baseclass is the name of the python module containing the Instr class definition of the instrument;
         it is by default set to name if not specified.
-        - args and kwargs are the arguments to be passed to the initialization function at instantiation of the instrument.
+        - args and kwargs are the arguments to be passed to the initialize() method of the instrument after instantiation of the instrument.
 
         Returns the instrument object, or None if the initialization fails.
         """
         print "Initializing instrument %s" % name
-        if name in self._instrumentHandles:
+        if name in self._instrumentHandles.names():
+            handle = self._instrumentHandles.withName(name)
             if forceReload:
-                return self.reloadInstrument(name, args=args, kwargs=kwargs)
+                return self.reloadInstrument(handle, args=args, kwargs=kwargs)
             else:
-                return self._instrumentHandles[name].instrument
+                return handle['instrument']
         else:
             if self._isUrl(name):
                 return self.initRemoteInstrument(name, baseclass, args, kwargs, forceReload)
@@ -195,7 +206,7 @@ class InstrumentMgr(Singleton, Helper):
         (path, fname) = os.path.split(filePath)
         (fname, ext) = os.path.splitext(fname)
         if name is None:
-            name = fname
+            name = self.freeInstrumentName(fname)
         (file, filename, data) = imp.find_module(fname, [path])
         module = imp.load_module(fname, file, filename, data)
         if file:
@@ -214,6 +225,8 @@ class InstrumentMgr(Singleton, Helper):
         """
         try:
             instrument = module.Instr(name=name)  # instantiation
+            # attach the instrument manager to the instrument so that it can send notofications
+            instrument.attach(self)
         except:
             raise 'No instrument of class Instr defined in file ' + filePath + '.'
         self._globals[name] = instrument
@@ -222,27 +235,27 @@ class InstrumentMgr(Singleton, Helper):
             instrument.setManager(self)
         # Creates the instrument handle with empty args and kwargs
         handle = InstrumentHandle(instrument, moduleName, module)
-        self._instrumentHandles[name] = handle                      # Adds the handle to the handles dictionnary
+        self._instrumentHandles.append(handle)        # Adds the handle to the handles dictionnary
         # initialize with the passed args and kwargs. Handle will be update in the
         # initializeInstrument function if no error
         self.initializeInstrument(handle, args=args, kwargs=kwargs)
         self.notify("new_instrument", handle)         # and notifies possible observers
-        return handle.instrument
+        return handle['instrument']
 
     def initializeInstrument(self, handle, args=[], kwargs={}):
         """
         Tries to initialize the instrument if it has an initialize method,
         and catches and displays an error if it occurs (without raising the error).
         """
-        instrument = handle.instrument
+        instrument = handle['instrument']
         if hasattr(instrument, 'initialize'):
             success = False
             try:
                 instrument.initialized = False          # resets initialized to false
                 instrument.initialize(*args, **kwargs)  # try initialization with the passed arguments
                 instrument.initialized = True           # sets initialized to True if there was no error
-                handle.args = args                      # then update handle cause there was no error
-                handle.kwargs = kwargs
+                handle['args'] = args                      # then update handle cause there was no error
+                handle['kwargs'] = kwargs
                 success = True
                 print 'instrument %s initialyzed successfully.' % instrument.name()
             except Exception as e:                      # in case of error build a clear message including the syntax used for the call
@@ -263,45 +276,42 @@ class InstrumentMgr(Singleton, Helper):
                 print 'ERROR when initializing instrument with ' + code + ': ' + str(e)
             self.notify("initialized", handle)
 
-    def reloadInstrument(self, name, baseclass=None, args=[], kwargs={}):
+    def reloadInstrument(self, handle, baseclass=None, args=[], kwargs={}):
         """
-        Reloads a given instrument.
+        Reloads a given instrument from its handle and returns the instrument
         """
-        self.debugPrint('in InstrumentManager.reloadInstrument(', name, ',', baseclass, ')')
-        print "Reloading %s" % name
-        if name not in self._instrumentHandles:
-            raise KeyError("No instrument: %s to reload" % name)
-        handle = self._instrumentHandles[name]
-        if handle.instrument.isAlive():
+        self.debugPrint('in InstrumentManager.reloadInstrument(', handle, ',', baseclass, ')')
+        print "Reloading %s" % handle.name()
+        if handle['instrument'].isAlive():
             raise Exception("Cannot reload instrument while it is running...")
         if args != []:
             passedArgs = args
-            handle.args = args
+            handle['args'] = args
         else:
-            passedArgs = handle.args
+            passedArgs = handle['args']
         if kwargs != {}:
             passedKwArgs = kwargs
-            handle.kwargs = kwargs
+            handle['kwargs'] = kwargs
         else:
-            passedKwArgs = handle.kwargs
-        if handle.remote:                                # remote instrument
+            passedKwArgs = handle['kwargs']
+        if handle['remote']:                                # remote instrument
             name = handle.name()
-            if handle.remoteServer.hasInstrument(name):
-                handle.remoteServer.reloadInstrument(name, handle.baseClass, passedArgs, passedKwArgs)
+            if handle['remoteServer'].hasInstrument(name):
+                handle['remoteServer'].reloadInstrument(name, handle.baseClass, passedArgs, passedKwArgs)
             else:
-                handle.remoteServer.loadInstrumentFromName(name, handle.baseClass, passedArgs, passedKwArgs)
+                handle['remoteServer'].loadInstrumentFromName(name, handle.baseClass, passedArgs, passedKwArgs)
             self.notify("new_instrument", handle)
         else:                                                     # local instrument
-            module = handle.module
+            module = handle['module']
             path1 = os.path.split(module.__file__)[0]
             if path1 not in sys.path:
                 sys.path.insert(0, path1)
             reload(module)
             newClass = module.Instr
-            handle.instrument.__class__ = newClass
+            handle['instrument'].__class__ = newClass
             self.initializeInstrument(handle, args=passedArgs, kwargs=passedKwArgs)
         self.notify("new_instrument", handle)
-        return handle.instrument
+        return handle['instrument']
 
     def _isUrl(self, name):
         """
@@ -345,9 +355,9 @@ class InstrumentMgr(Singleton, Helper):
         # instrument
         if baseclass is None:
             baseclass = name
-        if name in self._instrumentHandles and not forceReload:
-            handle = self._instrumentHandles[name]
-            return handle.instrument
+        if name in self._instrumentHandles.names() and not forceReload:
+            handle = self._instrumentHandles.withName(name)[0]
+            return handle['instrument']
         else:
             baseclass = baseclass.lower()
             try:
@@ -360,24 +370,35 @@ class InstrumentMgr(Singleton, Helper):
             # Build the handle to it
             handle = InstrumentHandle(instrument, baseclass, remote=True, remoteServer=remoteServer, args=args,
                                       kwargs=kwargs,)
-            self._instrumentHandles[name] = handle
+            self._instrumentHandles.append(handle)
             self.notify("new_instrument", handle)
             # and return this handle
-            return handle.instrument
+            return handle['instrument']
 
     def freeInstrumentName(self, name):
         """
         Builds a unique name for a new intrument.
+        New name will be name or name_i with i the lowest unused index >=2.
         """
-        name = 'instrument_1'
+        if name is None or name == '':
+            name = 'instrument'
+        newName = name
         names = self.instrumentNames()
-        if name in names:
-            i = 1
+        print newName, names
+        if newName in names:
+            i = 2
+            k = newName.rfind("_")
+            if k != -1:
+                endStr = newName[k + 1:]
+                if endStr.isdigit():
+                    i = int(endStr) + 1
             while True:
-                name = 'instrument_' + str(i)
-                if name not in names:
+                newName = name + '_' + str(i)
+                print newName
+                if newName not in names:
                     break
-        return name
+                i += 1
+        return newName
 
     def loadInstruments(self, instruments, globalParameters={}):
         """
@@ -392,8 +413,7 @@ class InstrumentMgr(Singleton, Helper):
            }
           WARNING: Avoid passing an instrument name in args or kwargs, and changing the name in the instrument initialization function.
         """
-        self.debugPrint(
-            'in InstrumentManager.loadInstruments(', instruments, ') ')
+        self.debugPrint('in InstrumentManager.loadInstruments(', instruments, ') ')
         for params in instruments:
             if 'load' not in params or params['load']:
                 if ('name' not in params):
@@ -435,99 +455,72 @@ class InstrumentMgr(Singleton, Helper):
         """
         return self._instrumentHandles
 
-    def updateInstrumentHandles(self):
-        """
-        update keys of _instrumentHandles in case any instrument name has changed.
-        """
-        for key, handle in self._instrumentHandles.iteritems():
-            if key != handle.instrument.name():
-                self._instrumentHandles.pop(key)
-                self._instrumentHandles[handle.name] = handle
-
     def instrumentNames(self):
         """
         Returns the names of the managed instruments.
         """
-        self.updateInstrumentHandles()
-        return self._instrumentHandles.keys()
+        return self._instrumentHandles.names()
 
-    def handle(self, name):
+    def instruments(self):
         """
-        Returns the handle of a an instrument specified by its name.
+        Returns the managed instruments
         """
-        try:
-            return self._instrumentHandles[name]
-        except KeyError:
-            return None
+        return self._instrumentHandles.instruments()
 
     def hasInstrument(self, name):
         """
-        Return True if instrument with name name is mananged.
+        Return True if instrument with name name is managed.
         """
-        if name in self._instrumentHandles:
-            return True
+        return name in self._instrumentHandles.names()
+
+    def handle(self, name):
+        """
+        Returns the handle of the first instrument with a specified name, or None if not found.
+        """
+        if self.hasInstrument(name):
+            return self._instrumentHandles.withName(name)[0]
         else:
-            return False
+            return None
 
     def getInstrument(self, name):
         """
-        Returns the instrument with name name or raise an error.
+        Returns the first instrument with a specified name or None.
         """
-        if name in self._instrumentHandles:
-            return self._instrumentHandles[name].instrument
+        if name in self._instrumentHandles.names():
+            return self._instrumentHandles.withName(name)[0]['instrument']
         else:
-            raise AttributeError("Unknown instrument: %s" % name)
-
-    # Get parameters of all instruments at once
-
-    def parameters(self):
-        """
-        Return a dictionary containing the parameter dictionnaries of all the instruments.
-        """
-        self.debugPrint('in InstrumentManager.parameters() ')
-        params = dict()
-        for name in self._instrumentHandles.keys():
-            try:
-                params[name] = self.getInstrument(name).parameters()
-            except:
-                print "An error occured when accessing parameters of instrument %s." % name
-                print traceback.print_exc()
-        return params
+            return None
 
     # Instrument states management
 
-    def currentConfig(self, instrumentNames=None, withInitialization=True):
+    def currentConfig(self, instrumentHandles=None, withInitialization=True):
         """
-        InstrumentManager method that returns a dictionary containing the parameters of the instruments specified by the list of names 'instrumentNames';
-        if 'instrumentNames' is None, includes all managed instruments.
+        InstrumentManager method that returns a dictionary containing the parameters of the instruments in the list instrumentHandles;
+        if instrumentHandlesList is None or [], includes all managed instruments.
         """
-        self.debugPrint('in InstrumentManager.currentConfig(instrumentNames) with instrumentNames=', instrumentNames)
-        # config directory will contain instrument directories that will
-        # contain the instrument state directory as well as optional
-        # initialization params
         config = dict()
-        if instrumentNames is None:
-            instrumentNames = self.instrumentNames()              # all managed instruments
-        for name in instrumentNames:
+        if instrumentHandles in [None, []]:
+            instrumentHandles = self._instrumentHandles              # all managed instruments
+        for handle in instrumentHandles:
             try:
-                print "Storing state of instrument \"%s\"" % name
+                name = handle.name()
                 config[name] = dict()
-                config[name]["state"] = self.getInstrument(name).currentState()
+                config[name]["state"] = handle['instrument'].currentState()
                 if withInitialization:
-                    config[name]["baseClass"] = self.handle(name).baseClass
-                    config[name]["args"] = self.handle(name).args
-                    config[name]["kwargs"] = self.handle(name).kwargs
+                    config[name]["baseClass"] = handle['baseClass']
+                    config[name]["args"] = handle['args']
+                    config[name]["kwargs"] = handle['kwargs']
             except:
                 print "Could not save the state of instrument %s:" % name
                 print traceback.print_exc()
         return config
 
-    def saveCurrentConfigInFile(self, filename, instrumentNames=None, withInitialization=True):
+    def saveCurrentConfigInFile(self, filename, instrumentHandles=None, withInitialization=True):
         """
         InstrumentManager method that saves the dictionary of the current configuration to a file.
         """
         currentConfig = self.currentConfig(
-            instrumentNames=instrumentNames, withInitialization=withInitialization)
+            instrumentHandles=instrumentHandles, withInitialization=withInitialization)
         filename = str(filename)
         configString = yaml.dump(currentConfig)
         configDir = os.path.dirname(filename)
@@ -541,11 +534,8 @@ class InstrumentMgr(Singleton, Helper):
         """
         Loads from a file and restores the config of the instruments in instrumentNames (or all managed instruments if instrumentNames is None).
         """
-        self.debugPrint('in InstrumentManager.loadAndRestoreConfig(filename,instruments) with filename=',
-                        filename, ' and instruments=', instruments)
-        allInstrumentNames = self.instrumentNames()  # all managed instruments
         if instrumentNames is None:
-            instrumentNames = allInstrumentNames
+            instrumentNames = self.instrumentNames()
         configFile = open(filename)
         config = yaml.load(configFile.read())
         configFile.close()
@@ -555,8 +545,6 @@ class InstrumentMgr(Singleton, Helper):
         """
         Restores the config of the instruments in instrumentNames (or all managed instruments if instrumentNames is None).
         """
-        self.debugPrint(
-            'in InstrumentManager.restoreConfig(config) with config=', config)
         for instrumentName in instrumentNames:
             if instrumentName in config:
                 try:
@@ -577,11 +565,11 @@ class InstrumentMgr(Singleton, Helper):
         So check if another frontpanel already exists before calling this method, if you don't want multiple frontpanels of the same instrument.
         """
         self.debugPrint('in InstrumentManager.frontPanel(', name, ')')
-        self.debugPrint('handleDict=', self.handle(name).handleDict())
+        self.debugPrint('handle = ', self.handle(name))
         handle = self.handle(name)
         if handle is None:
             return None
-        moduleName = handle.baseClass
+        moduleName = handle['baseClass']
         try:
             module = self._frontpanelsRootDir + moduleName
             self.debugPrint('module=', module, ' moduleName=', moduleName)
@@ -593,7 +581,7 @@ class InstrumentMgr(Singleton, Helper):
             # all instrument frontpanel should be of the Panel() class.
             # Instantiates the frontPanel and lets it know its associated
             # instrument
-            frontpanel = frontpanelModule.Panel(handle._instrument)
+            frontpanel = frontpanelModule.Panel(handle['instrument'])
             frontpanel.setWindowTitle("%s front panel" % name)
             return frontpanel
         except:

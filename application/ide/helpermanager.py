@@ -65,15 +65,15 @@ class HelperManager(Observer, Debugger):
         QCoreApplication.setApplicationVersion(QString(__version__))
         settings = QSettings()
         if helpersRootDir is None:
-            if settings.contains('helperManager.helpersRootDir'):
-                helpersRootDir = settings.value('helperManager.helpersRootDir').toString()
+            if settings.contains('helperManager/helpersRootDir'):
+                helpersRootDir = settings.value('helperManager/helpersRootDir').toString()
             else:
                 helpersRootDir = os.getcwd()
         self._gv = gv
         self._helpersRootDir = helpersRootDir
         self._helpers = {}
-        if settings.contains('helperManager.helperFiles'):
-            filenames = settings.value('helperManager.helperFiles').toStringList()
+        if settings.contains('helperManager/helperFiles'):
+            filenames = settings.value('helperManager/helperFiles').toStringList()
             for filename in filenames:
                 self.loadHelpers(filename=str(filename))
 
@@ -209,14 +209,6 @@ class HelperManager(Observer, Debugger):
                 if load:
                     params = (modulename, pyFilename, classname, associateAttr, associateTypeName)
                     execInGui(lambda: self._startHelper(*params))
-                    settings = QSettings()
-                    if settings.contains('helperManager.helperFiles'):
-                        files = settings.value('helperManager.helperFiles').toStringList()
-                    else:
-                        files = []
-                    if pyFilename not in files:
-                        files.append(pyFilename)
-                        settings.setValue('helperManager.helperFiles', files)
                 else:
                     print 'WARNING: Helper ' + key + ' already loaded. Close before reloading if necessary.'
         # print 'helpers dic = ', self._helpers
@@ -240,8 +232,8 @@ class HelperManager(Observer, Debugger):
             print 'ERROR loading %s.' % filename
             raise
         try:
-            # instantiate the helper with class name classname
-            helper = getattr(module, classname)(globals=self._gv)
+            # instantiates the helper with class name classname
+            helper = getattr(module, classname)(name=classname, globals=self._gv)
             helper.attach(self)                         # the helper will notify when it closes
             if isinstance(helper, HelperGUI):
                 helperType = 'HelperGUI'
@@ -249,12 +241,22 @@ class HelperManager(Observer, Debugger):
                 helperType = 'Helper'
             if isinstance(helper, QMainWindow):         # If it is a Qt window (HelperGUI), show it
                 helper.show()
+            # memorizes in the _helpers dictionary
             self._helpers[classname] = {'helper': helper, 'helperPath': filename, 'helperType': helperType}
             self._gv[classname] = helper             # keep a reference to the helper in gv and inform user
             print 'Helper %s loaded and accessible as gv.%s.' % (classname, classname),
         except:
             print 'ERROR in loading ' + classname + '.'
             raise
+        # memorize in settings
+        settings = QSettings()
+        if settings.contains('helperManager/helperFiles'):
+            files = settings.value('helperManager/helperFiles').toStringList()
+        else:
+            files = []
+        if filename not in files:
+            files.append(filename)
+            settings.setValue('helperManager/helperFiles', files)
         try:                        # Check if an associate has been loaded (Helper for a HelperGUI or vice and versa)
             associatePath, associateName, helperType, associateType = None, None, None, None
             if hasattr(helper, associateAttr):                            # if an associate exists

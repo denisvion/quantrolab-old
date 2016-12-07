@@ -88,12 +88,12 @@ iconPath = os.path.dirname(__file__) + '/resources/icons'
 
 class DataManager(HelperGUI):
 
-    def __init__(self, parent=None, globals={}):
+    def __init__(self, name=None, parent=None, globals={}):
 
         dataMgr = DataMgr(parent, globals)         # instantiates a DataMgr
 
         # init superClasses
-        HelperGUI.__init__(self, parent, globals, helper=dataMgr)
+        HelperGUI.__init__(self, name, parent, globals, helper=dataMgr)
         self.debugPrint("in dataManagerGUI frontpanel creator")
         # inform the helper it has an associated gui by adding the gui as an attribute
         dataMgr._gui = self

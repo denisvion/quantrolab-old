@@ -59,12 +59,12 @@ class LoopManager(HelperGUI):
     Loop manager GUI
     """
 
-    def __init__(self, parent=None, globals={}):
+    def __init__(self, name=None, parent=None, globals={}):
         """
         Creator of the loop manager panel.
         """
         # instantiates the backend manager and init superClass HelperGUI
-        HelperGUI.__init__(self, parent, globals, helper=LoopMgr(parent, globals))
+        HelperGUI.__init__(self, name, parent, globals, helper=LoopMgr(parent, globals))
         self.debugPrint("in loopManagerGUI frontpanel creator")
 
         # Build GUI below

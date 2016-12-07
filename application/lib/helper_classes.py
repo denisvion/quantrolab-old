@@ -29,7 +29,7 @@ Remarks:
  - a HelperGUI and its associate Helper have strong references to each others.
 """
 import sys
-from PyQt4.QtCore import Qt
+from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 from application.lib.base_classes1 import Debugger, Reloadable
 from application.lib.com_classes import Subject, Observer
@@ -41,11 +41,12 @@ class Helper(Debugger, Reloadable, Subject, Observer, object):
     Class for a Quantrolab's non-gui helper.
     """
 
-    def __init__(self, parent=None, globals={}):
+    def __init__(self, name=None, parent=None, globals={}):
         Reloadable.__init__(self)
         Subject.__init__(self)
         Observer.__init__(self)
         Debugger.__init__(self)
+        self._name = name
         self._parent = parent
         self._globals = globals
         self._gui = None
@@ -61,15 +62,16 @@ class HelperGUI(Debugger, Reloadable, Subject, ObserverWidget, QMainWindow, obje
     What to do with associate ?
     """
 
-    def __init__(self, parent=None, globals={}, helper=None):
+    def __init__(self, name=None, parent=None, globals={}, helper=None):
         Reloadable.__init__(self)
         Subject.__init__(self)
         ObserverWidget.__init__(self)
         Debugger.__init__(self)
         QMainWindow.__init__(self, parent)
-        self.setAttribute(Qt.WA_DeleteOnClose)
+        self.setAttribute(WA_DeleteOnClose)
         self._parent = parent
         self._globals = globals
+        self._name = name
         menubar = self.menuBar()
         helperMenu = menubar.addMenu('Helper')
         helperMenu.addAction(QAction('Reload this GUI helper...', self, triggered=self.reloadHelperGUI))
@@ -108,11 +110,25 @@ class HelperGUI(Debugger, Reloadable, Subject, ObserverWidget, QMainWindow, obje
         self.showNormal()
         self.activateWindow()
 
+    def showEvent(self, event):
+        settings = QSettings()
+        key = ''
+        if self._name is not None:
+            key += self._name + '/'
+        key1 = key + 'pos'
+        if settings.contains(key1):
+            self.move(settings.value(key1, self.pos()).toPoint())
+        key2 = key + 'size'
+        if settings.contains(key2):
+            self.resize(settings.value(key2, self.size()).toSize())
+
     def closeEvent(self, event):
+        """
         reply = QMessageBox.question(self,
                                      "Confirm Helper Panel Exit...",
                                      "Helper Panel will be closed and deleted. Are you sure?",
                                      QMessageBox.Ok | QMessageBox.Cancel)
+
         if reply == QMessageBox.Ok:
             if self._helper is not None:
                 self.debugPrint('detaching', self._helper, 'from', self)
@@ -122,3 +138,9 @@ class HelperGUI(Debugger, Reloadable, Subject, ObserverWidget, QMainWindow, obje
             self.notify(property='closing',)
         else:
             event.ignore()
+        """
+        key = ''
+        if self._name is not None:
+            key += self._name + '/'
+        QSettings().setValue(key + 'pos', self.pos())
+        QSettings().setValue(key + 'size', self.size())

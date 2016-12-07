@@ -75,16 +75,15 @@ class FrontPanel(Debugger, QMainWindow, QWidget, ObserverWidget, object):
             self.instrument.restoreStateFromFile(filename)
             # configuration requested from a frontpanel should lead to its Gui
             # update => call updateGui
-            self.updatedGui(self, property='restoreStateFromFile',
-                            value=None, message=None)
+            self.updatedGui(self, property='restoreStateFromFile', value=None, message=None)
 
     def reloadInstrument(self):
         """
         Reloads the instrument (not the frontpanel) if the module can be found (i.e. if it is local).
         No initialization is done.
         """
-        name = self.instrument.name()
-        self.debugPrint('in frontpanel.reloadInstrument() of instrument ', name)
+        instrument = self.instrument
+        self.debugPrint('in frontpanel.reloadInstrument() of instrument ', instrument.name())
         module = None
         try:
             module = self.instrument.getModule()
