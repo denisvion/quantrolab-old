@@ -487,10 +487,12 @@ class InstrumentManager(HelperGUI):
         """
         self.debugPrint('in InstrumentManagerPanel.selectInstr() with current instr =',
                         new, ' and last instr=', previous)
-        if new is None:
-            handle = None
-        else:
-            handle = self._helper.instrumentHandles()[str(new.text(0))]
+        handle = None
+        if new is not None:
+            try:
+                handle = self._helper.instrumentHandles().withName(str(new.text(0)))[0]
+            except:
+                pass
         self._instrHandle = handle
         self.propagateInstrHandle(handle)
 
@@ -622,13 +624,13 @@ class InstrProperty(QWidget):
         if handle is None:
             return
 
-        instrument = handle.instrument
+        instrument = handle['instrument']
         self._instrName.setText(handle.name())
-        self._baseClass.setText(QString(handle.baseClass))
-        self._remote.setChecked(handle.remote)
-        if handle.remote:
+        self._baseClass.setText(QString(handle['baseClass']))
+        self._remote.setChecked(handle['remote'])
+        if handle['remote']:
             self._serverAdress.setVisible(True)
-            server = handle.remoteServer
+            server = handle['remoteServer']
             self._serverAdress.setText(QString(server.ip() + ':' + str(server.port())))
         else:
             self._serverAdress.clear()
@@ -636,8 +638,8 @@ class InstrProperty(QWidget):
 
         args, kwargs = [], {}
         if instrument.initialized:
-            args = handle.args
-            kwargs = handle.kwargs
+            args = handle['args']
+            kwargs = handle['kwargs']
         argNames, kwargsCode = instrument.getInitializationArgs()
 
         self._args.setRowCount(len(argNames))
@@ -784,7 +786,7 @@ class InstrHelpWidget(QWidget):
             item.clear()
         if self._instrHandle is None:
             return
-        if self._instrHandle.remote:
+        if self._instrHandle['remote']:
             # self.myClass.setTextColor(QColor('Red'))
             self.myClass.setText(QString('Remote Instrument'))
             # self.myClass.setTextColor(QColor('Black'))
@@ -793,7 +795,7 @@ class InstrHelpWidget(QWidget):
         self.fillMethods()
 
     def fillClassSourceDoc(self):
-        ins = self._instrHandle.instrument
+        ins = self._instrHandle['instrument']
         clas = ins.getClass()
         if clas is None:
             clas = 'None'
@@ -806,7 +808,7 @@ class InstrHelpWidget(QWidget):
         self.generalHelp.setText(QString(doc))
 
     def fillMethods(self):
-        ins = self._instrHandle.instrument
+        ins = self._instrHandle['instrument']
         clas = ins.getClass()
         publicMethods = [method[0] for method in inspect.getmembers(
             clas, predicate=inspect.ismethod) if method[0][0] != '_']
@@ -822,7 +824,7 @@ class InstrHelpWidget(QWidget):
         if new is None:
             return
         methodName = str(new.text(0))
-        method = getattr(self._instrHandle.instrument, methodName)
+        method = getattr(self._instrHandle['instrument'], methodName)
         if inspect.ismethod(method):
             # helpString=method.__doc__
             helpString = inspect.getdoc(method)
@@ -884,7 +886,7 @@ class InstrHelpWidget(QWidget):
                 self.methods.setCurrentItem(found[0])
 
     def executeCommand(self):
-        ins = self._instrHandle.instrument
+        ins = self._instrHandle['instrument']
         commandQString = self.methodCall.text()
         error = None
         self.log.setTextColor(QColor('Black'))
@@ -917,8 +919,8 @@ class InstrCodeWidget(CodeEditor):
         self.update()
 
     def update(self):
-        if self._instrHandle is not None and not self._instrHandle.remote:
-            name = self._instrHandle.module.__file__
+        if self._instrHandle is not None and not self._instrHandle['remote']:
+            name = self._instrHandle['module'].__file__
             path, basename = os.path.dirname(name), os.path.splitext(os.path.basename(name))[0]
             filename = path + '\\' + basename + '.py'
             self.openFile(filename)
@@ -988,11 +990,11 @@ class InstrSCPIWidget(QWidget):
             item.clear()
         if self._instrHandle is None:
             return
-        if self._instrHandle.remote:
+        if self._instrHandle['remote']:
             self.visaAddress.setText('Remote instrument: dialog will work only if it is a VisaInstrument')
             self.messageOut.setText('*IDN?')
-        elif isinstance(self._instrHandle.instrument, VisaInstrument):
-            visaAddress = self._instrHandle.instrument._visaAddress
+        elif isinstance(self._instrHandle['instrument'], VisaInstrument):
+            visaAddress = self._instrHandle['instrument']._visaAddress
             self.timeout.setValue(10.)
             if visaAddress is not None:
                 self.visaAddress.setText(str(visaAddress))
@@ -1000,14 +1002,14 @@ class InstrSCPIWidget(QWidget):
         self.setTimeout()
 
     def myWrite(self):
-        self._instrHandle.instrument.write(str(self.messageOut.text()))
+        self._instrHandle['instrument'].write(str(self.messageOut.text()))
         self.log.setTextColor(QColor('black'))
         self.log.append(commandQString)
         # self.messageOut.clear() # user might want send twice the same
         # commmand
 
     def myRead(self):
-        str1 = self._instrHandle.instrument.read()
+        str1 = self._instrHandle['instrument'].read()
         self.log.setTextColor(QColor('Blue'))
         self.log.append(QString(str1))
 
@@ -1016,10 +1018,10 @@ class InstrSCPIWidget(QWidget):
         self.myRead()
 
     def setTimeout(self):
-        self._instrHandle.timeout = 1000. * self.timeout.value()
+        self._instrHandle['timeout'] = 1000. * self.timeout.value()
 
     def clearDevice(self):
-        self._instrHandle.instrument.clear()
+        self._instrHandle['instrument'].clear()
 
 
 class InstrumentsArea(QMainWindow, ObserverWidget):

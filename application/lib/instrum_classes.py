@@ -35,7 +35,7 @@ class Instrument(Debugger, ThreadedDispatcher, Reloadable, object):
       - has a dictionary of states stored by saveState(stateName), accessed by state(stateName), and removed by removeState(stateName).
       - can save to a file the current state by saveStateInFile(filename) or a stored state by saveStateInFile(filename,stateName=stateName)
       - can restore itself in a previously stored state by restoreState(stateName), an empty method that should be overiden for each particular instrument.
-    Note 1: If your python Instrument represents a piece of hardware having already state saving saving capability, overide saveState, removeState and restoreState,
+    Note 1: If your python Instrument represents a piece of hardware having already state saving capability, overide saveState, removeState and restoreState,
     and don't use other state managemet methods.
     Note 2: an instrument does not own any GUI frontpanel. A single or several frontpanels, local or distant, can be used to interact with the instrument as any other piece of python code.
     """
@@ -47,12 +47,11 @@ class Instrument(Debugger, ThreadedDispatcher, Reloadable, object):
         Subject.__init__(self)
         Debugger.__init__(self)
         ThreadedDispatcher.__init__(self)
-        # the only name of the instrument that the instrument knows.
-        self.setName(name)
-        self._states = dict()      # dictionary of states of the instrument.
+        self.setName(name)          # the only name of the instrument that the instrument knows.
+        self._states = dict()       # dictionary of states of the instrument.
         self._params = dict()
         self.daemon = True
-        self.initialized = False  # boolean value indicating that the initialize function was run without error
+        self.initialized = False    # boolean value indicating that the initialize function was run without error
 
     def initialize(self, *args, **kwargs):
         """
