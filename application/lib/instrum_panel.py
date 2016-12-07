@@ -24,12 +24,9 @@ class FrontPanel(Debugger, QMainWindow, QWidget, ObserverWidget, object):
         saveStateCommand = myMenu.addAction("Save instrument state as...")
         restoreStateCommand = myMenu.addAction(
             "Load and restore instrument state...")
-        self.connect(reloadCommand, SIGNAL(
-            "triggered()"), self.reloadInstrument)
-        self.connect(saveStateCommand, SIGNAL(
-            "triggered()"), self.saveStateInFile)
-        self.connect(restoreStateCommand, SIGNAL(
-            "triggered()"), self.restoreStateFromFile)
+        self.connect(reloadCommand, SIGNAL("triggered()"), self.reloadInstrument)
+        self.connect(saveStateCommand, SIGNAL("triggered()"), self.saveStateInFile)
+        self.connect(restoreStateCommand, SIGNAL("triggered()"), self.restoreStateFromFile)
         ObserverWidget.__init__(self)
         self.setInstrument(instrument)
 
@@ -87,8 +84,7 @@ class FrontPanel(Debugger, QMainWindow, QWidget, ObserverWidget, object):
         No initialization is done.
         """
         name = self.instrument.name()
-        self.debugPrint(
-            'in frontpanel.reloadInstrument() of instrument ', name)
+        self.debugPrint('in frontpanel.reloadInstrument() of instrument ', name)
         module = None
         try:
             module = self.instrument.getModule()

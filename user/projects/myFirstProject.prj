@@ -1,0 +1,33 @@
+parameters: {}
+tree:
+- Folder
+- {name: '[project]'}
+- - - Folder
+    - {name: documentation}
+    - - - File
+        - {url: 'L:/lab_control/quantrolab/documentation/welcome.py'}
+        - []
+      - - File
+        - {url: 'L:/lab_control/quantrolab/documentation/instrumentManager_documentation.py'}
+        - []
+      - - File
+        - {url: 'L:/lab_control/quantrolab/documentation/dataManager_documentation.py'}
+        - []
+  - - Folder
+    - {name: examples}
+    - - - File
+        - {url: 'L:/lab_control/quantrolab/documentation/examples/matplotlib plot
+            examples.py'}
+        - []
+      - - File
+        - {url: 'L:/lab_control/quantrolab/documentation/examples/datacube-datamanager
+            examples.py'}
+        - []
+      - - File
+        - {url: 'L:/lab_control/quantrolab/documentation/examples/smartloop examples.py'}
+        - []
+  - - Folder
+    - {name: myScripts}
+    - - - File
+        - {url: 'L:/lab_control/quantrolab/user/scripts/myFirstScript.py'}
+        - []

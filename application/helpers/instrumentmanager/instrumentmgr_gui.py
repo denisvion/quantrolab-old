@@ -106,7 +106,7 @@ class InstrumentManager(HelperGUI):
         self._instrList = InstrumentList()
         self._instrList.setSelectionMode(QAbstractItemView.ExtendedSelection)
         self._instrList.setHeaderLabels(['Instrument name'])
-        self._instrList.setSortingEnabled(True)
+        self._instrList.setSortingEnabled(False)
         self.connect(self._instrList, SIGNAL("reloadInstrument()"), self.reloadInstrument)
         self.connect(self._instrList, SIGNAL("loadShowFrontpanels()"), self.loadShowFrontpanels)
         self.setupList = QComboBox()
@@ -280,31 +280,19 @@ class InstrumentManager(HelperGUI):
 
     def updateInstrumentsList(self):
         """
-        Removes obsolete instrument names and add new ones from the QTreeWidget instrument list.
+        Rebuilds the QTreeWidget instrument list form the list of instruments self._helper.instruments().
         """
         self.debugPrint("in InstrumentManagerPanel.updateInstrumentsList()")
         li = self._instrList
-        li.setSortingEnabled(False)
-        newNames = self._helper.instrumentNames()
-        indices = range(li.topLevelItemCount())
-        oldNames = [str(li.topLevelItem(i).text(0)) for i in indices]
-        for index, oldName in zip(indices, oldNames):
-            if oldName not in newNames:
-                li.takeTopLevelItem(index)
-        for newName in newNames:
-            if newName not in oldNames:
-                item = QTreeWidgetItem()
-                # we put only the intrument name in the QTreeViewItem
-                item.setText(0, newName)
-                # the instrument handle will be retrieved using
-                # self._helper.instrumentHandles()[QTreeViewItem.text(0)]
-                li.addTopLevelItem(item)
-                instrument = self._helper.getInstrument(newName)
-                if isinstance(instrument, CompositeInstrument):  # if CompositeInstrument
-                    for childName in instrument.childrenNames():  # add children at level of the tree
-                        childItem = QTreeWidgetItem(item)
-                        childItem.setText(0, childName)
-        self._instrList.setSortingEnabled(True)
+        li.clear()
+        for index, instrument in enumerate(self._helper.instruments()):
+            item = QTreeWidgetItem()
+            item.setText(0, instrument.name())
+            li.addTopLevelItem(item)
+            if isinstance(instrument, CompositeInstrument):         # if CompositeInstrument
+                for childName in instrument.childrenNames():    # add children at level of the tree
+                    childItem = QTreeWidgetItem(item)
+                    childItem.setText(0, childName)
 
     def reloadInstrument(self):
         """
@@ -892,7 +880,7 @@ class InstrHelpWidget(QWidget):
         self.log.setTextColor(QColor('Black'))
         self.log.append(commandQString)
         try:
-            returned = ins(str(commandQString))
+            returned = ins(str(commandQString))  # syntax compatible with remote instrument !
         except Exception as exception:
             error = exception
             returned = 'Error:\n' + str(error)
