@@ -457,6 +457,11 @@ class IDE(QMainWindow, ObserverWidget):
         return False
 
     def closeEvent(self, e):
+
+        try:
+            self.executeCode('helperManager.close()', threadId='HelperManager', filename='IDE')
+        except:
+            pass
         self.editorWindow.closeEvent(e)
 
         if not e.isAccepted():
@@ -485,6 +490,7 @@ class IDE(QMainWindow, ObserverWidget):
             settings.remove("ide.lastproject")
         settings.setValue("ide.runStartupGroup", self.runStartupGroup.isChecked())
         settings.sync()  # commit immediately (in case of unexpected future error and freezing)
+
         self._codeRunner.terminate()
 
     def closing0k(self, editor):
@@ -832,6 +838,8 @@ class IDE(QMainWindow, ObserverWidget):
                     self.executeCode(code, threadId='HelperManager', filename="IDE")
 
     def debug(self):
+        self.executeCode('helperManager.close()', threadId='HelperManager', filename='IDE')
+        """
         # print self._codeRunner.lv(identifier='HelperManager', keysOnly=True)
         # print self._codeRunner.lv('helpers', identifier='HelperManager', keysOnly=True)
         def callbackFunc1(x='undefined'):
@@ -852,6 +860,7 @@ class IDE(QMainWindow, ObserverWidget):
         # print self._codeRunner.lv('HelperManager', keysOnly=True)
         print self._codeRunner.lv('HelperManager', varname='helperManager._helpersRootDir')
         print self._codeRunner.lv('HelperManager', varname='helperManager.helpers()', strRep=True)
+        """
 
 # end of IDE class definition
 

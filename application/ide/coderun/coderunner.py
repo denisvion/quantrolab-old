@@ -725,6 +725,7 @@ class MultiProcessCodeRunner(Subject):
         Clears command, response, and callback queues.
         """
         if self._codeProcess.is_alive():
+            self._codeProcess.cleanup()
             self._codeProcess.terminate()
             self._codeProcess.join()                 # Waits for the CodeProcess to terminate
         self._clearQueue(self._commandQueue)         # Clears the command

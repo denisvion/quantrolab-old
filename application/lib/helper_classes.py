@@ -68,7 +68,7 @@ class HelperGUI(Debugger, Reloadable, Subject, ObserverWidget, QMainWindow, obje
         ObserverWidget.__init__(self)
         Debugger.__init__(self)
         QMainWindow.__init__(self, parent)
-        self.setAttribute(WA_DeleteOnClose)
+        self.setAttribute(Qt.WA_DeleteOnClose)
         self._parent = parent
         self._globals = globals
         self._name = name
@@ -111,6 +111,9 @@ class HelperGUI(Debugger, Reloadable, Subject, ObserverWidget, QMainWindow, obje
         self.activateWindow()
 
     def showEvent(self, event):
+        wholeDisplayGeometry = QRect()
+        for i range(desktop.screenCount()):
+            wholeDisplayGeometry = wholeDisplayGeometry.united(desktop.screen(i).geometry())
         settings = QSettings()
         key = ''
         if self._name is not None:

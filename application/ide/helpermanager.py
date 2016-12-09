@@ -22,7 +22,7 @@ from threading import Thread
 from application.lib.base_classes1 import Debugger
 from application.lib.helper_classes import Helper, HelperGUI
 from application.lib.com_classes import Observer
-from PyQt4.QtGui import QMainWindow
+from PyQt4.QtGui import QMainWindow, QApplication
 from PyQt4.QtCore import *
 from ide.coderun.coderunner_gui import execInGui, _ensureGuiThreadIsRunning
 
@@ -58,7 +58,7 @@ class HelperManager(Observer, Debugger):
         """
         Observer.__init__(self)
         Debugger.__init__(self)
-        _ensureGuiThreadIsRunning()  # create immediately the Qt GUI application to benefit from QSsttings
+        _ensureGuiThreadIsRunning()  # create immediately the Qt GUI application to benefit from QSettings
         QCoreApplication.setOrganizationName("CEA-Quantronics")
         QCoreApplication.setOrganizationDomain("cea.fr")
         QCoreApplication.setApplicationName("QuantroLab's helper manager")
@@ -280,6 +280,10 @@ class HelperManager(Observer, Debugger):
         except:
             print "Error when looking for " + classname + "'s associate or when loading it."
             raise
+
+    def close(self):
+        time.sleep(10)
+        QApplication.instance().closeAllWindows()
 
 
 def startHelperManager():

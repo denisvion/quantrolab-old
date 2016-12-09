@@ -14,7 +14,7 @@ from threading import Thread
 from PyQt4.QtGui import QApplication
 from PyQt4.QtCore import Qt, SIGNAL, QThread
 
-# Memorize at the module level if the runGuiCode(PyQt_PyObject) signal has been connected to the _runGuiCode function
+# Memorizes at the module level if the runGuiCode(PyQt_PyObject) signal has been connected to the _runGuiCode function
 signalConnected = False
 
 
