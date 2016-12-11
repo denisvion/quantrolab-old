@@ -111,19 +111,37 @@ class HelperGUI(Debugger, Reloadable, Subject, ObserverWidget, QMainWindow, obje
         self.activateWindow()
 
     def showEvent(self, event):
-        wholeDisplayGeometry = QRect()
-        for i range(desktop.screenCount()):
-            wholeDisplayGeometry = wholeDisplayGeometry.united(desktop.screen(i).geometry())
+        # determine the whole display geometry
+        desktop = QDesktopWidget()
+        rect = QRect()      # available geometry
+        for i in range(desktop.screenCount()):
+            rect = rect.united(desktop.availableGeometry(i))
+        x1, y1, x2, y2 = rect.getCoords()
+        # Read the settings
         settings = QSettings()
         key = ''
         if self._name is not None:
             key += self._name + '/'
-        key1 = key + 'pos'
-        if settings.contains(key1):
-            self.move(settings.value(key1, self.pos()).toPoint())
         key2 = key + 'size'
         if settings.contains(key2):
-            self.resize(settings.value(key2, self.size()).toSize())
+            size = settings.value(key2, self.size()).toSize()
+            self.resize(size)
+        size = self.frameSize()
+        w, h = size.width(), size.height()
+        key1 = key + 'pos'                    # read the previous top-left corner
+        if settings.contains(key1):
+            pos = settings.value(key1, self.pos()).toPoint()
+            x, y = pos.x(), pos.y()
+            if x < x1:      # and move it back to inside the desktop if needed
+                pos.setX(x1)
+            elif x + w > x2:
+                pos.setX(max(x1, x2 - w))
+            if y < y1:
+                pos.setY(y1)
+            elif y + h > y2:
+                pos.setY(max(0, y2 - h))
+            if rect.contains(pos):
+                self.move(pos)
 
     def closeEvent(self, event):
         """
