@@ -257,7 +257,7 @@ class InstrumentMgr(Singleton, Helper):
                 handle['args'] = args                      # then update handle cause there was no error
                 handle['kwargs'] = kwargs
                 success = True
-                print 'instrument %s initialyzed successfully.' % instrument.name()
+                print 'instrument %s initialized successfully.' % instrument.name()
             except Exception as e:                      # in case of error build a clear message including the syntax used for the call
                 code = instrument.name() + '.initialize('
                 l1 = len(args)

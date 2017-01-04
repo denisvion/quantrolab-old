@@ -491,7 +491,7 @@ class InstrumentManager(HelperGUI):
 
 class InstrumentList(QTreeWidget):
     """
-    This is the QWidget to display/load instrumzents in the Instrument Manager GUI.
+    This is the QWidget to display/load instruments in the Instrument Manager GUI.
     """
 
     def mouseDoubleClickEvent(self, e):
@@ -698,6 +698,7 @@ class InstrHelpWidget(QWidget):
         self.methods.setSortingEnabled(True)
         self.search = QLineEdit()
         self.methodHelp = QTextEdit()
+        self.hideParentMethods = QCheckBox('Hide parent methods')
         self.methodCall = QLineEdit()
         self.execute = QPushButton('Call')
         self.clearLog = QPushButton('Clear log')
@@ -708,6 +709,7 @@ class InstrHelpWidget(QWidget):
         for item in [self.myClass, self.sourceFile, self.methodHelp]:
             item.setReadOnly(True)
 
+        self.connect(self.hideParentMethods, SIGNAL('stateChanged(int)'), self.fillMethods)
         self.connect(self.methods, SIGNAL(
             "currentItemChanged(QTreeWidgetItem *,QTreeWidgetItem *)"), self.help)
         self.connect(self.search, SIGNAL("textEdited(QString)"), self.searchF)
@@ -742,20 +744,21 @@ class InstrHelpWidget(QWidget):
         subLayout.addWidget(QLabel('search:'), 1, 0)
         self.search.setMaximumWidth(200)
         subLayout.addWidget(self.search, 1, 1)
-        layout2.addItem(subLayout, 0, 0, 6, 1)
-        layout2.addWidget(QLabel('Doc string:'), 0, 1)
+        layout2.addItem(subLayout, 0, 0, 7, 1)
+        layout2.addWidget(self.hideParentMethods, 0, 1)
+        layout2.addWidget(QLabel('Doc string:'), 1, 1)
         self.methodHelp.setMaximumHeight(150)
-        layout2.addWidget(self.methodHelp, 1, 1)
-        layout2.addWidget(QLabel('Instrument method call:'), 2, 1)
-        layout2.addWidget(self.methodCall, 3, 1)
+        layout2.addWidget(self.methodHelp, 2, 1)
+        layout2.addWidget(QLabel('Instrument method call:'), 3, 1)
+        layout2.addWidget(self.methodCall, 4, 1)
         hBoxLayout = QHBoxLayout()
         hBoxLayout.setSpacing(10)
         hBoxLayout.addWidget(self.execute)
         hBoxLayout.addWidget(self.clearLog)
         hBoxLayout.addWidget(QLabel('Log:'))
-        layout2.addItem(hBoxLayout, 4, 1)
+        layout2.addItem(hBoxLayout, 5, 1)
         self.log.setMaximumHeight(300)
-        layout2.addWidget(self.log, 5, 1)
+        layout2.addWidget(self.log, 6, 1)
         methodsGroupBox.setLayout(layout2)
 
         layout = QVBoxLayout()
@@ -796,15 +799,23 @@ class InstrHelpWidget(QWidget):
         self.generalHelp.setText(QString(doc))
 
     def fillMethods(self):
+        if self._instrHandle is None or self._instrHandle['remote']:
+            return
+        self.methods.clear()
         ins = self._instrHandle['instrument']
         clas = ins.getClass()
         publicMethods = [method[0] for method in inspect.getmembers(
             clas, predicate=inspect.ismethod) if method[0][0] != '_']
+        directMethods = [meth for meth in publicMethods if meth in clas.__dict__]
         for method in publicMethods:
-            item = QTreeWidgetItem()
-            item.setText(0, method)
-            self.methods.insertTopLevelItem(self.methods.topLevelItemCount(), item)
-            self.methods.sortItems(0, Qt.AscendingOrder)
+            if method in directMethods or not self.hideParentMethods.isChecked():
+                item = QTreeWidgetItem()
+                if method not in directMethods:
+                    item.setTextColor(0, QColor('blue'))
+                item.setText(0, method)
+                self.methods.insertTopLevelItem(self.methods.topLevelItemCount(), item)
+        if self.methods.isSortingEnabled():
+            self.methods.sortItems(0, self.methods.header().sortIndicatorOrder())
 
     def help(self, new, previous):
         self.methodHelp.clear()

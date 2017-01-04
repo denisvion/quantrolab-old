@@ -438,10 +438,11 @@ class VisaInstrument(Instrument):
         answer = None
         self.scpi = False
         try:
-            answer = self.ask('*IDN')
+            answer = self.ask('*IDN?')
             self.scpi = (isinstance(answer, str) and len(answer) > 2)
         except:
             pass
+        return self.scpi
 
     def waitForOperationComplete(self, checkSCPI=True):
         """
