@@ -371,7 +371,8 @@ class IDE(QMainWindow, ObserverWidget):
         print 'Loading settings...',
         settings = QSettings()
         if settings.contains('ide.workingpath'):
-            self.changeWorkingPath(settings.value('ide.workingpath').toString())
+            wp = settings.value('ide.workingpath').toString()
+            self.changeWorkingPath(wp)
         print 'done.'
 
         self.setProject(Project())
@@ -627,20 +628,18 @@ class IDE(QMainWindow, ObserverWidget):
 
     def changeWorkingPath(self, path=None):
         """
-        Changes the working directory of the application
+        Changes the working directory of the application.
         """
         settings = QSettings()
-
         if path is None:
-            path = QFileDialog.getExistingDirectory(
-                self, "Change Working Diretory", directory=self._codeRunner.currentWorkingDirectory())
-
+            directory = self._codeRunner.currentWorkingDirectory()
+            if directory is None:
+                directory = ''
+            path = QFileDialog.getExistingDirectory(self, "Change Working Diretory", directory=directory)
         if not os.path.exists(path):
             return
-
         os.chdir(str(path))
         self._codeRunner.setCurrentWorkingDirectory(str(path))
-
         settings.setValue("ide.workingpath", path)
         self.workingPathLabel.setText("Working path:" + path)
         settings.sync()  # commit immediately (in case of unexpected future error and freezing)
