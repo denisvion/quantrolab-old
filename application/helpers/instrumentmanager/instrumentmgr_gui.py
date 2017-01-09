@@ -92,11 +92,10 @@ class InstrumentManager(HelperGUI):
         openList = filemenu.addAction("Open instrument list...")
         saveList = filemenu.addAction("Save instrument list as...")
         filemenu.addSeparator()
-        preferences = filemenu.addAction("Preferences...")
         menubar.addMenu(filemenu)
         self.connect(openList, SIGNAL("triggered()"), self.openList)
         self.connect(openInst, SIGNAL("triggered()"), self.openInst)
-        self.connect(preferences, SIGNAL("triggered()"), self.preferences)
+        self.connect(filemenu.addAction("Set root directory..."), SIGNAL("triggered()"), self.setRootDirectory)
 
         splitter = QSplitter(Qt.Horizontal)
 
@@ -169,47 +168,60 @@ class InstrumentManager(HelperGUI):
         # Initialization #
         ##################
 
-        self._workingDirectory = None
         self._instrHandle = None   # current instrument handle
 
         # load persistent platform-independent application settings if any
         settings = QSettings()
-        if settings.contains("directories.setup"):
-            setupPath = str(settings.value("directories.setup").toString())
-        else:
-            setupPath = os.getcwd()
+        if settings.contains("instrumentManager.rootDirectory"):
+            setupPath = str(settings.value("instrumentManager.rootDirectory").toString())
+            instrumentMgr.setInstrumentsRootDir(setupPath)
 
         # load instrument states from a file
-        self._picklePath = setupPath + r"\config\setups.pickle"
-        self.loadStates()
+        """self._picklePath = setupPath + r"\config\setups.pickle"
+        self.loadStates()"""
 
         # create a dictionary of frontpanels because the backend instrument manager does not manage them
         self._frontpanels = dict()
 
         self.connect(self._instrList, SIGNAL("currentItemChanged(QTreeWidgetItem *,QTreeWidgetItem *)"), self.selectInstr)
         self.updateInstrumentsList()
-        self.updateStateList()
+        # self.updateStateList()
+
+    # root and  working directory management
+
+    def setRootDirectory(self, directory=None):
+        """
+        Sets the root directory for instruments.
+        """
+        self.debugPrint("in InstrumentManagerPanel.setRootDirectory()")
+        settings = QSettings()
+        if directory is None:
+            directory = self._helper.instrumentsRootDir()
+            if directory is None:
+                directory = ''
+            path = QFileDialog.getExistingDirectory(self, "Select root diretory for instruments", directory=directory)
+        if not os.path.exists(path):
+            return
+        self._helper.setInstrumentsRootDir(path)
+        settings.setValue("instrumentManager.rootDirectory", path)
+        settings.sync()  # commit immediately (in case of unexpected future error and freezing)
 
     def workingDirectory(self):
         """
-        Retruns the current working directory.
+        Returns the current working directory.
         """
-        self.debugPrint("in instrument manager frontpanelworkingDirectory()")
-        if self._workingDirectory is None:
-            return os.getcwd()
-        return self._workingDirectory
+        self.debugPrint("in InstrumentManagerPanel.workingDirectory()")
+        return self._helper.currentWorkingDir()
 
-    def setWorkingDirectory(self, filename):
+    def setWorkingDirectory(self, directory):
         """
         Sets the current working directory.
         """
-        self.debugPrint(
-            "in InstrumentManagerPanel.setWorkingDirectory(filename) with filename=", filename)
-        if filename is not None:
-            directory = os.path.dirname(str(filename))
-            self._workingDirectory = directory
-        else:
-            self._workingDirectory = None
+        self.debugPrint("in InstrumentManagerPanel.setWorkingDirectory(directory) with directory=", directory)
+        if os.path.isdir(directory):
+            self._helper.setCurrentWorkingDir(directory)
+
+    # opening and saving list of instruments
 
     def openList(self):
         """
@@ -220,9 +232,9 @@ class InstrumentManager(HelperGUI):
         filename = str(QFileDialog.getOpenFileName(caption='Open instrument list file',
                                                    filter="Instrument list file (*.inl)", directory=self.workingDirectory()))
         if filename != '':
-            # import the file that should define an attribute instruments, and
-            # call the instrument manager loadInstruments method
-            self.setWorkingDirectory(filename)
+            # import the file that should define an attribute instruments, and call
+            # the instrument manager loadInstruments method
+            self.setWorkingDirectory(os.path.dirname(filename))
             basename = os.path.basename(filename)
             fn = imp.load_source(basename, filename)
             if hasattr(fn, 'instruments') and isinstance(fn.instruments, list):
@@ -237,6 +249,8 @@ class InstrumentManager(HelperGUI):
         self.debugPrint("in InstrumentManagerPanel.saveList()")
         pass
 
+    # opening or closing an instrument
+
     def openInst(self):
         """
         Prompt for an instrument file and opens it.
@@ -246,7 +260,7 @@ class InstrumentManager(HelperGUI):
         filePath = str(QFileDialog.getOpenFileName(caption='Open instrument file',
                                                    filter="Instrument list file (*.py)", directory=self.workingDirectory()))
         if filePath != '':
-            self.setWorkingDirectory(filePath)
+            self.setWorkingDirectory(os.path.dirname(filePath))
             self._helper.loadInstrumentFromFilePath(None, filePath, args=[], kwargs={})
 
     def closeInst(self):
@@ -256,12 +270,55 @@ class InstrumentManager(HelperGUI):
         self.debugPrint("in InstrumentManagerPanel.closeInst()")
         pass
 
-    def preferences(self):
+    # Saving and restoring setups
+
+    def restoreSetup(self):
         """
-        ...
+        Restores the configuration...
         """
-        self.debugPrint("in InstrumentManagerPanel.preferences()")
-        pass
+        self.debugPrint("in InstrumentManagerPanel.restoreSetup()")
+        name = str(self.setupList.currentText())
+        if name in self._states:
+            self._helper.restoreState(self._states[name])
+
+    def removeSetup(self):
+        """
+        ???
+        """
+        self.debugPrint("in InstrumentManagerPanel.removeSetup()")
+        message = QMessageBox()
+        message.setWindowTitle("Confirm Setup Deletion")
+        message.setIcon(QMessageBox.Question)
+        name = str(self.setupList.currentText())
+        if name in self._states:
+            message.setText(
+                "Do you really want to remove setup \"%s\"?" % name)
+            message.setStandardButtons(QMessageBox.Cancel | QMessageBox.Ok)
+            message.setDefaultButton(QMessageBox.Cancel)
+            result = message.exec_()
+            if result == QMessageBox.Cancel:
+                return
+            del self._states[name]
+        self.updateStateList()
+
+    def saveSetup(self):
+        """
+        Saves...
+        """
+        self.debugPrint("in InstrumentManagerPanel.saveSetup()")
+        name = str(self.setupList.currentText())
+        # Sanitize the name of the setup...
+        valid_chars = "-_.() %s%s" % (string.ascii_letters, string.digits)
+        name = ''.join(c for c in name if c in valid_chars)
+        if name == "":
+            return
+        state = self._helper.saveState(name, withInitialization=False)
+        self._states[name] = state
+        self.saveStates()
+        self.updateStateList()
+        self.setupList.setCurrentIndex(self.setupList.findText(name))
+
+    # updating gui
 
     def updatedGui(self, subject=None, property=None, value=None):
         """
@@ -302,6 +359,8 @@ class InstrumentManager(HelperGUI):
         selected = self._instrList.selectedItems()
         for instrument in selected:
             self._helper.reloadInstrument(str(instrument.text(0)))
+
+    # frontpanels management
 
     def loadFrontpanel(self, name, show=True):
         """
@@ -377,58 +436,11 @@ class InstrumentManager(HelperGUI):
             self.loadFrontpanel(name, show=False)
         self.dockFrontpanel(name)
 
-    def restoreSetup(self):
-        """
-        Restores the configuration...
-        """
-        self.debugPrint("in InstrumentManagerPanel.restoreSetup()")
-        name = str(self.setupList.currentText())
-        if name in self._states:
-            self._helper.restoreState(self._states[name])
-
-    def removeSetup(self):
-        """
-        ???
-        """
-        self.debugPrint("in InstrumentManagerPanel.removeSetup()")
-        message = QMessageBox()
-        message.setWindowTitle("Confirm Setup Deletion")
-        message.setIcon(QMessageBox.Question)
-        name = str(self.setupList.currentText())
-        if name in self._states:
-            message.setText(
-                "Do you really want to remove setup \"%s\"?" % name)
-            message.setStandardButtons(QMessageBox.Cancel | QMessageBox.Ok)
-            message.setDefaultButton(QMessageBox.Cancel)
-            result = message.exec_()
-            if result == QMessageBox.Cancel:
-                return
-            del self._states[name]
-        self.updateStateList()
-
-    def saveSetup(self):
-        """
-        Saves...
-        """
-        self.debugPrint("in InstrumentManagerPanel.saveSetup()")
-        name = str(self.setupList.currentText())
-        # Sanitize the name of the setup...
-        valid_chars = "-_.() %s%s" % (string.ascii_letters, string.digits)
-        name = ''.join(c for c in name if c in valid_chars)
-        if name == "":
-            return
-        state = self._helper.saveState(name, withInitialization=False)
-        self._states[name] = state
-        self.saveStates()
-        self.updateStateList()
-        self.setupList.setCurrentIndex(self.setupList.findText(name))
-
     def saveStates(self, path=None):
         """
         ???
         """
-        self.debugPrint(
-            "in InstrumentManagerPanel.saveStates(path) with path=", path)
+        self.debugPrint("in InstrumentManagerPanel.saveStates(path) with path=", path)
         if path is None:
             path = self._picklePath
         string = yaml.dump(self._states)
@@ -538,11 +550,11 @@ class InstrProperty(QWidget):
         self._instrumentMgr = instrumentMgr
         self._instrHandle = None
 
-        lineEditList = ['_instrName', '_baseClass', '_serverAdress']
+        lineEditList = ['_instrName', '_moduleName', '_fullPath', '_serverAdress']
         for lineEdit in lineEditList:
             setattr(self, lineEdit, QLineEdit())
             getattr(self, lineEdit).setReadOnly(True)
-        self._remote = QCheckBox('remote')
+        self._remote = QCheckBox('Remote')
         self._remote.setEnabled(False)
         tables = self._args, self._kwargs, self._params = (
             QTableWidget(0, 2), QTableWidget(0, 2), QTableWidget(50, 2))
@@ -555,11 +567,13 @@ class InstrProperty(QWidget):
         subLayout1.setSpacing(4)
         subLayout1.addWidget(QLabel('Instrument name:'), 0, 0)
         subLayout1.addWidget(self._instrName, 0, 1)
-        subLayout1.addWidget(QLabel('Base class:'), 0, 2)
-        subLayout1.addWidget(self._baseClass, 0, 3)
-        subLayout1.addWidget(QLabel('server adress:'), 1, 0)
-        subLayout1.addWidget(self._serverAdress, 1, 1)
-        subLayout1.addWidget(self._remote, 1, 2)
+        subLayout1.addWidget(QLabel('Module name:'), 0, 2)
+        subLayout1.addWidget(self._moduleName, 0, 3)
+        subLayout1.addWidget(QLabel('Path:'), 1, 0)
+        subLayout1.addWidget(self._fullPath, 1, 1, 1, 3)
+        subLayout1.addWidget(self._remote, 2, 0)
+        subLayout1.addWidget(QLabel('server address:'), 2, 1)
+        subLayout1.addWidget(self._serverAdress, 2, 2)
 
         subLayout2 = QGridLayout()
         subLayout2.setSpacing(4)
@@ -614,15 +628,17 @@ class InstrProperty(QWidget):
 
         instrument = handle['instrument']
         self._instrName.setText(handle.name())
-        self._baseClass.setText(QString(handle['baseClass']))
-        self._remote.setChecked(handle['remote'])
-        if handle['remote']:
+        self._moduleName.setText(QString(handle['moduleName']))
+        remote = handle['remoteServer'] is not None
+        self._remote.setChecked(remote)
+        if remote:
             self._serverAdress.setVisible(True)
             server = handle['remoteServer']
             self._serverAdress.setText(QString(server.ip() + ':' + str(server.port())))
         else:
             self._serverAdress.clear()
             self._serverAdress.setVisible(False)
+            self._fullPath.setText(QString(handle['fullPath']))
 
         args, kwargs = [], {}
         if instrument.initialized:
@@ -777,7 +793,7 @@ class InstrHelpWidget(QWidget):
             item.clear()
         if self._instrHandle is None:
             return
-        if self._instrHandle['remote']:
+        if self._instrHandle['remoteServer'] is not None:
             # self.myClass.setTextColor(QColor('Red'))
             self.myClass.setText(QString('Remote Instrument'))
             # self.myClass.setTextColor(QColor('Black'))
@@ -799,7 +815,7 @@ class InstrHelpWidget(QWidget):
         self.generalHelp.setText(QString(doc))
 
     def fillMethods(self):
-        if self._instrHandle is None or self._instrHandle['remote']:
+        if self._instrHandle is None or self._instrHandle['remoteServer'] is not None:
             return
         self.methods.clear()
         ins = self._instrHandle['instrument']
@@ -918,7 +934,7 @@ class InstrCodeWidget(CodeEditor):
         self.update()
 
     def update(self):
-        if self._instrHandle is not None and not self._instrHandle['remote']:
+        if self._instrHandle is not None and not self._instrHandle['remoteServer'] is not None:
             name = self._instrHandle['module'].__file__
             path, basename = os.path.dirname(name), os.path.splitext(os.path.basename(name))[0]
             filename = path + '\\' + basename + '.py'
@@ -940,8 +956,7 @@ class InstrSCPIWidget(QWidget):
 
         self.visaAddress = QLineEdit()
         self.timeout = QDoubleSpinBox()
-        self.connect(self.timeout, SIGNAL(
-            'valueChanged(double)'), self.setTimeout)
+        self.connect(self.timeout, SIGNAL('valueChanged(double)'), self.setTimeout)
         clearDeviceButton = QPushButton('Clear device')
         self.connect(clearDeviceButton, SIGNAL('clicked()'), self.clearDevice)
         readButton = QPushButton('Read')
@@ -989,7 +1004,7 @@ class InstrSCPIWidget(QWidget):
             item.clear()
         if self._instrHandle is None:
             return
-        if self._instrHandle['remote']:
+        if self._instrHandle['remoteServer'] is not None:
             self.visaAddress.setText('Remote instrument: dialog will work only if it is a VisaInstrument')
             self.messageOut.setText('*IDN?')
         elif isinstance(self._instrHandle['instrument'], VisaInstrument):

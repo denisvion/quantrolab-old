@@ -6,12 +6,12 @@ It is itself programmed in Python (and Qt for the GUI interface). It was origina
 The main Quantrolab application is a general mutlithread script runner that can manage several scripts organised in a project, print results in a log, and logout and traceback errors.
 In addition, the IDE can run helpers (or plugins) dedicated to laboratory management.
 All the helpers and scripts are run in a code process separated from the main QT application; this code process involves a single secondary QT application (making possible to use GUI helpers for instance).
-All the scripts and helpers have a private local memory and share a common global memory called gv (variable x is local wheras variable gv.x is accessible from anywhere).
+All the scripts and helpers have a private local memory and share a common global memory called gv (variable x is local whereas variable gv.x is accessible from anywhere).
 Many Quantrolab components can save/restore their state when Quantrolab is closed/relaunched.
 
 I) Opening, saving and closing scripts
-Script files are displayed in Quantrolab's in the tab widget on the right (one tab per script)
-I.1) Tabs can be reordered by horizontal sliding of the tab name.
+Script files are displayed in the Quantrolab's tab widget on the right (one tab per script)
+I.1) Tabs can be reordered by sliding horizontally the tab name.
 I.2) A script can be added to the current project by dragging its tab name vertically and dropping it in the Project tab on the left.
 I.3) Open a script using the "Open file" command of Quantrolab's "File" menu (or the corresponding icon in the icon bar)
 I.4) Open a script already in your project by double clicking it in the "Project" tab.
@@ -22,7 +22,7 @@ I.7) Close a script using either the closing cross in the tab name, or the "Clos
 II) Editing, running, and stopping scripts, blocks, or selections
 II.1) Scripts are normally edited using the keyboard, or copy-cut-paste functions.
 II.2) Script files can be divided into blocks of code using a double sharp ##.
-II.3) A search and replace tool is available by typing Control+F. Use vertical upward or downward arrows to find next and previous occurences. Note that normal keyboard edition is not available during search. Press Escape to quit the search tool.
+II.3) A search and replace tool is available by typing Ctrl+F. Use vertical upward or downward arrows to find next and previous occurences. Note that normal keyboard edition is not available during search. Press Escape to quit the search tool.
 II.4) Run an entire script by either
 	- clicking in its window and typing Control+Enter
 	- selecting its name in the project tab and clicking the "Run script" icon in the icon bar.

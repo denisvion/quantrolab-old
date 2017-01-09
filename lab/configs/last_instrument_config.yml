@@ -1,0 +1,14 @@
+dummy:
+  args: []
+  fullPath: L:\lab_control\quantrolab\lab\instruments\dummy.pyc
+  kwargs: {}
+  moduleName: dummy
+  remoteServer: null
+  state: {}
+dummy2:
+  args: [1, 2]
+  fullPath: L:\lab_control\quantrolab\lab\instruments\dummy2.pyc
+  kwargs: {kwarg1: 100, kwarg2: toto, kwarg3: '100'}
+  moduleName: dummy2
+  remoteServer: null
+  state: {}

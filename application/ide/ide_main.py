@@ -260,7 +260,6 @@ class IDE(QMainWindow, ObserverWidget):
         """
         Initializes the menus of the Quantrolab application
         """
-        # settings = QSettings()
         menuBar = self.menuBar()
 
         fileMenu = menuBar.addMenu("&File")
@@ -635,7 +634,7 @@ class IDE(QMainWindow, ObserverWidget):
             directory = self._codeRunner.currentWorkingDirectory()
             if directory is None:
                 directory = ''
-            path = QFileDialog.getExistingDirectory(self, "Change Working Diretory", directory=directory)
+            path = QFileDialog.getExistingDirectory(self, "Select Working Diretory", directory=directory)
         if not os.path.exists(path):
             return
         os.chdir(str(path))
