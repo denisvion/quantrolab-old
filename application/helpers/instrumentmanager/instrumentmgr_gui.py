@@ -715,6 +715,7 @@ class InstrHelpWidget(QWidget):
         self.search = QLineEdit()
         self.methodHelp = QTextEdit()
         self.hideParentMethods = QCheckBox('Hide parent methods')
+        self.hideParentMethods.setChecked(True)
         self.methodCall = QLineEdit()
         self.execute = QPushButton('Call')
         self.clearLog = QPushButton('Clear log')
