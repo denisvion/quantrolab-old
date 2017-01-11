@@ -86,27 +86,30 @@ class InstrumentManager(HelperGUI):
 
         menubar = self.menuBar()                            # menus
         filemenu = menubar.addMenu("File")
-        openInst = filemenu.addAction("Open instrument file...")
-        closeInst = filemenu.addAction("Close instrument")
+        self.connect(filemenu.addAction("Set root directory..."), SIGNAL("triggered()"), self.setRootDirectory)
         filemenu.addSeparator()
-        openList = filemenu.addAction("Open instrument list...")
-        saveList = filemenu.addAction("Save instrument list as...")
+        openInst = filemenu.addAction("Open instrument from file...")
+        closeInst = filemenu.addAction("Remove selected instrument(s)")
         filemenu.addSeparator()
+        openList = filemenu.addAction("Open instrument config...")
+        saveList = filemenu.addAction("Save instrument config as...")
         menubar.addMenu(filemenu)
         self.connect(openList, SIGNAL("triggered()"), self.openList)
         self.connect(openInst, SIGNAL("triggered()"), self.openInst)
-        self.connect(filemenu.addAction("Set root directory..."), SIGNAL("triggered()"), self.setRootDirectory)
+        self.connect(closeInst, SIGNAL("triggered()"), self.closeInst)
 
         splitter = QSplitter(Qt.Horizontal)
 
         widgetLeft = QWidget()
         # left layout contains the instrument list (QTreeWidget) and a few buttons
         layoutLeft = QGridLayout()
+        # The InstrumentList(QWidget) below has to be maintained up to date with backend instrument attribute _instrumentHandles.
+        # In particular the items have to be kept in the same order
         self._instrList = InstrumentList()
         self._instrList.setSelectionMode(QAbstractItemView.ExtendedSelection)
         self._instrList.setHeaderLabels(['Instrument name'])
         self._instrList.setSortingEnabled(False)
-        self.connect(self._instrList, SIGNAL("reloadInstrument()"), self.reloadInstrument)
+        self.connect(self._instrList, SIGNAL("reloadInstruments()"), self.reloadInstruments)
         self.connect(self._instrList, SIGNAL("loadShowFrontpanels()"), self.loadShowFrontpanels)
         self.setupList = QComboBox()
         self.setupList.setEditable(True)
@@ -118,7 +121,7 @@ class InstrumentManager(HelperGUI):
 
         reloadButton = QPushButton("Reload instrument(s)")
         frontPanelButton = QPushButton("Load/show frontpanel(s)")
-        self.connect(reloadButton, SIGNAL("clicked()"), self.reloadInstrument)
+        self.connect(reloadButton, SIGNAL("clicked()"), self.reloadInstruments)
         self.connect(frontPanelButton, SIGNAL("clicked()"), self.loadShowFrontpanels)
 
         self.connect(restoreSetup, SIGNAL("clicked()"), self.restoreSetup)
@@ -265,10 +268,11 @@ class InstrumentManager(HelperGUI):
 
     def closeInst(self):
         """
-        Closes ...
+        Closes the instruments selected in
         """
         self.debugPrint("in InstrumentManagerPanel.closeInst()")
-        pass
+        indices = [index.row() for index in self._instrList.selectedIndexes()]
+        self._helper.removeInstruments(indices, True)
 
     # Saving and restoring setups
 
@@ -327,7 +331,7 @@ class InstrumentManager(HelperGUI):
         self.debugPrint("in InstrumentManagerPanel.updatedGui() with subject=",
                         subject, " property=", property, " and value=", value)
         if subject == self._helper:
-            if property == "new_instrument":        # value is the instrument handle
+            if property in ['new_instrument', 'removed_instruments']:        # value is the instrument handle
                 self.updateInstrumentsList()
                 if self._instrHandle is value:
                     self.propagateInstrHandle(value)
@@ -351,14 +355,13 @@ class InstrumentManager(HelperGUI):
                     childItem = QTreeWidgetItem(item)
                     childItem.setText(0, childName)
 
-    def reloadInstrument(self):
+    def reloadInstruments(self):
         """
         Reload the intruments selected in the QTreeWidget instrument list (not the frontpanel).
         """
-        self.debugPrint("in InstrumentManagerPanel.reloadInstrument()")
-        selected = self._instrList.selectedItems()
-        for instrument in selected:
-            self._helper.reloadInstrument(str(instrument.text(0)))
+        self.debugPrint("in InstrumentManagerPanel.reloadInstruments()")
+        indices = [index.row() for index in self._instrList.selectedIndexes()]
+        self._helper.reloadInstruments(indices)
 
     # frontpanels management
 
@@ -525,7 +528,7 @@ class InstrumentList(QTreeWidget):
         if action == renameAction:
             pass
         elif action == reloadAction:
-            self.emit(SIGNAL("reloadInstrument()"))
+            self.emit(SIGNAL("reloadInstruments()"))
         elif action == loadPanelAction:
             self.emit(SIGNAL("loadShowFrontpanels()"))
         elif action == setStateAction:

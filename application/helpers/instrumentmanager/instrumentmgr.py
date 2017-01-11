@@ -24,9 +24,16 @@ class InstrumentHandle(dict):
 
     """
     Contains relevant information about an instrument, in a 'handle' used by the instruments manager.
-    The (all public) handle attributes are instrument, moduleName, module, remoteServer, args, and kwargs
-    - Note that the instrument name is an attribute of the instrument, not of the InstrumentHandle.
-    - moduleName is useful in case of a remote instrument, for which module=None
+    The (all public) handle attributes are
+    - instrument,
+    - module,
+    - moduleName
+    - fullPath
+    - remoteServer,
+    - args,
+    - kwargs
+    Note that the instrument name is an attribute of the instrument, not of the InstrumentHandle.
+    moduleName is useful in case of a remote instrument, for which module is None.
     """
 
     def __init__(self, instrument, module=None, moduleName=None, fullPath=None, remoteServer=None, args=[], kwargs={}):
@@ -63,10 +70,11 @@ class InstrumentMgr(Singleton, Helper):
     The InstrumentManager manages a pull of instruments of class Instr:
     1) loads or reloads instruments from python modules on a local machine with or without local instrument server.
     2) loads a remote instrument, either through the HTTP XML-RPC protocol or through the custom Remote Instrument Protocol (RIP) .
-    3) maintains a dictionary with the handles of class InstrumentHandle for each loaded instruments.
-      The public methods instrumentHandles(), instrumentNames() and instruments() return this dictionary, the instrument names, and the instruments, respectively.
-    4) loads frontpanels associated to a local or remote instruments if a frontpanel module can be found.
-      Frontpanels can be loaded but are not managed by the instrument manager.
+    3) maintains a list of InstrumentHandle dictionaries (1 for each managed instruments).
+      The public methods instrumentHandles(), instrumentNames() and instruments() return this dictionary, the instrument names, and the instrument objects, respectively.
+    4) can remove (and try to delete) instruments from the managed instrument list
+    5) loads frontpanels associated to a local or remote instruments if a frontpanel module can be found.
+      Frontpanels can only be loaded but are not managed by the instrument manager.
 
     Note that there can be only one instance of the InstrumentManager per python shell (it is a singleton).
     """
@@ -300,11 +308,12 @@ class InstrumentMgr(Singleton, Helper):
         if saveSettings:
             self.saveCurrentConfigInFile()
 
-    def reloadInstrument(self, handle, moduleName=None, args=[], kwargs={}):
+    def reloadInstrument(self, handle, args=[], kwargs={}):
         """
-        Reloads a given instrument from its handle and returns the instrument
+        Reloads a given instrument from its handle and returns the instrument.
+        if initializing arguments and keyword arguments are not passed, those present in the handle are used.
         """
-        self.debugPrint('in InstrumentManager.reloadInstrument(', handle, ',', moduleName, ')')
+        self.debugPrint('in InstrumentManager.reloadInstrument()')
         print "Reloading %s" % handle.name()
         if handle['instrument'].isAlive():
             raise Exception("Cannot reload instrument while it is running...")
@@ -321,7 +330,8 @@ class InstrumentMgr(Singleton, Helper):
         if handle['remoteServer'] is not None:                                # remote instrument
             name = handle.name()
             if handle['remoteServer'].hasInstrument(name):
-                handle['remoteServer'].reloadInstrument(name, handle.moduleName, passedArgs, passedKwArgs)
+                handle['remoteServer'].reloadInstrument(
+                    name, passedArgs, passedKwArgs)  # may be an error of parameters here
             else:
                 handle['remoteServer'].loadInstrumentFromName(name, handle.moduleName, passedArgs, passedKwArgs)
             self.notify('new_instrument', handle)
@@ -336,6 +346,14 @@ class InstrumentMgr(Singleton, Helper):
             self.initializeInstrument(handle, args=passedArgs, kwargs=passedKwArgs)
         self.notify('new_instrument', handle)
         return handle['instrument']
+
+    def reloadInstruments(self, indices):
+        """
+        Reloads a list of instruments from their indices in _instrumentHandles.
+        """
+        for index in indices:
+            handle = self._instrumentHandles[index]
+            self.reloadInstrument(handle)
 
     def _isUrl(self, name):
         """
@@ -391,7 +409,7 @@ class InstrumentMgr(Singleton, Helper):
             handle = InstrumentHandle(instrument, moduleName=moduleName,
                                       remoteServer=remoteServer, args=args, kwargs=kwargs)
             self._instrumentHandles.append(handle)
-            self.notify("new_instrument", handle)
+            self.notify('new_instrument', handle)
             # and return this handle
             return handle['instrument']
 
@@ -506,10 +524,10 @@ class InstrumentMgr(Singleton, Helper):
         """
         Returns the first instrument with a specified name or None.
         """
-        if name in self._instrumentHandles.names():
-            return self._instrumentHandles.withName(name)[0]['instrument']
-        else:
-            return None
+        h = self.handle(name)
+        if h is not None:
+            h = h['instrument']
+        return h
 
     # Instrument configuration management
 
@@ -611,37 +629,102 @@ class InstrumentMgr(Singleton, Helper):
         configFile.close()
         self.restoreConfig(config, instrumentNames, loadIfNotLoaded)
 
-    # Frontpanel loading (no management at all)
+    def _removeInstrument(self, instrument, tryDelete=False):
+        """
+        Private function removing an instrument from the managed intruments.
+        See docstring of public function removeInstruments()
+        """
+        i = self._instrumentIndex(instrument)
+        if i is not None:
+            if tryDelete:
+                del self._instrumentHandles[i]['instrument']
+            del self._instrumentHandles[i]
 
-    def frontpanel(self, name):
+    def removeInstruments(self, instrumentOrInstrumentList, tryDelete=False):
         """
-        Loads and returns a new frontpanel for the instrument with name name.
-        Note that the number of frontpanels per instrument is not limited.
-        So check if another frontpanel already exists before calling this method, if you don't want multiple frontpanels of the same instrument.
+        Removes the instruments specified by insrumentList from the managed intruments.
+        instrumentOrInstrumentList: either
+        - an instrument handle of type InstrumentHandle
+        - an instrument of type Instr
+        - an instrument name
+        - an index in instrumentHandles
+        - a list of instrument handles of type InstrumentHandle,
+        - a list of instruments of type Instr
+        - a list of intrument names
+        - a list of index in instrumentHandles
+        tryDelete: whether to try to delete the instrument in the instrument handle
+        WARNING: instrument will be deleted from memory only if no other reference to it exists in the python shell.
         """
-        self.debugPrint('in InstrumentManager.frontPanel(', name, ')')
-        self.debugPrint('handle = ', self.handle(name))
-        handle = self.handle(name)
-        if handle is None:
-            return None
-        moduleName = handle['moduleName']
-        try:
-            module = self._frontpanelsRootDir + moduleName
-            self.debugPrint('module=', module, ' moduleName=', moduleName)
-            frontpanelModule = __import__(module, globals(), globals(), [moduleName], -1)  # gets the module
+        if isinstance(instrumentOrInstrumentList, list):
+            for instrument in instrumentOrInstrumentList:
+                self._removeInstrument(instrument)
+        else:
+            self._removeInstrument(instrumentOrInstrumentList, tryDelete)
+        self.notify('removed_instruments', None)
+
+    # Utility
+    def _instrumentIndex(self, instrument):
+        """
+        Private function finding the index of an instrument in _instrumentHandles from its handle, itself, its name, or its index.
+        """
+        i = None
+        print instrument, type(instrument)
+        if isinstance(instrument, int):
+            i = instrument
+        else:
+            if isinstance(instrument, InstrumentHandle):
+                attr = 'instrumentHandles'
+            elif instrument.__class__.__name__ == 'Instr':
+                attr = 'instruments'
+            elif isinstance(instrument, str):
+                attr = 'instrumentNames'
+            try:
+                i = getattr(self, attr)().index(instrument)
+            except:
+                pass
+        return i
+
+    # Frontpanel (no management at all)
+    # An instrument can have one or several instances of on associated frontpanel defined in the same module as the instrument or in a different module.
+    # the function below is a method to find the file that defines  the frontpanel.
+
+    def findFrontPanelModule(self, instrument):
+        """
+        Returns the frontpanel file corresponding to the instrument specified by its handle, itself, its name, or its index in the instrument list.
+        The frontpanel file will be (in order):
+        - the instrument file if it contains a Panel class definition;
+        - a file at the same location as the instrument file with a name instrument_Panel.py instead of instrument.py;
+        - a file instrument_Panel.py anywhere in the search pathes.
+
+        """
+        panelPath = None
+        self.debugPrint('in InstrumentManager.frontPanel(', instrument, ')')
+        handle = None
+        index = self._instrumentIndex(instrument)
+        if isinstance(index, int):
+            handle = self._instrumentHandles[index]
+        if handle['fullPath'] is not None
+            fullPath = handle['fullPath']
+            path, basename = os.path.split(fullPath)
+            basename, extension = os.path.splitext(basename)
+            print path, basename, extension
+            attemptPath = path + '\\' + basename + '_panel' + '.py'
+            if os.path.isfile(attemptPath):
+                panelPath = attemptPath
+        elif handle['remoteServer'] is not None:
+            pass  # Strategy to load frontPanel for remote instrument is to be defined
+        return attemptPath
+
+            """frontpanelModule = __import__(module, globals(), globals(), [moduleName], -1)  # gets the module
             # reloads it in case it has changed
             reload(frontpanelModule)
             frontpanelModule = __import__(module, globals(), globals(), [moduleName], -1)  # and re import the new code
-            self.debugPrint('frontpanelModule=', frontpanelModule)
             # all instrument frontpanel should be of the Panel() class.
-            # Instantiates the frontPanel and lets it know its associated
-            # instrument
+            # Instantiates the frontPanel and lets it know its associated instrument
             frontpanel = frontpanelModule.Panel(handle['instrument'])
             frontpanel.setWindowTitle("%s front panel" % name)
-            return frontpanel
-        except:
             print 'No frontPanel could be loaded for instrument ' + name + '.'
-            # print traceback.print_exc()
+            """
 
 
 class RemoteInstrumentManager():
@@ -664,8 +747,7 @@ class RemoteInstrumentManager():
             return lambda *args, **kwargs: True if attr(*args, **kwargs) else False
 
     def dispatch(self, instrument, command, args=[], kwargs={}):
-        self.debugPrint('in RemoteManager.dispatch(',
-                        instrument, ',', command, ')')
+        self.debugPrint('in RemoteManager.dispatch(', instrument, ',', command, ')')
         instr = self._manager.getInstrument(instrument)
         if command == 'ask':
             request = "instr." + str(*args)
