@@ -66,8 +66,9 @@ class InstrumentManager(HelperGUI):
         """
         Creator of the instrument manager panel.
         """
-        instrumentMgr = InstrumentMgr(parent, globals)      # instantiates a InstrumentMgr
+        instrumentMgr = InstrumentMgr(name, parent, globals)      # instantiates a InstrumentMgr
         instrumentMgr._gui = self                           # inform the helper it has an associated gui by adding the gui as an attribute
+
         # init superClasses and defines it as the associated helper of the present HelperGUI
         HelperGUI.__init__(self, name, parent, globals, helper=instrumentMgr)
         self.debugPrint("in InstrumentManagerPanel.creator")
@@ -268,11 +269,17 @@ class InstrumentManager(HelperGUI):
 
     def closeInst(self):
         """
-        Closes the instruments selected in
+        Closes the instruments selected in self._instrList
         """
         self.debugPrint("in InstrumentManagerPanel.closeInst()")
         indices = [index.row() for index in self._instrList.selectedIndexes()]
-        self._helper.removeInstruments(indices, True)
+        msg = QMessageBox('Instrument manager')
+        msg.setIcon(QMessageBox.Warning)
+        msg.setText('Remove selected instruments?')
+        msg.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
+        ret = msg.exec_()
+        if ret == QMessageBox.Ok:
+            self._helper.removeInstruments(indices, True)
 
     # Saving and restoring setups
 
@@ -365,9 +372,9 @@ class InstrumentManager(HelperGUI):
 
     # frontpanels management
 
-    def loadFrontpanel(self, name, show=True):
+    def loadFrontpanel(self, instrument, show=True):
         """
-        Ask the instrument manager to load the frontpanel with name name (if not already loaded) and adds it to the frontpanel dictionary self._frontpanels.
+        Ask the instrument manager to load the frontpanel of instrument instrument (if not already loaded) and adds it to the frontpanel dictionary self._frontpanels.
         """
         self.debugPrint("in InstrumentManagerPanel.loadFrontpanel(name) with name=", name)
         frontpanel = self._helper.frontpanel(name)
@@ -426,12 +433,11 @@ class InstrumentManager(HelperGUI):
         Show the frontpanels of selected instruments.
         """
         self.debugPrint("in InstrumentManagerPanel.loadShowFrontpanels()")
-        selected = self._instrList.selectedItems()
-        for instrument in selected:
-            name = str(instrument.text(0))
-            self.loadShowFrontpanel(name, forceReload=forceReload)
+        indices = [index.row() for index in self._instrList.selectedIndexes()]
+        for index in indices:
+            self.loadShowFrontpanel(index, forceReload=forceReload)
 
-    def loadShowFrontpanel(self, name, forceReload=False):
+    def loadShowFrontpanel(self, index, forceReload=False):
         """
         Show the frontpanel of instrument name.
         """
@@ -506,7 +512,7 @@ class InstrumentManager(HelperGUI):
 
 class InstrumentList(QTreeWidget):
     """
-    This is the QWidget to display/load instruments in the Instrument Manager GUI.
+    This is the QWidget to display instruments in the Instrument Manager GUI.
     """
 
     def mouseDoubleClickEvent(self, e):
@@ -516,27 +522,27 @@ class InstrumentList(QTreeWidget):
 
     def contextMenuEvent(self, event):
         menu = QMenu(self)
-        renameAction = menu.addAction("Rename instrument...")
-        reloadAction = menu.addAction("Reload instrument(s)")
-        loadPanelAction = menu.addAction("Load instrument panel(s)")
+        renameAction = menu.addAction('Rename instrument...')
+        reloadAction = menu.addAction('Reload selected instruments')
+        loadPanelAction = menu.addAction("Load panels of selected instruments ")
         menu.addSeparator()
-        setStateAction = menu.addAction("Set instrument state...")
-        saveStateAction = menu.addAction("Save instrument state as...")
+        setStateAction = menu.addAction('Set instrument state...')
+        saveStateAction = menu.addAction('Save instrument state as...')
         menu.addSeparator()
-        removeAction = menu.addAction("Remove instrument")
+        removeAction = menu.addAction('Remove selected instrument')
         action = menu.exec_(self.viewport().mapToGlobal(event.pos()))
         if action == renameAction:
             pass
         elif action == reloadAction:
-            self.emit(SIGNAL("reloadInstruments()"))
+            self.emit(SIGNAL('reloadInstruments()'))
         elif action == loadPanelAction:
-            self.emit(SIGNAL("loadShowFrontpanels()"))
+            self.emit(SIGNAL('loadShowFrontpanels()'))
         elif action == setStateAction:
             pass
         elif action == saveStateAction:
             pass
         elif action == removeAction:
-            pass
+            self.emit(SIGNAL('closeInst()'))
 
 
 class InstrProperty(QWidget):

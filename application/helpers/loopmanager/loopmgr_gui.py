@@ -33,7 +33,7 @@ def startHelperGui(exitWhenClosed=False, parent=None, globals={}):
     # define dataManager as a global variable
     global loopManager
     # Instantiate the datamanager gui here
-    loopManager = LoopManager(parent, globals)
+    loopManager = LoopManager("", parent, globals)
     # show its window
     loopManager.show()
     QApplication.instance().setQuitOnLastWindowClosed(
@@ -64,7 +64,7 @@ class LoopManager(HelperGUI):
         Creator of the loop manager panel.
         """
         # instantiates the backend manager and init superClass HelperGUI
-        HelperGUI.__init__(self, name, parent, globals, helper=LoopMgr(parent, globals))
+        HelperGUI.__init__(self, name, parent, globals, helper=LoopMgr(name, parent, globals))
         self.debugPrint("in loopManagerGUI frontpanel creator")
 
         # Build GUI below

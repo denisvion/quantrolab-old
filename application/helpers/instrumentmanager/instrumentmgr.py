@@ -655,6 +655,7 @@ class InstrumentMgr(Singleton, Helper):
         tryDelete: whether to try to delete the instrument in the instrument handle
         WARNING: instrument will be deleted from memory only if no other reference to it exists in the python shell.
         """
+        # BUG Treat list of indices differently or indices will be o longer valid
         if isinstance(instrumentOrInstrumentList, list):
             for instrument in instrumentOrInstrumentList:
                 self._removeInstrument(instrument)
@@ -685,8 +686,9 @@ class InstrumentMgr(Singleton, Helper):
         return i
 
     # Frontpanel (no management at all)
-    # An instrument can have one or several instances of on associated frontpanel defined in the same module as the instrument or in a different module.
-    # the function below is a method to find the file that defines  the frontpanel.
+    # An instrument can have one or several instances of on associated frontpanel defined
+    # in the same module as the instrument or in a different module.
+    # The method below finds the file that defines the frontpanel.
 
     def findFrontPanelModule(self, instrument):
         """
@@ -703,7 +705,9 @@ class InstrumentMgr(Singleton, Helper):
         index = self._instrumentIndex(instrument)
         if isinstance(index, int):
             handle = self._instrumentHandles[index]
-        if handle['fullPath'] is not None
+        if handle['remoteServer'] is not None:
+            pass  # Strategy to load frontPanel for remote instrument is to be defined
+        elif handle['fullPath'] is not None:
             fullPath = handle['fullPath']
             path, basename = os.path.split(fullPath)
             basename, extension = os.path.splitext(basename)
@@ -711,20 +715,18 @@ class InstrumentMgr(Singleton, Helper):
             attemptPath = path + '\\' + basename + '_panel' + '.py'
             if os.path.isfile(attemptPath):
                 panelPath = attemptPath
-        elif handle['remoteServer'] is not None:
-            pass  # Strategy to load frontPanel for remote instrument is to be defined
         return attemptPath
 
-            """frontpanelModule = __import__(module, globals(), globals(), [moduleName], -1)  # gets the module
-            # reloads it in case it has changed
-            reload(frontpanelModule)
-            frontpanelModule = __import__(module, globals(), globals(), [moduleName], -1)  # and re import the new code
-            # all instrument frontpanel should be of the Panel() class.
-            # Instantiates the frontPanel and lets it know its associated instrument
-            frontpanel = frontpanelModule.Panel(handle['instrument'])
-            frontpanel.setWindowTitle("%s front panel" % name)
-            print 'No frontPanel could be loaded for instrument ' + name + '.'
-            """
+        """frontpanelModule = __import__(module, globals(), globals(), [moduleName], -1)  # gets the module
+        # reloads it in case it has changed
+        reload(frontpanelModule)
+        frontpanelModule = __import__(module, globals(), globals(), [moduleName], -1)  # and re import the new code
+        # all instrument frontpanel should be of the Panel() class.
+        # Instantiates the frontPanel and lets it know its associated instrument
+        frontpanel = frontpanelModule.Panel(handle['instrument'])
+        frontpanel.setWindowTitle("%s front panel" % name)
+        print 'No frontPanel could be loaded for instrument ' + name + '.'
+        """
 
 
 class RemoteInstrumentManager():

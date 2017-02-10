@@ -90,13 +90,12 @@ class DataManager(HelperGUI):
 
     def __init__(self, name=None, parent=None, globals={}):
 
-        dataMgr = DataMgr(parent, globals)         # instantiates a DataMgr
+        dataMgr = DataMgr(name, parent, globals)   # instantiates a DataMgr
+        dataMgr._gui = self                        # inform the helper it has an associated gui by adding the gui as an attribute
 
         # init superClasses
         HelperGUI.__init__(self, name, parent, globals, helper=dataMgr)
         self.debugPrint("in dataManagerGUI frontpanel creator")
-        # inform the helper it has an associated gui by adding the gui as an attribute
-        dataMgr._gui = self
 
         self._workingDirectory = None
 
