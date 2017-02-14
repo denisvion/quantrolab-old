@@ -49,6 +49,7 @@ def startHelperGui(exitWhenClosed=False, parent=None, globals={}):
 def startHelperGuiInGui(exitWhenClosed=False, parent=None, globals={}):
     execInGui(lambda: startHelperGui(exitWhenClosed))
 
+
 if __name__ == '__main__':                               # 1) starts here in the module
     startHelperGuiInGui(True)
 
@@ -86,17 +87,22 @@ class InstrumentManager(HelperGUI):
         self.prefDict = {}
 
         menubar = self.menuBar()                            # menus
-        filemenu = menubar.addMenu("File")
-        self.connect(filemenu.addAction("Set root directory..."), SIGNAL("triggered()"), self.setRootDirectory)
-        filemenu.addSeparator()
-        openInst = filemenu.addAction("Open instrument from file...")
-        closeInst = filemenu.addAction("Remove selected instrument(s)")
-        filemenu.addSeparator()
-        openList = filemenu.addAction("Open instrument config...")
-        saveList = filemenu.addAction("Save instrument config as...")
-        menubar.addMenu(filemenu)
+        InstrumentsMenu = menubar.addMenu("Instruments")
+        self.connect(InstrumentsMenu.addAction("Set root directory..."), SIGNAL("triggered()"), self.setRootDirectory)
+        InstrumentsMenu.addSeparator()
+        openInstModule = InstrumentsMenu.addAction("Open instrument from module...")
+        openInstModName = InstrumentsMenu.addAction("Open instrument from module name...")
+        openInstRemote = InstrumentsMenu.addAction("Open remote instrument...")
+        InstrumentsMenu.addSeparator()
+        openList = InstrumentsMenu.addAction("Open instrument config...")
+        saveList = InstrumentsMenu.addAction("Save instrument config as...")
+        InstrumentsMenu.addSeparator()
+        closeInst = InstrumentsMenu.addAction("Remove selected instrument(s)")
+        menubar.addMenu(InstrumentsMenu)
         self.connect(openList, SIGNAL("triggered()"), self.openList)
-        self.connect(openInst, SIGNAL("triggered()"), self.openInst)
+        self.connect(openInstModule, SIGNAL("triggered()"), self.openInstModule)
+        self.connect(openInstModName, SIGNAL("triggered()"), self.openInstModName)
+        self.connect(openInstRemote, SIGNAL("triggered()"), self.openInstRemote)
         self.connect(closeInst, SIGNAL("triggered()"), self.closeInst)
 
         splitter = QSplitter(Qt.Horizontal)
@@ -255,17 +261,23 @@ class InstrumentManager(HelperGUI):
 
     # opening or closing an instrument
 
-    def openInst(self):
+    def openInstModule(self):
         """
         Prompt for an instrument file and opens it.
         """
-        self.debugPrint("in InstrumentManagerPanel.openInst()")
+        self.debugPrint("in InstrumentManagerPanel.openInstModule()")
         # choose the file
         filePath = str(QFileDialog.getOpenFileName(caption='Open instrument file',
-                                                   filter="Instrument list file (*.py)", directory=self.workingDirectory()))
+                                                   filter="Instrument file (*.py)", directory=self.workingDirectory()))
         if filePath != '':
             self.setWorkingDirectory(os.path.dirname(filePath))
             self._helper.loadInstrumentFromFilePath(None, filePath, args=[], kwargs={})
+
+    def openInstModName(self):
+        pass
+
+    def openInstRemote(self):
+        pass
 
     def closeInst(self):
         """

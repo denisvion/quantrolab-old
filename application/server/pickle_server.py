@@ -16,7 +16,7 @@ from struct import *
 
 _DEBUG = False
 
-from application.helpers.intrumentmanager.instrumentmgr import *
+from application.helpers.instrumentmanager.instrumentmgr import RemoteInstrumentMgr
 from application.lib.instrum_classes import *
 
 
@@ -99,14 +99,9 @@ class ThreadedTCPRequestHandler(SocketServer.BaseRequestHandler):
 class ThreadedTCPServer(SocketServer.ThreadingMixIn, SocketServer.TCPServer):
     pass
 
-"""def client(ip, port, message): # this is to be removed
-	conn  = ServerConnection(ip,port)
-	print conn.instrument("qubit1mwg","anritsu_mwg",[],{},False)
-	for i in range(0,10):
-		print conn.dispatch("qubit1mwg","frequency")
-"""
+print
 
-myManager = RemoteInstrumentManager()  # instantiate a remote manager
+myManager = RemoteInstrumentMgr()  # instantiate a remote manager
 # declares that any ThreadedTCPRequestHandler has a property manager equal
 # to the already existing RemoteManager
 ThreadedTCPRequestHandler.manager = myManager
@@ -121,6 +116,7 @@ def startServer():
     HOST, PORT = hostname, 8000
     # instantiates the ThreadedTCPServer.
     server = ThreadedTCPServer((HOST, PORT), ThreadedTCPRequestHandler)
+
     # Pass the name of class handler (ThreadedTCPRequestHandler) so that it
     # will be instantiated by the init function of ThreadedTCPServer
     ip, port = server.server_address
@@ -130,6 +126,7 @@ def startServer():
     # and starts it in a thread
     server_thread.start()
     print "Server loop running in thread:", server_thread.getName()
+    print "Type Ctrl+C to quit."
     while True:  # test if close is requested
         try:
             time.sleep(1)

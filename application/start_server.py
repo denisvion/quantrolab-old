@@ -1,16 +1,20 @@
 import sys
 import os
+import os.path
 
-# parrent folder 'QuantroLab' including also the laboratory folder 'lab'
-# and the 'script' folder for user scripts.
-rootDir = os.path.realpath(os.path.dirname(__file__) + '/../')
-sys.path.append(rootDir)
+sys.path.append(os.path.realpath(os.path.dirname(__file__) + '/../'))
+sys.path.append(os.path.realpath(os.path.dirname(__file__) + '/../../'))
+sys.path.append(os.path.realpath(os.path.dirname(__file__) + '/../../libs/'))
+print "\nWelcome to QUANTROLAB INSTRUMENT SERVER"
+print
+print "Search pathes are:"
+for path1 in sys.path:
+    print "  " + path1
+print
+
+print "Importing server.pickle_server.startServer()"
+from server.pickle_server import startServer
 
 if __name__ == '__main__':
-    try:
-        from server.pickle_server import *
-        startServer()
-    except:
-        import traceback
-        print traceback.format_exc()
-        raw_input("Press enter to exit.")
+    print "calling startServer()"
+    startServer()
