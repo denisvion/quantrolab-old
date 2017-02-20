@@ -274,10 +274,62 @@ class InstrumentManager(HelperGUI):
             self._helper.loadInstrumentFromFilePath(None, filePath, args=[], kwargs={})
 
     def openInstModName(self):
-        pass
+        """
+        Prompts user for an instrument module name and tries to open it by calling
+        the loadInstrumentFromModuleName() method of the backend instrument manager.
+        """
+        self.debugPrint("in InstrumentManagerPanel.openInstModName()")
+        message = "Open instrument from module name"
+        moduleName, ok = QInputDialog().getText(self, message, 'Module name =')
+        print moduleName
 
     def openInstRemote(self):
-        pass
+        """
+        Prompts user for an instrument module name and remote server address, builds the full name,
+        and tries to open it by calling the loadInstrumentFromName() method of the backend instrument manager.
+        """
+        class OpenInstDialog(QDialog):
+
+            def __init__(self, parent):
+                QDialog.__init__(self, parent)
+                self.setWindowTitle('Open instrument')
+                self.setMinimumWidth(300)
+                self.message = QLabel('')
+                self.remote = QCheckBox('Remote server')
+                self.remote.stateChanged.connect(self.remoteChanged)
+                self.server = QLineEdit('127.0.0.0')
+                self.moduleName = QLineEdit()
+                self.browseButton = QPushButton('Browse...', self)
+                self.browseButton.clicked.connect(self.browse)
+                okButton = QPushButton('OK', self)
+                okButton.clicked.connect(self.accept)
+                cancelButton = QPushButton('Cancel', self)
+                cancelButton.clicked.connect(self.reject)
+                okButton.setDefault(True)
+                self.layout = QGridLayout(self)
+                self.layout.addWidget(self.remote, 0, 0, 1, 1)
+                self.layout.addWidget(self.server, 0, 1, 1, 3)
+                self.layout.addWidget(QLabel('Module name'), 1, 0, 1, 1)
+                self.layout.addWidget(self.moduleName, 1, 1, 1, 3)
+                self.layout.addWidget(self.browseButton, 1, 4, 1, 1)
+                self.layout.addWidget(cancelButton, 2, 0, 1, 1)
+                self.layout.addWidget(okButton, 2, 2, 1, 1)
+                self.remoteChanged()
+
+            def remoteChanged(self):
+                self.server.setEnabled(self.remote.isChecked())
+                self.browseButton.setEnabled(not self.remote.isChecked())
+
+            def browse(self):
+                filePath = str(QFileDialog.getOpenFileName(caption='Open instrument file',
+                                                           filter="Instrument file (*.py)", directory=self.parent().workingDirectory()))
+                if filePath != '':
+                    self.moduleName.setText(filePath)
+
+        self.debugPrint("in InstrumentManagerPanel.openInstRemote()")
+        dialog = OpenInstDialog(self)
+        result = dialog.exec_()
+        print result, dialog.remote.isChecked(), dialog.server.text(), dialog.moduleName.text()
 
     def closeInst(self):
         """

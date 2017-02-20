@@ -45,6 +45,7 @@ def startHelperGui(exitWhenClosed=False, parent=None, globals={}):
 def startHelperGuiInGui(exitWhenClosed=False, parent=None, globals={}):
     execInGui(lambda: startHelperGui(exitWhenClosed, parent, globals))
 
+
 # 1) starts here in the module if file is main
 if __name__ == '__main__':
     startHelperGuiInGui(True)
