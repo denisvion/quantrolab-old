@@ -5,6 +5,7 @@ dummy:
   moduleName: dummy
   remoteServer: null
   state: {}
+  timeout: 0.0
 dummy2:
   args: [1, 2]
   fullPath: L:\lab_control\quantrolab\lab\instruments\dummy2.pyc
@@ -12,3 +13,4 @@ dummy2:
   moduleName: dummy2
   remoteServer: null
   state: {}
+  timeout: 0.0

@@ -68,7 +68,8 @@ class InstrumentManager(HelperGUI):
         Creator of the instrument manager panel.
         """
         instrumentMgr = InstrumentMgr(name, parent, globals)      # instantiates a InstrumentMgr
-        instrumentMgr._gui = self                           # inform the helper it has an associated gui by adding the gui as an attribute
+        # inform the helper it has an associated gui by adding the gui as an attribute
+        instrumentMgr._gui = self
 
         # init superClasses and defines it as the associated helper of the present HelperGUI
         HelperGUI.__init__(self, name, parent, globals, helper=instrumentMgr)
@@ -90,9 +91,7 @@ class InstrumentManager(HelperGUI):
         InstrumentsMenu = menubar.addMenu("Instruments")
         self.connect(InstrumentsMenu.addAction("Set root directory..."), SIGNAL("triggered()"), self.setRootDirectory)
         InstrumentsMenu.addSeparator()
-        openInstModule = InstrumentsMenu.addAction("Open instrument from module...")
-        openInstModName = InstrumentsMenu.addAction("Open instrument from module name...")
-        openInstRemote = InstrumentsMenu.addAction("Open remote instrument...")
+        openInst = InstrumentsMenu.addAction("Open instrument...")
         InstrumentsMenu.addSeparator()
         openList = InstrumentsMenu.addAction("Open instrument config...")
         saveList = InstrumentsMenu.addAction("Save instrument config as...")
@@ -100,9 +99,7 @@ class InstrumentManager(HelperGUI):
         closeInst = InstrumentsMenu.addAction("Remove selected instrument(s)")
         menubar.addMenu(InstrumentsMenu)
         self.connect(openList, SIGNAL("triggered()"), self.openList)
-        self.connect(openInstModule, SIGNAL("triggered()"), self.openInstModule)
-        self.connect(openInstModName, SIGNAL("triggered()"), self.openInstModName)
-        self.connect(openInstRemote, SIGNAL("triggered()"), self.openInstRemote)
+        self.connect(openInst, SIGNAL("triggered()"), self.openInstrument)
         self.connect(closeInst, SIGNAL("triggered()"), self.closeInst)
 
         splitter = QSplitter(Qt.Horizontal)
@@ -177,8 +174,6 @@ class InstrumentManager(HelperGUI):
         ##################
         # Initialization #
         ##################
-
-        self._instrHandle = None   # current instrument handle
 
         # load persistent platform-independent application settings if any
         settings = QSettings()
@@ -261,29 +256,7 @@ class InstrumentManager(HelperGUI):
 
     # opening or closing an instrument
 
-    def openInstModule(self):
-        """
-        Prompt for an instrument file and opens it.
-        """
-        self.debugPrint("in InstrumentManagerPanel.openInstModule()")
-        # choose the file
-        filePath = str(QFileDialog.getOpenFileName(caption='Open instrument file',
-                                                   filter="Instrument file (*.py)", directory=self.workingDirectory()))
-        if filePath != '':
-            self.setWorkingDirectory(os.path.dirname(filePath))
-            self._helper.loadInstrumentFromFilePath(None, filePath, args=[], kwargs={})
-
-    def openInstModName(self):
-        """
-        Prompts user for an instrument module name and tries to open it by calling
-        the loadInstrumentFromModuleName() method of the backend instrument manager.
-        """
-        self.debugPrint("in InstrumentManagerPanel.openInstModName()")
-        message = "Open instrument from module name"
-        moduleName, ok = QInputDialog().getText(self, message, 'Module name =')
-        print moduleName
-
-    def openInstRemote(self):
+    def openInstrument(self):
         """
         Prompts user for an instrument module name and remote server address, builds the full name,
         and tries to open it by calling the loadInstrumentFromName() method of the backend instrument manager.
@@ -317,33 +290,45 @@ class InstrumentManager(HelperGUI):
                 self.remoteChanged()
 
             def remoteChanged(self):
-                self.server.setEnabled(self.remote.isChecked())
-                self.browseButton.setEnabled(not self.remote.isChecked())
+                remote = self.remote.isChecked()
+                self.server.setVisible(remote)
+                self.browseButton.setVisible(not remote)
+                if remote:
+                    self.moduleName.clear()
 
             def browse(self):
                 filePath = str(QFileDialog.getOpenFileName(caption='Open instrument file',
                                                            filter="Instrument file (*.py)", directory=self.parent().workingDirectory()))
                 if filePath != '':
+                    self.parent().setWorkingDirectory(os.path.dirname(filePath))
                     self.moduleName.setText(filePath)
 
         self.debugPrint("in InstrumentManagerPanel.openInstRemote()")
         dialog = OpenInstDialog(self)
         result = dialog.exec_()
-        print result, dialog.remote.isChecked(), dialog.server.text(), dialog.moduleName.text()
+        if not result:
+            return
+        modName = str(dialog.moduleName.text())
+        if dialog.remote.isChecked():
+            serverAddress = str(dialog.server.text())
+        else:
+            filePath = modName
+            self._helper.loadInstrumentFromFilePath(None, filePath, args=[], kwargs={})
 
     def closeInst(self):
         """
         Closes the instruments selected in self._instrList
         """
         self.debugPrint("in InstrumentManagerPanel.closeInst()")
-        indices = [index.row() for index in self._instrList.selectedIndexes()]
-        msg = QMessageBox('Instrument manager')
+        instruments = [item._handle['instrument'] for item in self._instrList.selectedItems()]
+        msg = QMessageBox(self)
+        msg.setWindowTitle('Instrument manager')
         msg.setIcon(QMessageBox.Warning)
         msg.setText('Remove selected instruments?')
         msg.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
         ret = msg.exec_()
         if ret == QMessageBox.Ok:
-            self._helper.removeInstruments(indices, True)
+            self._helper.removeInstruments(instruments, True)
 
     # Saving and restoring setups
 
@@ -404,27 +389,20 @@ class InstrumentManager(HelperGUI):
         if subject == self._helper:
             if property in ['new_instrument', 'removed_instruments']:        # value is the instrument handle
                 self.updateInstrumentsList()
-                if self._instrHandle is value:
-                    self.propagateInstrHandle(value)
             elif property == "initialized":          # value is the instrument handle
-                if self._instrHandle is value:
-                    self._instProp.setInstrHandle(value)
+                tab = self._tabs
+                if self._instrList.currentItem()._handle is value:
+                    self._instProp.update()
 
     def updateInstrumentsList(self):
         """
-        Rebuilds the QTreeWidget instrument list form the list of instruments self._helper.instruments().
+        Rebuilds the QTreeWidget instrument list from the list of instrument handles self._helper.self._instrumentHandles().
         """
         self.debugPrint("in InstrumentManagerPanel.updateInstrumentsList()")
         li = self._instrList
         li.clear()
-        for index, instrument in enumerate(self._helper.instruments()):
-            item = QTreeWidgetItem()
-            item.setText(0, instrument.name())
-            li.addTopLevelItem(item)
-            if isinstance(instrument, CompositeInstrument):         # if CompositeInstrument
-                for childName in instrument.childrenNames():    # add children at level of the tree
-                    childItem = QTreeWidgetItem(item)
-                    childItem.setText(0, childName)
+        for index, handle in enumerate(self._helper.instrumentHandles()):
+            li.addInstrument(handle)
 
     def reloadInstruments(self):
         """
@@ -555,22 +533,15 @@ class InstrumentManager(HelperGUI):
 
     def selectInstr(self, new, previous):
         """
-        Set current instrument handle self._instrHandle to the handle of the selected instrument.
-        Called when a new item is selected in the QTreeWidget of instruments.
+        Sends the handle of the selected instrument to all tabs.
+        (Called when a new item is selected in the QTreeWidget of instruments)
         """
         self.debugPrint('in InstrumentManagerPanel.selectInstr() with current instr =',
                         new, ' and last instr=', previous)
-        handle = None
-        if new is not None:
-            try:
-                handle = self._helper.instrumentHandles().withName(str(new.text(0)))[0]
-            except:
-                pass
-        self._instrHandle = handle
-        self.propagateInstrHandle(handle)
-
-    def propagateInstrHandle(self, handle):
         for obj in [self._instProp, self._instHelp, self._instCode, self._instVisa]:
+            handle = None
+            if new is not None:
+                handle = new._handle
             obj.setInstrHandle(handle)
 
 
@@ -578,6 +549,22 @@ class InstrumentList(QTreeWidget):
     """
     This is the QWidget to display instruments in the Instrument Manager GUI.
     """
+
+    def addInstrument(self, instrumentHandle):
+        """
+        Adds a QTreeWidgetItem corresponding to an instrument.
+        This QTreeWidgetItem has an attribute _instrument for the instrument
+        """
+        item = QTreeWidgetItem()
+        item._handle = instrumentHandle
+        instrument = instrumentHandle['instrument']
+        item.setText(0, instrument.name())
+        self.addTopLevelItem(item)
+        if isinstance(instrument, CompositeInstrument):     # if CompositeInstrument
+            for childName in instrument.childrenNames():    # add children at level of the tree
+                childItem = QTreeWidgetItem(item)
+                # childItem._handle = ????
+                childItem.setText(0, childName)
 
     def mouseDoubleClickEvent(self, e):
         QTreeWidget.mouseDoubleClickEvent(self, e)  # propagate

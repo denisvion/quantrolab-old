@@ -23,15 +23,15 @@ __lastConfigFilename__ = 'last_instrument_config.yml'
 class InstrumentHandle(dict):
 
     """
-    Contains relevant information about an instrument, in a 'handle' used by the instruments manager.
-    The (all public) handle attributes are
-    - instrument,
-    - module,
-    - moduleName
-    - fullPath
-    - remoteServer,
-    - args,
-    - kwargs
+    Dictionnary with relevant information about an instrument, in a 'handle' used by the instruments manager.
+    The keys are
+    - 'instrument',
+    - 'module',
+    - 'moduleName'
+    - 'fullPath'
+    - 'remoteServer',
+    - 'args',
+    - 'kwargs'
     Note that the instrument name is an attribute of the instrument, not of the InstrumentHandle.
     moduleName is useful in case of a remote instrument, for which module is None.
     """
@@ -421,7 +421,7 @@ class InstrumentMgr(Singleton, Helper):
             name = 'instrument'
         newName = name
         names = self.instrumentNames()
-        print newName, names
+        # print newName, names
         if newName in names:
             i = 2
             k = newName.rfind("_")
@@ -431,7 +431,7 @@ class InstrumentMgr(Singleton, Helper):
                     i = int(endStr) + 1
             while True:
                 newName = name + '_' + str(i)
-                print newName
+                # print newName
                 if newName not in names:
                     break
                 i += 1
@@ -654,12 +654,15 @@ class InstrumentMgr(Singleton, Helper):
         tryDelete: whether to try to delete the instrument in the instrument handle
         WARNING: instrument will be deleted from memory only if no other reference to it exists in the python shell.
         """
-        # BUG Treat list of indices differently or indices will be o longer valid
         if isinstance(instrumentOrInstrumentList, list):
+            # replace first any index by its corresponding instrument
+            instrumentOrInstrumentList = [self._instrumentHandles.instruments()[instrument] if isinstance(
+                instrument, int) else instrument for instrument in instrumentOrInstrumentList]
             for instrument in instrumentOrInstrumentList:
                 self._removeInstrument(instrument)
         else:
             self._removeInstrument(instrumentOrInstrumentList, tryDelete)
+        self.saveCurrentConfigInFile()
         self.notify('removed_instruments', None)
 
     # Utility
@@ -668,7 +671,7 @@ class InstrumentMgr(Singleton, Helper):
         Private function finding the index of an instrument in _instrumentHandles from its handle, itself, its name, or its index.
         """
         i = None
-        print instrument, type(instrument)
+        # print instrument, type(instrument)
         if isinstance(instrument, int):
             i = instrument
         else:
