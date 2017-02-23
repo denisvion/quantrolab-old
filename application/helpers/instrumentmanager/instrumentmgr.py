@@ -196,13 +196,13 @@ class InstrumentMgr(Singleton, Helper):
                 return handle['instrument']
         else:
             if self._isUrl(name):
-                return self.initRemoteInstrument(name, moduleName, args, kwargs, forceReload)
+                return self.loadRemoteInstrument(name, moduleName, args, kwargs, forceReload)
             if moduleName is None:
                 moduleName = name
             # moduleName = moduleName.lower()  # why limiting to non capital letters ? Remove this limitation ?
             return self.loadInstrumentFromModuleName(name, moduleName, args=args, kwargs=kwargs)
 
-    def initRemoteInstrument(self, address, moduleName=None, args=[], kwargs={}, forceReload=False):
+    def loadRemoteInstrument(self, address, moduleName=None, args=[], kwargs={}, forceReload=False):
         """
         Loads a remote instrument, either through the HTTP XML-RPC protocol or through the custom Remote Instrument Protocol (RIP).
         - address includes the server name, port and instrument name;
@@ -210,7 +210,7 @@ class InstrumentMgr(Singleton, Helper):
         - args and kwargs are the arguments to be passed to the initialization function at instantiation of the instrument.
         - forceReload indicates if  reloading should be forced in case the remote instrument already exists.
         """
-        self.debugPrint('in InstrumentMgr.initRemoteInstrument(', address, ',', moduleName, ')')
+        self.debugPrint('in InstrumentMgr.loadRemoteInstrument(', address, ',', moduleName, ')')
         result = re.match(r'^rip\:\/\/(.*)\:(\d+)\/(.*)$', address)
         # open the connection to server first
         if result:
@@ -259,8 +259,10 @@ class InstrumentMgr(Singleton, Helper):
         - moduleName is the name of the python module containing the Instr class definition of the instrument.
         - args and kwargs are the arguments to be passed to the initialization function at instantiation of the instrument.
 
-        Returns the instrument object, return None if the initialization fails,
-        or raises an error if the module was not found.
+        Returns
+            - an error if the module was not found
+            - None if the instrument was found but its initialization failed,
+            - the instrument object if the instrument was found and initialized
         """
         try:
             moduleName, filePath = self.findInstrumentModule(moduleName)
@@ -599,7 +601,7 @@ class InstrumentMgr(Singleton, Helper):
                                                                             for key in ['fullPath', 'remoteServer', 'moduleName', 'args', 'kwargs']]
                         if instrumentConfig['remoteServer'] is not None:
                             name = remoteServer + '/' + instrumentName
-                            self.initRemoteInstrument(name, moduleName=moduleName, args=args,
+                            self.loadRemoteInstrument(name, moduleName=moduleName, args=args,
                                                       kwargs=kwargs, forceReload=True)
                         else:
                             self.loadInstrumentFromFilePath(instrumentName, fullPath, args, kwargs)

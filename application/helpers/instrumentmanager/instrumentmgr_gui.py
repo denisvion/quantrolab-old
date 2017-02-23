@@ -99,7 +99,7 @@ class InstrumentManager(HelperGUI):
         closeInst = InstrumentsMenu.addAction("Remove selected instrument(s)")
         menubar.addMenu(InstrumentsMenu)
         self.connect(openList, SIGNAL("triggered()"), self.openList)
-        self.connect(openInst, SIGNAL("triggered()"), self.openInstrument)
+        self.connect(openInst, SIGNAL("triggered()"), self.openInst)
         self.connect(closeInst, SIGNAL("triggered()"), self.closeInst)
 
         splitter = QSplitter(Qt.Horizontal)
@@ -256,7 +256,7 @@ class InstrumentManager(HelperGUI):
 
     # opening or closing an instrument
 
-    def openInstrument(self):
+    def openInst(self):
         """
         Prompts user for an instrument module name and remote server address, builds the full name,
         and tries to open it by calling the loadInstrumentFromName() method of the backend instrument manager.
@@ -266,33 +266,43 @@ class InstrumentManager(HelperGUI):
             def __init__(self, parent):
                 QDialog.__init__(self, parent)
                 self.setWindowTitle('Open instrument')
-                self.setMinimumWidth(300)
-                self.message = QLabel('')
-                self.remote = QCheckBox('Remote server')
+                self.setMinimumWidth(400)
+                self.remote = QCheckBox('Server:')
                 self.remote.stateChanged.connect(self.remoteChanged)
                 self.server = QLineEdit('127.0.0.0')
+                self.port = QLineEdit('8000')
                 self.moduleName = QLineEdit()
                 self.browseButton = QPushButton('Browse...', self)
                 self.browseButton.clicked.connect(self.browse)
                 okButton = QPushButton('OK', self)
-                okButton.clicked.connect(self.accept)
                 cancelButton = QPushButton('Cancel', self)
-                cancelButton.clicked.connect(self.reject)
                 okButton.setDefault(True)
                 self.layout = QGridLayout(self)
                 self.layout.addWidget(self.remote, 0, 0, 1, 1)
-                self.layout.addWidget(self.server, 0, 1, 1, 3)
-                self.layout.addWidget(QLabel('Module name'), 1, 0, 1, 1)
-                self.layout.addWidget(self.moduleName, 1, 1, 1, 3)
-                self.layout.addWidget(self.browseButton, 1, 4, 1, 1)
-                self.layout.addWidget(cancelButton, 2, 0, 1, 1)
-                self.layout.addWidget(okButton, 2, 2, 1, 1)
+                self.layout.addWidget(self.server, 0, 1, 1, 1)
+                self.layout.addWidget(QLabel('Port:'), 0, 2, 1, 1)
+                self.layout.addWidget(self.port, 0, 3, 1, 1)
+                self.layout.addWidget(QLabel('Module:'), 1, 0, 1, 1)
+                self.layout.addWidget(self.moduleName, 1, 1, 1, 2)
+                self.layout.addWidget(self.browseButton, 1, 3, 1, 1)
+                self.layout.addWidget(cancelButton, 2, 2, 1, 1)
+                self.layout.addWidget(okButton, 2, 3, 1, 1)
+                w = cancelButton.minimumWidth()
+                self.layout.setColumnMinimumWidth(2, w)
+                self.layout.setColumnMinimumWidth(3, w)
+                self.port.setMinimumWidth(w)
+                self.layout.setColumnStretch(1, 100)
+                for column in [0, 2, 3, 4]:
+                    self.layout.setColumnStretch(column, 0)
+                okButton.clicked.connect(self.accept)
+                cancelButton.clicked.connect(self.reject)
                 self.remoteChanged()
 
             def remoteChanged(self):
                 remote = self.remote.isChecked()
-                self.server.setVisible(remote)
-                self.browseButton.setVisible(not remote)
+                self.server.setEnabled(remote)
+                self.port.setEnabled(remote)
+                self.browseButton.setEnabled(not remote)
                 if remote:
                     self.moduleName.clear()
 
@@ -310,10 +320,16 @@ class InstrumentManager(HelperGUI):
             return
         modName = str(dialog.moduleName.text())
         if dialog.remote.isChecked():
-            serverAddress = str(dialog.server.text())
+            try:
+                port = int(dialog.port.text())
+            except:
+                port = 8000
+            server = str(dialog.server.text())
+            address = 'rip://' + server + ':' + str(port)
+            self._helper.loadRemoteInstrument(address, modName)
         else:
             filePath = modName
-            self._helper.loadInstrumentFromFilePath(None, filePath, args=[], kwargs={})
+            self._helper.loadInstrumentFromFilePath(None, filePath)
 
     def closeInst(self):
         """
