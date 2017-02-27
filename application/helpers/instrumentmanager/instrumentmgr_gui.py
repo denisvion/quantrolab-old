@@ -24,6 +24,8 @@ from application.ide.editor.codeeditor import CodeEditor
 
 from application.helpers.instrumentmanager.instrumentmgr import InstrumentMgr
 
+from ctypes import addressof
+
 # *******************************************
 #  Helper initialization                   *
 # *******************************************
@@ -326,10 +328,10 @@ class InstrumentManager(HelperGUI):
                 port = 8000
             server = str(dialog.server.text())
             address = 'rip://' + server + ':' + str(port)
-            self._helper.loadRemoteInstrument(address, modName)
+            self._helper._loadRemoteInstrument(address, modName)
         else:
             filePath = modName
-            self._helper.loadInstrumentFromFilePath(None, filePath)
+            self._helper._loadLocalInstrumentFromFilePath(None, filePath)
 
     def closeInst(self):
         """
@@ -407,7 +409,7 @@ class InstrumentManager(HelperGUI):
                 self.updateInstrumentsList()
             elif property == "initialized":          # value is the instrument handle
                 tab = self._tabs
-                if self._instrList.currentItem()._handle is value:
+                if self._instrList.currentItem() and self._instrList.currentItem()._handle is value:
                     self._instProp.update()
 
     def updateInstrumentsList(self):
@@ -416,17 +418,29 @@ class InstrumentManager(HelperGUI):
         """
         self.debugPrint("in InstrumentManagerPanel.updateInstrumentsList()")
         li = self._instrList
+        if li.currentItem() is not None:
+            previousHandle = li.currentItem()._handle  # memorize the current handle
+        else:
+            previousHandle = None
         li.clear()
         for index, handle in enumerate(self._helper.instrumentHandles()):
             li.addInstrument(handle)
+        # reselect the previous current item
+        if previousHandle and li.topLevelItemCount() != 0:
+            index = 0
+            for i in range(li.topLevelItemCount()):
+                if li.topLevelItem(i)._handle is previousHandle:
+                    index = i
+                    break
+            li.setCurrentItem(li.topLevelItem(index))
 
     def reloadInstruments(self):
         """
         Reload the intruments selected in the QTreeWidget instrument list (not the frontpanel).
         """
         self.debugPrint("in InstrumentManagerPanel.reloadInstruments()")
-        indices = [index.row() for index in self._instrList.selectedIndexes()]
-        self._helper.reloadInstruments(indices)
+        handles = [item._handle for item in self._instrList.selectedItems()]
+        self._helper.reloadInstruments(handles)
 
     # frontpanels management
 

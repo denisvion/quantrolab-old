@@ -545,8 +545,7 @@ class ServerConnection(object):
         """
         Method that both sends a command to an instrument server through a network socket, and receives a response from the server.
         """
-        # We set some socket options that help to avoid errors like 10048
-        # (socket already in use...)
+        # We set some socket options that help to avoid errors like 10048 (socket already in use...)
         if _DEBUG:
             print 'in client serverConnection._send() with commandName=', commandName, ' args=', args, 'and kwargs=', kwargs
         command = Command(name=commandName, args=args, kwargs=kwargs)
@@ -645,8 +644,7 @@ class RemoteInstrument(Debugger, ThreadedDispatcher, Reloadable, object):
                         command, ' to ', self._name, 'with args=', args, ' and kwargs=', kwargs)
         result = self._server.dispatch(self._name, command, *args, **kwargs)
         self.debugPrint('remoteDispatch notifying ', command, result)
-        # once the result is sent back, we notify the command and its result to
-        # all observers of this remote instrument.
+        # once the result is sent back, we notify the command and its result to all observers of this remote instrument.
         self.notify(command, result)
         return result
 
@@ -704,8 +702,7 @@ class RemoteInstrument(Debugger, ThreadedDispatcher, Reloadable, object):
         return self.remoteDispatch('__delitem__', [key])
 
     def getAttribute(self, attr):
-        self.debugPrint(
-            'in remoteInstrument.getAttribute(attr) with attr = ', attr)
+        self.debugPrint('in remoteInstrument.getAttribute(attr) with attr = ', attr)
         return self.remoteDispatch('__getattribute__', [attr])
 
     def setAttribute(self, attr, value):
@@ -715,13 +712,13 @@ class RemoteInstrument(Debugger, ThreadedDispatcher, Reloadable, object):
     # but a call remoteInstrument.property is transformed into the meaningless function lambda *args,**kwargs:remoteDispatch(property,args,kwargs)
     # one should treat differently methods and properties
     def __getattr__(self, attr):
-        self.debugPrint(
-            'in remoteInstrument.__getattr__(attr) with attr = ', attr)
+        self.debugPrint('in remoteInstrument.__getattr__(attr) with attr = ', attr)
         return lambda *args, **kwargs: self.remoteDispatch(attr, args, kwargs)
 
     def __call__(self, request):
         """
-        redefining instr(requestString) to instr.ask(requestString) for remote instruments that don't work well when using instr.request
+        Redefines instr(requestString) to instr.ask(requestString) for remote instruments
+        that don't work when using instr.request
         Example: Replace instr.methodLeve1().methodLevel2() by instr('methodLeve1().methodLevel2()')
         """
         return self.ask(request)
