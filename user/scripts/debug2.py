@@ -1,4 +1,5 @@
 import os
+print gv.InstrumentMgr
 ##print [h.name() for h in gv.InstrumentMgr._instrumentHandles]
 ##
 print os.

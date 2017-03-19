@@ -26,54 +26,81 @@ from application.lib.com_classes import *
 
 class Instrument(Debugger, ThreadedDispatcher, Reloadable, object):
     """
-    The generic Insrument class (also ThreadedDispatcher):
-      - has access to its class (getClass()), its module (getModule), and its source file (getSourceFile())
-      - has a name given at creation (name())
-      - has a dictionary of parameters (parameters()).
+    A generic Insrument class (inheriting ThreadedDispatcher) with the following attributes:
+    - name (str): name
+    - has access to its class (getClass()), its module (getModule), and its source file (getSourceFile())
+    - has a dictionary of parameters (parameters()).
         This dictionary may be used to store the current state of the instrument, or other parameters.
-      - has a current state (currentState())
-      - has a dictionary of states stored by saveState(stateName), accessed by state(stateName), and removed by removeState(stateName).
-      - can save to a file the current state by saveStateInFile(filename) or a stored state by saveStateInFile(filename,stateName=stateName)
-      - can restore itself in a previously stored state by restoreState(stateName), an empty method that should be overiden for each particular instrument.
+    - has a current state (currentState())
+    - has a dictionary of states stored by saveState(stateName), accessed by state(stateName), and removed by removeState(stateName).
+    - can save to a file the current state by saveStateInFile(filename) or a stored state by saveStateInFile(filename,stateName=stateName)
+    - can restore itself in a previously stored state by restoreState(stateName), an empty method that should be overiden for each particular instrument.
     Note 1: If your python Instrument represents a piece of hardware having already state saving capability, overide saveState, removeState and restoreState,
     and don't use other state managemet methods.
-    Note 2: an instrument does not own any GUI frontpanel. A single or several frontpanels, local or distant, can be used to interact with the instrument as any other piece of python code.
+    Note 2: an instrument does not own any GUI frontpanel.
+    A single or several frontpanels, local or distant, can be used to interact with the instrument as any other piece of python code.
     """
 
     def __init__(self, name=None):  # One should always pass a name to instantiate an instrument
         """
-        Private class creator initializing the name and an empty list of states.
+        Private class creator initializing the name and empty list of states.
         """
         Subject.__init__(self)
         Debugger.__init__(self)
         ThreadedDispatcher.__init__(self)
-        self.setName(name)          # the only name of the instrument that the instrument knows.
+        self._params = dict()       # dictionary of parameters of the instrument.
         self._states = dict()       # dictionary of states of the instrument.
-        self._params = dict()
         self.daemon = True
+        self.setName(name)          # the name of the instrument.
+        self.loadInfo = dict()      # public dictionary with information about loading and last initialization.
+        try:
+            self.loadInfo['moduleName'] = self.getModule().__name__
+            self.loadInfo['fullPath'] = self.getSourceFile()
+        except Exception as e:
+            raise e
         self.initialized = False    # boolean value indicating that the initialize function was run without error
 
     def initialize(self, *args, **kwargs):
         """
-        Instrument initialization.
-        (Overide this function in each particular instrument sub-class.
-        WARNING 1: Avoid changing the instrument name self._name in this function).
-        WARNING 2: Always keep the 'self._initialized = True' line at the end.
+        Public method for instrument initialization.
+        Overide this function in each particular instrument sub-class.
+        WARNING: Use only pickable arguments and keyword arguments if you want to serve this instrument remotely
+        and allow the client to (re)initialize the instrument.
+
+        NOTE: A call to this method is detected by the instrument which triggers automatically an update
+        of its loadInfo and initialized attributes; this allows the programmer of the overriden initialize
+        method to forget about these attributes.
         """
-        self.initialized = True  # boolean value indicating that the initialize function was run without error
+        pass  # override me if needed
+
+    def __getattribute__(self, attributeName):
+        """
+        Propagates normally all attributes except initialize(), which is supplemented by an update
+        of the instrument's loadInfo and initialized attributes; this allows the programmer of the overriden
+        initialize method to forget about these attributes.
+        """
+        attr = object.__getattribute__(self, attributeName)
+        if attributeName == 'initialize':
+            def initialize2(*args, **kwargs):
+                self.initialized = False
+                result = attr(*args, **kwargs)
+                self.loadInfo.update({'args': args, 'kwargs': kwargs})
+                self.initialized = True
+                return result
+            return initialize2
+        else:
+            return attr
 
     def __str__(self):
         return "Instrument \"%s\"" % self.name()
 
     def __call__(self, request):
         """
-        An instrument instr is callable with instr(requestString) = eval('instr.'+requestString)
+        An instrument instr is callable with instr(requestString) = eval('instr.' + requestString)
         Example: instr.methodLeve1().methodLevel2() can be replaced by instr('methodLeve1().methodLevel2()')
         This alternative syntax happens to be useful in code editors.
         """
         return eval('self.' + request)
-
-    # Access to private property attributes
 
     def name(self):
         """
@@ -95,11 +122,11 @@ class Instrument(Debugger, ThreadedDispatcher, Reloadable, object):
         # insert code here to fill self._params() if necessary
         return self._params
 
-    # Access to class, module, filename, and source code.
+    # Access to module, class, filename, code source, initialization arguments, and methods.
 
     def getModule(self):
         """
-        Returns the module with instrument's code.
+        Returns the module containing instrument's code.
         """
         return inspect.getmodule(self)
 
@@ -111,11 +138,20 @@ class Instrument(Debugger, ThreadedDispatcher, Reloadable, object):
 
     def getSourceFile(self):
         """
-        Returns the file coding the instrument.
+        Returns the full or relative filename coding the instrument.
+        Tries first to get the full path from the module, then the path from the class.
         """
-        return inspect.getsourcefile(self.getClass())
+        try:
+            fullPath = os.path.abspath(self.getModule().__file__)
+            if '.pyc' in fullPath:
+                fullPath2 = fullPath.replace('.pyc', '.py')
+                if os.path.exists(fullPath2):
+                    fullPath = fullPath2
+            return fullPath
+        except:
+            return os.path.abspath(inspect.getsourcefile(self.getClass()))
 
-    def getsource(self):
+    def getSource(self):
         """
         Returns the python code of the instrument.
         """
@@ -123,7 +159,8 @@ class Instrument(Debugger, ThreadedDispatcher, Reloadable, object):
 
     def getInitializationArgs(self):
         """
-        Returns the tuple (argnames, kwargs) with the list of argument names and the dictionary of the keyword arguments.
+        Returns the tuple (argnames, kwargs) with the list of argument names and the dictionary of the keyword
+        arguments with their default values, determined from the code of the initialize method .
         Example: (['arg1', 'arg2'],{kword1:'toto', kword2: 2, kword3: [1,2,3]})
         """
         argNames, kwargs = [], {}
@@ -146,6 +183,68 @@ class Instrument(Debugger, ThreadedDispatcher, Reloadable, object):
         except Exception as e:
             print "Could not determine initialization arguments from instrument's code: " + str(e)
         return (argNames, kwargs)
+
+    def getPublicMethods(self):
+        """
+        Returns all public methods of the selected instrument, i.e. with name not starting with '_'.
+        """
+        return [method[0] for method in inspect.getmembers(
+            self.getClass(), predicate=inspect.ismethod) if method[0][0] != '_']
+
+    def getDirectMethods(self):
+        """
+        Returns all direct public methods of the selected instrument, i.e. defined in the lowest children class.
+        """
+        return [meth for meth in self.getPublicMethods() if meth in self.getClass().__dict__]
+
+    def helpMethod(self, methodName):
+        """
+        Returns a tuple (docString, syntaxString) for the method with name methodName,
+        or None if the method is not found.
+        """
+        try:
+            method = getattr(self, methodName)
+        except:
+            return None
+        if not inspect.ismethod(method):
+            return None
+        helpString = inspect.getdoc(method)
+        argspec = inspect.getargspec(method)
+        methodCall = None
+        if argspec is not None:
+            args, varargs, keywords, defaults = argspec
+            # start to built the method call
+            methodCall = methodName + '('
+            # determine the number of arguments and keyword arguments
+            nArgs = 0
+            if args is not None:
+                nArgs = len(args)
+                nKwargs = 0
+                if defaults is not None:
+                    nKwargs = len(defaults)
+                    nArgs -= nKwargs
+                if nArgs != 0:                                # add arguments but self
+                    if args[0] != 'self':
+                        methodCall += ','.join(args[0: nArgs])
+                        if nKwargs != 0:
+                            methodCall += ','
+                    elif nArgs > 1:
+                        methodCall += ','.join(args[1: nArgs])
+                        if nKwargs != 0 or varargs is not None or keywords is not None:
+                            methodCall += ','
+                if nKwargs != 0:                              # add keyword arguments
+                    methodCall += ','.join([kwarg + '=' + str(default)
+                                            for kwarg, default in zip(args[nArgs:], defaults)])
+                    if varargs is not None or keywords is not None:
+                        methodCall += ','
+                if varargs is not None:
+                    methodCall += '*' + varargs
+                    if keywords is not None:
+                        methodCall += ','
+                if keywords is not None:
+                    methodCall += '**' + keywords
+                methodCall += ')'
+        return (helpString, methodCall)
 
     # Management of instrument states.
 
@@ -386,7 +485,7 @@ class VisaInstrument(Instrument):
         self._term_chars = term_chars
         self.scpi = scpi
         try:
-            self.getHandle()
+            self.visaHandle()
         except:
             print '\tERROR: Could not get handle to Visa instrument %s at address %s' % (name, visaAddress)
             return
@@ -401,7 +500,7 @@ class VisaInstrument(Instrument):
             except:
                 print '\tERROR: Could not get answer from Visa instrument %s at address %s when asking %s' % (name, visaAddress, testString)
 
-    def getHandle(self, forceReload=False):
+    def visaHandle(self, forceReload=False):
         """
         Return the VISA handle for this instrument.
         If the VISA connection was lost, it reopens the VISA handle.
@@ -418,6 +517,9 @@ class VisaInstrument(Instrument):
                 pass
             self._handle = visa.instrument(self._visaAddress)
         return self._handle
+
+    def visaAddress(self):
+        return self._visaAddress
 
     def executeVisaCommand(self, method, *args, **kwargs):
         """
@@ -458,7 +560,7 @@ class VisaInstrument(Instrument):
         """
         Forwards all unknown attribute calls to the VISA handle: instrument.attr becomes
         """
-        handle = self.getHandle()
+        handle = self.visaHandle()
         if hasattr(handle, attr):
             attr1 = getattr(handle, attr)
             if hasattr(attr, '__call__'):
@@ -535,6 +637,9 @@ class ServerConnection(object):
         sock.connect((self._ip, self._port))
         return sock
 
+    def address(self):
+        return self._ip + ':' + self._port
+
     def ip(self):
         return self._ip
 
@@ -543,7 +648,8 @@ class ServerConnection(object):
 
     def _send(self, commandName, args=[], kwargs={}):
         """
-        Method that both sends a command to an instrument server through a network socket, and receives a response from the server.
+        Method that both sends a command to an instrument server through a network socket,
+        and receives a response from the server.
         """
         # We set some socket options that help to avoid errors like 10048 (socket already in use...)
         if _DEBUG:
@@ -553,8 +659,7 @@ class ServerConnection(object):
         try:
             # sends the command as a serialized string
             sock.send(command.toString())
-            # reads 4 bytes to get a string containing the number of available
-            # following bytes
+            # reads 4 bytes to get a string containing the number of available following bytes
             lendata = sock.recv(4)
             if len(lendata) == 0:                   # if no bytes areceived => connection lost
                 raise Exception(
@@ -601,24 +706,19 @@ class ServerConnection(object):
 class RemoteInstrument(Debugger, ThreadedDispatcher, Reloadable, object):
     """
     Class that represents locally a distant remote instrument, and that is able to communicate with it through a ServerConnection.
-    (does not inheritate from the Instrument class)
+    Does not inheritate from the Instrument class, but access to the remote instrument by its name through the server.
     """
 
-    def __init__(self, name, server, baseclass=None, args=[], kwargs={}, forceReload=False):
-
+    def __init__(self, name, mode, server, moduleFileOrDir=None, args=[], kwargs={}):
         Debugger.__init__(self)
         ThreadedDispatcher.__init__(self)
         Reloadable.__init__(self)
-        # server is a ServerConnection (indicated by the instrument manager)
-        # that '_send's methods of a single Instrument accross the server
-        # initialize the serverConnection with a particular instrument
-        server.initInstrument(name, baseclass, args, kwargs, forceReload)
-        # memorize the serverConnection
-        self._server = server
-        self._name = name
-        self._baseclass = baseclass
-        self._args = args
-        self._kwargs = kwargs
+        server.loadInstrument(name, mode, None, moduleFileOrDir, args, kwargs)  # server is a ServerConnection
+        self._server = server                                                   # memorize the serverConnection
+        # the rest of the information is in self.loadInfo
+
+    def server(self):
+        return self._server
 
     def dispatch(self, command, *args, **kwargs):
         # This is an ATTEMPT by DV to clean the strange dispatch behavior of remote instruments.

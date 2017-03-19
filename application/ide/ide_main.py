@@ -700,6 +700,8 @@ class IDE(QMainWindow, ObserverWidget):
         - A list of the loaded HelperGUIs and their associated Helper just below
         - a separator
         - alist of helpers with no associate
+        - a separator
+        - a 'Close all' command
         Only HelperGUIs are enabled so that user can bring HelperGUI window to the front. Helpers are dimmed.
         """
         self.helpersMenu.clear()
@@ -724,6 +726,10 @@ class IDE(QMainWindow, ObserverWidget):
             self.helpersMenu.addActions(ag1.actions())
             self.helpersMenu.addSeparator()
             self.helpersMenu.addActions(ag2.actions())
+            if len(ag2.actions()) > 0:
+                self.helpersMenu.addSeparator()
+            closeAll = self.helpersMenu.addAction('Close all...')
+            self.connect(closeAll, SIGNAL('triggered()'), self.closeAll)
 
     def loadHelpers(self):
         """
@@ -737,6 +743,9 @@ class IDE(QMainWindow, ObserverWidget):
         self.executeCode('', threadId='HelperManager', filename='IDE',
                          resultExpression='helperManager.helpersRootDir()', callbackFunc='notify')
 
+    def closeAll(self):
+        self.executeCode('helperManager.closeAllHelpers()', threadId='HelperManager', filename='IDE')
+
     def showHelper(self, action):
         """
         Attemps to show the helper window in front.
@@ -744,7 +753,7 @@ class IDE(QMainWindow, ObserverWidget):
         """
         actionName = str(action.text())
         code = 'gv.%s.window2Front()' % actionName
-        self.executeCode(code, threadId='helperManager', filename="IDE", )
+        self.executeCode(code, threadId='HelperManager', filename="IDE", )
 
     def buildWindowMenu(self):
         self.windowMenu.clear()

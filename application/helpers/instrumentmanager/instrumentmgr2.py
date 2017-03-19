@@ -31,7 +31,7 @@ class InstrumentList(list):
 
     def names(self):
         """
-        Returns the list of names of all instruments.
+        Returns the list of names of the instruments the handles are pointing to.
         """
         return [instrument.name() for instrument in self]
 
@@ -51,16 +51,13 @@ class InstrumentList(list):
         try:
             if isinstance(instrument, int) and i < len(self):
                 i = instrument
-            elif isinstance(instrument, (Instrument, RemoteInstrument)):    # instrument.__class__.__name__ == 'Instr':
+            elif isinstance(instrument, Instr):    # instrument.__class__.__name__ == 'Instr':
                 i = self.index(instrument)
-            elif isinstance(instrument, str):
+            else isinstance(instrument, str):
                 i = self.names().index(instrument)
         except:
             pass
         return i
-
-    def clear(self):
-        del self[:]
 
 
 class InstrumentMgr(Singleton, Helper):
@@ -171,63 +168,23 @@ class InstrumentMgr(Singleton, Helper):
         """
         pass
 
-    # adding or removing local or remote instruments
+    # Loading, initializing, or adding local or remote instruments
 
     def addInstrument(self, instrument):
         """
         Adds an instrument of Class Instrument or RemoteInstrument to the instrument manager's instrument list.
         Raise an error if an instrument with the same name is already present.
         """
-        if isinstance(instrument, (Instrument, RemoteInstrument)) and instrument.name() not in self.instrumentNames():
+        if isInstance(instrument, (Instrument, RemoteInstrument)) and instrument.name() not in self.instrumentNames():
             self._instruments.append(instrument)
         else:
             raise Exception(
                 'Cannot add instrument %s to instrument manager because another instrument with the same already exists.')
 
-    def _removeInstrument(self, instrument, tryDelete=False):
-        """
-        Private function removing an instrument from the managed intruments.
-        See docstring of public function removeInstruments()
-        """
-        i = self._instruments.instrumentIndex(instrument)
-        if i is not None:
-            inst = self._instruments.pop(i)
-            if tryDelete:
-                del inst
-
-    def removeInstruments(self, instrumentOrInstrumentList=None, tryDelete=False):
-        """
-        Removes the instruments specified by instrumentOrInstrumentList from the managed intruments.
-        instrumentOrInstrumentList: either
-        - None => all instruments are removed
-        - an instrument of type Instr
-        - an instrument name
-        - an index in list self._instruments
-        - a list of instruments of type Instr
-        - a list of intrument names
-        - a list of index in list self._instruments
-        tryDelete: whether to try to delete the instrument.
-        WARNING: instrument will be deleted from memory only if no other reference to it exists in the python shell.
-        """
-        if instrumentOrInstrumentList is None:
-            instrumentOrInstrumentList = self._instruments
-        if isinstance(instrumentOrInstrumentList, list):
-            # replace first any index by its corresponding instrument
-            instrumentOrInstrumentList = [self._instruments[instrument] if isinstance(
-                instrument, int) else instrument for instrument in instrumentOrInstrumentList]
-            for instrument in instrumentOrInstrumentList:
-                self._removeInstrument(instrument, tryDelete)
-        else:
-            self._removeInstrument(instrumentOrInstrumentList, tryDelete)
-        self.saveCurrentConfigInFile()
-        self.notify('removed_instruments', None)
-
-    # Loading, initializing local or remote instruments
-
     def loadInstrument(self, name=None, mode=None, serverAddress=None, moduleFileOrDir=None, args=[], kwargs={}):
         """
         Loads, replaces, reloads or simply returns a new or already loaded local or remote instrument,
-        and returns the instrument.
+        and returns the instrument handle of type InstrumentHandle..
         Inputs are :
         - name (str): name requested for the instrument, possibly modified by the code if already existing.
         - mode (None, 'reload', 'replace', or 'add'): specifies the action to be done (see "how it works" below)
@@ -257,15 +214,15 @@ class InstrumentMgr(Singleton, Helper):
             If fileOrDir is defined and is an atomic name, looks for a module with this name in a default path
             If fileOrDir is defined and is a complete file path, uses this python file as the module
         """
-        if self.hasInstrument(name):                           # if other loaded instrument(s) have the same name
+        if self.hasInstrument(name):                          # if instrument(s) with the same name is (are) already loaded
             if mode is not 'add':
-                instrument = self.getInstrument(name)          # find the first of them
+                instrument = self.getInstrument(name)          # find the handle of the first one
                 if mode is 'reload':                           # reload it if requested
-                    return self.reloadInstrument(instrument, args, kwargs)
+                    return self.reloadInstrument(name, handle, args, kwargs)
                 elif mode is None:
                     return instrument                          # or return it otherwise
                 elif mode is 'replace':
-                    self._removeInstrument(instrument, tryDelete=True)  # and continue below
+                    self.removeInstruments(instrument, tryDelete=True)  # and continue below
             # use the requested name as module name (before updating it)
             if moduleFileOrDir in ['', None]:
                 moduleFileOrDir = name
@@ -276,19 +233,19 @@ class InstrumentMgr(Singleton, Helper):
         elif name in ['', None]:                                 # Set name to base module name
             name = os.path.splitext(os.path.basename(moduleFileOrDir))[0]
         name = self.freeInstrumentName(name)                     # update name with index if necessary
-        if serverAddress is None:                                       # if local instrument
+        if server is None:                                       # if local instrument
             return self._loadLocalInstrument(name, moduleFileOrDir, args, kwargs)
         else:                                                    # if remote instrument
             return self._loadRemoteInstrument(name, mode, serverAddress, moduleFileOrDir, args, kwargs)
 
     def reloadInstrument(self, instrument, args=[], kwargs={}):
         """
-        Reloads a local or remote  instrument and returns it.
+        Reloads a local or remote  instrument and returns the updated handle.
         if initializing arguments and keyword arguments are not passed, those present in the instrument loadInfo dictionnary are used.
         """
         self.debugPrint('in InstrumentMgr.reloadInstrument()')
-        if isinstance(instrument, (RemoteInstrument)):
-            instrument.server().loadInstrument(name, None, moduleFileOrDir, args, kwargs, False, True)
+        if isInstance(instrument, (RemoteInstrument)):
+            instrument._server.loadInstrument(name, None, moduleFileOrDir, args, kwargs, False, True)
         else:  # local instrument => use instrument.loadInfo
             if instrument.isAlive():
                 raise Exception('Cannot reload instrument while it is running...')
@@ -318,7 +275,7 @@ class InstrumentMgr(Singleton, Helper):
         """
         Private method for loading a local instrument. See loadInstrument docstring.
         How it works: builds the file path and calls _loadLocalInstrumentFromFilePath.
-        Returns the instrument.
+        Returns the instrument handle of type InstrumentHandle.
         """
         # if moduleFileOrDir is an atomic string
         if all([c not in moduleFileOrDir for c in [':', '.', '/', '\\']]):
@@ -342,7 +299,7 @@ class InstrumentMgr(Singleton, Helper):
         - args and kwargs are the arguments to be passed to the initialization function at instantiation of the instrument.
 
         Returns None if the initialization fails, raises an error if the module was not found,
-        or returns the instrument.
+        or returns the instrument handle of type InstrumentHandle.
         """
         (path, moduleName) = os.path.split(filePath)
         (moduleName, ext) = os.path.splitext(moduleName)
@@ -467,7 +424,7 @@ class InstrumentMgr(Singleton, Helper):
         Private method for loading a remote instrument, either through the HTTP XML-RPC protocol
         or through the custom Remote Instrument Protocol (RIP).
         Inputs are the same as those of loadInstrument but with serverOrAddress different from None.
-        Returns the instrument.
+        Returns the instrument handle of type InstrumentHandle.
         """
         self.debugPrint('in InstrumentMgr.loadRemoteInstrument(%s, %s, %s)' % (name, mode if mode is not None else 'None', str(
             serverOrAddress), moduleFileOrDir if moduleFileOrDir is not None else 'None'))
@@ -478,7 +435,7 @@ class InstrumentMgr(Singleton, Helper):
             raise ValueError(('Connection to remote host %s failed: ' % serverOrAddress) + str(e))
         self._instruments.append(instrument)
         self.notify('new_instrument', instrument)
-        return instrument   # and returns it
+        return instrument   # and return this handle
 
     def loadInstruments(self, instrumentDicList, globalParameters={}):
         """
@@ -538,13 +495,13 @@ class InstrumentMgr(Singleton, Helper):
         """
         Returns the managed instruments
         """
-        return self._instruments
+        return self._instruments()
 
     def instrumentNames(self):
         """
         Returns the names of the managed instruments.
         """
-        return [instrument.name() for instrument in self._instruments]
+        return [instrument.name() for instrument in self._instruments()]
 
     def hasInstrument(self, name):
         """
@@ -571,13 +528,13 @@ class InstrumentMgr(Singleton, Helper):
         If withCurrentState is true, dic includes also the current state of the instrument.
         """
         config1 = dict(instrument.loadInfo)                 # start with a copy of instrumentHandle
-        if isinstance(instrument, (RemoteInstrument)):      # add the server address if necessary
-            config1['serverAddress'] = instrument.server().address()
+        if isInstance(instrument, (RemoteInstrument)):      # add the server address if necessary
+            config1['serverAddress'] = instrument._server.address()
         if withCurrentState:                                # add current state if requested
             try:
-                config1['state'] = instrument.currentState()
+                config1['state'] = instrumentHandle['instrument'].currentState()
             except:
-                print 'Could not get the state of instrument %s:' % instrument.name()
+                print 'Could not get the state of instrument %s:' % instrumentHandle.name()
                 print traceback.print_exc()
         return config1
 
@@ -663,6 +620,41 @@ class InstrumentMgr(Singleton, Helper):
         config = yaml.load(configFile.read())
         configFile.close()
         self.restoreConfig(config, instrumentNames, mode, loadIfNotLoaded)
+
+    def _removeInstrument(self, instrument, tryDelete=False):
+        """
+        Private function removing an instrument from the managed intruments.
+        See docstring of public function removeInstruments()
+        """
+        i = self._instruments.instrumentIndex(instrument)
+        if i is not None:
+            inst = self._instruments.pop(i)
+            if tryDelete:
+                del inst
+
+    def removeInstruments(self, instrumentOrInstrumentList, tryDelete=False):
+        """
+        Removes the instruments specified by insrumentList from the managed intruments.
+        instrumentOrInstrumentList: either
+        - an instrument of type Instr
+        - an instrument name
+        - an index in list self._instruments
+        - a list of instruments of type Instr
+        - a list of intrument names
+        - a list of index in list self._instruments
+        tryDelete: whether to try to delete the instrument in the instrument handle
+        WARNING: instrument will be deleted from memory only if no other reference to it exists in the python shell.
+        """
+        if isinstance(instrumentOrInstrumentList, list):
+            # replace first any index by its corresponding instrument
+            instrumentOrInstrumentList = [self._instruments[instrument] if isinstance(
+                instrument, int) else instrument for instrument in instrumentOrInstrumentList]
+            for instrument in instrumentOrInstrumentList:
+                self._removeInstrument(instrument, tryDelete)
+        else:
+            self._removeInstrument(instrumentOrInstrumentList, tryDelete)
+        self.saveCurrentConfigInFile()
+        self.notify('removed_instruments', None)
 
     # Locating frontpanel modules
 

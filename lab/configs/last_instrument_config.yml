@@ -1,8 +1,10 @@
 dummy:
-  args: []
-  fullPath: L:\lab_control\quantrolab\lab\instruments\dummy.pyc
+  args: !!python/tuple []
+  fullPath: L:\lab_control\quantrolab\lab\instruments\dummy.py
   kwargs: {}
   moduleName: dummy
-  remoteServer: null
   state: {}
-  timeout: 0.0
+dummy2:
+  fullPath: L:\lab_control\quantrolab\lab\instruments\dummy2.py
+  moduleName: dummy2
+  state: {}

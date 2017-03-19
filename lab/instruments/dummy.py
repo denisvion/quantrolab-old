@@ -12,3 +12,9 @@ class Instr(Instrument):
         Initializes the dummy instrument.
         """
         self.initialized = True
+
+    def method1(self, a):
+        """
+        Simply returns its argument
+        """
+        return a

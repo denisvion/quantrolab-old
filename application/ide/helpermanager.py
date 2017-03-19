@@ -59,8 +59,8 @@ class HelperManager(Observer, Debugger):
         Observer.__init__(self)
         Debugger.__init__(self)
         _ensureGuiThreadIsRunning()  # create immediately the Qt GUI application to benefit from QSettings
-        QCoreApplication.setOrganizationName("CEA-Quantronics")
-        QCoreApplication.setOrganizationDomain("cea.fr")
+        QCoreApplication.setOrganizationName('CEA-Quantronics')
+        QCoreApplication.setOrganizationDomain('cea.fr')
         QCoreApplication.setApplicationName("QuantroLab's helper manager")
         QCoreApplication.setApplicationVersion(QString(__version__))
         settings = QSettings()
@@ -280,6 +280,19 @@ class HelperManager(Observer, Debugger):
         except:
             print "Error when looking for " + classname + "'s associate or when loading it."
             raise
+
+    def closeAllHelpers(self):
+        print
+        print self._helpers
+        print
+        """
+        for helperName in self._helpers:
+            if 'associate' in self._helpers[helperName]:
+                del self._helpers[helperName]['associate']
+            if self._helpers[helperName]['helperType'] == 'HelperGUI':
+                self._helpers[helperName]['helper'].close()
+            del self._helpers[helperName]
+        """
 
     def close(self):
         time.sleep(10)
